@@ -49,3 +49,9 @@ Append a dated entry for each meaningful implementation or business decision. Ne
 - New proforma snapshots preserve current business settings; PDFs show business name and payment details. Older snapshots fall back to the hotel name without requiring migration.
 - Browser settings form added; no real bank or guest data in repository. Logo uploads and statutory invoice issuance still pending.
 - Sensitive financial information must not be entered until authentication and local access controls are implemented and tested.
+
+## 2026-11-21 — Restaurant menu and saved-billing foundation
+- Added CSV menu import with quoted fields, configured integer tax rates, validation and transactional upsert.
+- Added searchable menu, quick cart and local restaurant bill snapshots. Cash, UPI and card are supported as operator-recorded payments; room charge requires an existing checked-in booking.
+- Financial snapshots are separate from accommodation invoices. **Room charge settlement and combined totals are not yet implemented**; do not double invoice these charges.
+- Epson TM-T82 printing, offline cashier safety, tax-rate compliance and manually unmatched charges are future work. CI must pass on the PR head before merge.

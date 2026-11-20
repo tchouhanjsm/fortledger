@@ -5,7 +5,7 @@ const dateISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+
 const addDays = (d,days) => { const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+days);return x; };
 const fmtDay = iso => new Date(iso+'T12:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 const statusOptions=['reserved','checked_in','checked_out','cancelled'];
-let rooms=[],bookings=[],invoices=[],businessSettings=null,editingId=null,weekStart=new Date();
+let rooms=[],bookings=[],invoices=[],businessSettings=null,menu=[],restaurantBills=[],cart=[],editingId=null,weekStart=new Date();
 weekStart=addDays(weekStart,-((weekStart.getDay()+6)%7));
 async function api(url,options={}){
   const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});
@@ -89,7 +89,8 @@ function updateRoomOptions(selected=''){
   if(select.value){count.value='1';count.disabled=true;}else count.disabled=false;
 }
 async function load(){
-  [rooms,bookings,invoices,businessSettings]=await Promise.all([api('/api/rooms'),api('/api/bookings'),api('/api/invoices'),api('/api/settings/business')]);
+  [rooms,bookings,invoices,businessSettings,menu,restaurantBills]=await Promise.all([api('/api/rooms'),api('/api/bookings'),api('/api/invoices'),api('/api/settings/business'),api('/api/restaurant/menu'),api('/api/restaurant/bills')]);
+  renderMenu();renderCart();renderRestaurantHistory();
   for(const [key,value] of Object.entries(businessSettings)){const field=$('#business-form').elements.namedItem(key);if(field)field.value=value;}
   renderBookings();renderRooms();renderCalendar();renderInvoices();
 }
@@ -219,6 +220,71 @@ async function showPayments(b){
     alert('Payment history — '+b.guest_name+'\n\n'+text);
   }catch(e){alert(e.message);}
 }
+
+function renderMenu(){
+  const list=$('#menu-items');list.replaceChildren();
+  const query=$('#menu-search').value.trim().toLowerCase();
+  for(const item of menu.filter(x=>(x.name+' '+x.category).toLowerCase().includes(query))){
+    const row=label('div',undefined,'menu-item');
+    const details=label('div');details.append(label('strong',item.name),label('small',item.category+' · '+money(item.price_paise)));
+    const add=label('button','+ Add','secondary');add.onclick=()=>{const existing=cart.find(x=>x.menu_item_id===item.id);if(existing)existing.quantity++;else cart.push({menu_item_id:item.id,quantity:1});renderCart();};
+    row.append(details,add);list.append(row);
+  }
+  if(!list.children.length)list.append(label('p','No menu items found. Import a CSV to start.','muted'));
+  const guest=$('#restaurant-guest'),old=guest.value;guest.replaceChildren();
+  for(const b of bookings.filter(x=>x.status==='checked_in')){
+    const option=label('option',b.guest_name+' · '+(b.assigned_room||b.category));option.value=b.id;guest.append(option);
+  }
+  if([...guest.options].some(x=>x.value===old))guest.value=old;
+}
+function renderCart(){
+  const list=$('#cart-items');list.replaceChildren();
+  for(const entry of cart){
+    const item=menu.find(x=>x.id===entry.menu_item_id);if(!item)continue;
+    const row=label('div',undefined,'cart-row');
+    const text=label('span',item.name+' · '+money(item.price_paise));
+    const controls=label('div',undefined,'cart-actions');
+    const minus=label('button','−','secondary');minus.onclick=()=>{entry.quantity--;if(entry.quantity<1)cart=cart.filter(x=>x!==entry);renderCart();};
+    const count=label('strong',String(entry.quantity));
+    const plus=label('button','+','secondary');plus.onclick=()=>{if(entry.quantity<100)entry.quantity++;renderCart();};
+    controls.append(minus,count,plus);row.append(text,controls);list.append(row);
+  }
+  if(!cart.length)list.append(label('p','Select a menu item to begin.','muted'));
+  const total=cart.reduce((s,x)=>s+(menu.find(y=>y.id===x.menu_item_id)?.price_paise||0)*x.quantity,0);
+  $('#cart-total').textContent='Total (inclusive) '+money(total);
+}
+function renderRestaurantHistory(){
+  const list=$('#restaurant-history');list.replaceChildren();
+  for(const bill of restaurantBills.slice(0,15)){
+    const row=label('div',undefined,'menu-item');
+    row.append(label('strong','#'+bill.id+' · '+bill.payment_method.toUpperCase()),
+      label('span',money(bill.total_paise)));
+    list.append(row);
+  }
+  if(!restaurantBills.length)list.append(label('p','No restaurant bills yet.','muted'));
+}
+$('#menu-search').oninput=renderMenu;
+$('#restaurant-method').onchange=()=>{$('#room-charge-choice').hidden=$('#restaurant-method').value!=='room';};
+$('#save-restaurant-bill').onclick=async()=>{
+  const method=$('#restaurant-method').value,message=$('#restaurant-message');
+  if(!cart.length){message.textContent='Add at least one item.';return;}
+  const body={payment_method:method,items:cart,booking_id:method==='room'?Number($('#restaurant-guest').value):undefined};
+  if(method==='room'&&!body.booking_id){message.textContent='No checked-in guest available for room charge.';return;}
+  if(!confirm('Save this restaurant bill?'))return;
+  const button=$('#save-restaurant-bill');button.disabled=true;
+  try{await api('/api/restaurant/bills',{method:'POST',body:JSON.stringify(body)});cart=[];message.textContent='Bill saved locally.';await load();}
+  catch(e){message.textContent=e.message;}
+  finally{button.disabled=false;}
+};
+$('#import-menu').onclick=async()=>{
+  const file=$('#menu-csv').files[0],message=$('#restaurant-message');
+  if(!file){message.textContent='Choose a CSV file.';return;}
+  if(file.size>65000){message.textContent='CSV must be under 65 KB.';return;}
+  try{const csv=await file.text();const outcome=await api('/api/restaurant/menu/import',{method:'POST',body:JSON.stringify({csv})});
+    message.textContent='Imported '+outcome.imported+' menu items.';await load();}
+  catch(e){message.textContent=e.message;}
+};
+
 $('#business-form').onsubmit=async event=>{
   event.preventDefault();
   const form=event.currentTarget,message=$('#settings-message'),button=form.querySelector('[type=submit]');

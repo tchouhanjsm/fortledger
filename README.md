@@ -49,3 +49,6 @@ The **Proforma PDF** action opens a pre-issue editor: guest/group name, bill-to 
 
 ## Business settings (alpha)
 The **Hotel & payment settings** section stores hotel name, optional address/GSTIN/contact details and bank/IFSC/UPI information locally. New proforma PDFs snapshot the current settings, keeping previously issued invoices unchanged. Do not enter real account details until the local app has authentication and access controls; the repository remains public, although runtime database files are gitignored. Uploaded logo support remains pending.
+
+## Restaurant MVP (alpha)
+Import a CSV with header `name,category,price,tax_rate` (GST-inclusive price, integer percent rate configured per menu item). Menu imports update matching name/category items without erasing historical bills. Search items, add quantities, settle by cash/UPI/card, or charge to a **checked-in booking**. Each bill preserves item, quantity, rate, tax and payment snapshots in SQLite. The restaurant module does not yet print to Epson, create statutory tax receipts, reconcile room charges at checkout or support manual unmatched room entries. Do not use for live trading until those and security safeguards are implemented.
