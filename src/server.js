@@ -5,6 +5,7 @@ import { openDatabase, assertAvailability } from './database.js';
 import { bookingTotals, nightsBetween, toPaise } from './finance.js';
 import { createProforma,getInvoice,listInvoices } from './invoices.js';
 import { streamProformaPdf } from './invoice-pdf.js';
+import { getBusinessSettings,updateBusinessSettings } from './business-settings.js';
 
 export function createApp(db) {
   const app = express();
@@ -14,6 +15,11 @@ export function createApp(db) {
   app.use(express.static(publicDir));
 
   const listRooms = db.prepare('SELECT * FROM rooms ORDER BY id');
+  app.get('/api/settings/business',(_req,res)=>res.json(getBusinessSettings(db)));
+  app.put('/api/settings/business',(req,res,next)=>{
+    try{res.json(updateBusinessSettings(db,req.body));}
+    catch(error){next(error);}
+  });
   app.get('/api/invoices',(_req,res)=>res.json(listInvoices(db)));
   app.post('/api/bookings/:id/proforma',(req,res,next)=>{
     try{

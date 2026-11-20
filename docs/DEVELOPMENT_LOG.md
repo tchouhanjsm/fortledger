@@ -43,3 +43,9 @@ Append a dated entry for each meaningful implementation or business decision. Ne
 - Calculations are server-side integer paise, reverse-tax 5% illustrative, with payment snapshot retained. Issued proformas are immutable and idempotent.
 - PDF now supports multiple lines and flows onto additional pages; company address shown when supplied.
 - Tax invoice conversion, compliance verification, saved bank/UPI settings, brand logo, customer directory and restaurant remain pending. Review automated integration tests and GitHub CI before merging.
+
+## 2026-11-21 — Hotel payment/settings increment
+- Implemented locally persisted hotel identity, optional GSTIN/address/contact and bank/IFSC/UPI settings with validation.
+- New proforma snapshots preserve current business settings; PDFs show business name and payment details. Older snapshots fall back to the hotel name without requiring migration.
+- Browser settings form added; no real bank or guest data in repository. Logo uploads and statutory invoice issuance still pending.
+- Sensitive financial information must not be entered until authentication and local access controls are implemented and tested.

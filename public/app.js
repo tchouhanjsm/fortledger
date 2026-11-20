@@ -5,7 +5,7 @@ const dateISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+
 const addDays = (d,days) => { const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+days);return x; };
 const fmtDay = iso => new Date(iso+'T12:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 const statusOptions=['reserved','checked_in','checked_out','cancelled'];
-let rooms=[],bookings=[],invoices=[],editingId=null,weekStart=new Date();
+let rooms=[],bookings=[],invoices=[],businessSettings=null,editingId=null,weekStart=new Date();
 weekStart=addDays(weekStart,-((weekStart.getDay()+6)%7));
 async function api(url,options={}){
   const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});
@@ -89,7 +89,8 @@ function updateRoomOptions(selected=''){
   if(select.value){count.value='1';count.disabled=true;}else count.disabled=false;
 }
 async function load(){
-  [rooms,bookings,invoices]=await Promise.all([api('/api/rooms'),api('/api/bookings'),api('/api/invoices')]);
+  [rooms,bookings,invoices,businessSettings]=await Promise.all([api('/api/rooms'),api('/api/bookings'),api('/api/invoices'),api('/api/settings/business')]);
+  for(const [key,value] of Object.entries(businessSettings)){const field=$('#business-form').elements.namedItem(key);if(field)field.value=value;}
   renderBookings();renderRooms();renderCalendar();renderInvoices();
 }
 function renderInvoices(){
@@ -218,6 +219,17 @@ async function showPayments(b){
     alert('Payment history — '+b.guest_name+'\n\n'+text);
   }catch(e){alert(e.message);}
 }
+$('#business-form').onsubmit=async event=>{
+  event.preventDefault();
+  const form=event.currentTarget,message=$('#settings-message'),button=form.querySelector('[type=submit]');
+  button.disabled=true;message.textContent='';
+  try{
+    const body=Object.fromEntries(new FormData(form));
+    businessSettings=await api('/api/settings/business',{method:'PUT',body:JSON.stringify(body)});
+    message.textContent='Saved successfully';
+  }catch(e){message.textContent=e.message;}
+  finally{button.disabled=false;}
+};
 $('#new-booking').onclick=openNew;
 $('#close-dialog').onclick=()=>$('#booking-dialog').close();
 $('#cancel-dialog').onclick=()=>$('#booking-dialog').close();
