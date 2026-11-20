@@ -46,3 +46,6 @@ From a booking, choose **Proforma PDF** to create one immutable snapshot and dow
 
 ## Multiple accommodation lines (alpha)
 The **Proforma PDF** action opens a pre-issue editor: guest/group name, bill-to recipient and optional billing address plus 1–20 independently priced accommodation lines (description, rooms, nights, negotiated GST-inclusive rate). Totals are recalculated in integer paise on the backend. Once issued the document is immutable and repeated requests return the saved original. Rates remain an illustrative 5% rule until statutory compliance is verified. The existing booking and payment ledgers are not changed by invoice editing.
+
+## Business settings (alpha)
+The **Hotel & payment settings** section stores hotel name, optional address/GSTIN/contact details and bank/IFSC/UPI information locally. New proforma PDFs snapshot the current settings, keeping previously issued invoices unchanged. Do not enter real account details until the local app has authentication and access controls; the repository remains public, although runtime database files are gitignored. Uploaded logo support remains pending.

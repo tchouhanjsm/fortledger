@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ensureInvoiceSchema } from './invoice-schema.js';
+import { ensureBusinessSettings } from './business-settings.js';
 
 export function openDatabase(filename = process.env.FORTLEDGER_DB || path.resolve('data/fortledger.sqlite')) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -41,6 +42,7 @@ export function openDatabase(filename = process.env.FORTLEDGER_DB || path.resolv
     CREATE INDEX IF NOT EXISTS idx_payments_booking ON payments(booking_id);
   `);
   ensureInvoiceSchema(db);
+  ensureBusinessSettings(db);
   if (db.prepare('SELECT count(*) AS count FROM rooms').get().count === 0) {
     const add = db.prepare('INSERT INTO rooms (name) VALUES (?)');
     db.transaction(() => { for (let i = 1; i <= 7; i++) add.run('Room ' + i); })();

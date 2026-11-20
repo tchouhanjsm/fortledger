@@ -1,6 +1,7 @@
 import { bookingTotals } from './finance.js';
 import { FIXED_TERMS } from './terms.js';
 import { normalizeInvoiceInput } from './invoice-lines.js';
+import { getBusinessSettings } from './business-settings.js';
 
 export function createProforma(db,bookingId,input={}){
   if(!Number.isSafeInteger(bookingId)||bookingId<1)throw new Error('Invalid booking ID');
@@ -22,7 +23,7 @@ export function createProforma(db,bookingId,input={}){
     const number='GH-'+year+'-'+String(next).padStart(3,'0');
     const snapshot={
       number,kind:'proforma',issued_on:new Date().toISOString().slice(0,10),
-      ...details,company_name:booking.company_name,
+      ...details,business:getBusinessSettings(db),company_name:booking.company_name,
       category:booking.category,room_name:booking.room_name,
       rooms_count:booking.rooms_count,meal_plan:booking.meal_plan,
       nightly_rate_paise:booking.nightly_rate_paise,nights:totals.nights,
