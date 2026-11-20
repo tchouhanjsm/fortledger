@@ -39,6 +39,7 @@ test('booking creation, search, payment ledger, edit and status',()=>withServer(
   assert.equal(final.data[0].due_paise,500000);
   const cancelled=await api('/api/bookings/'+id+'/status',{method:'PATCH',body:JSON.stringify({status:'cancelled'})});
   assert.equal(cancelled.status,200);
+  assert.equal((await api('/api/bookings/'+id+'/payments',{method:'POST',body:JSON.stringify({amount:100})})).status,400);
   assert.equal((await api('/api/bookings/'+id,{method:'PATCH',body:JSON.stringify(booking)})).status,400);
 }));
 test('overlapping category bookings fail; checkout day permits new arrival',()=>withServer(async ({api})=>{
