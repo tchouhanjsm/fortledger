@@ -16,7 +16,7 @@ npm start
 Open **http://127.0.0.1:3000**. Data is stored in `data/fortledger.sqlite` (ignored by Git).
 
 ## First-use setup
-The database creates **seven placeholder rooms** (Room 1–Room 7), all under category `Unassigned`. Rename them and set the real category in **Room Inventory** before adding genuine reservations. The booking form accepts category-level holds or one specified room, agreed nightly GST-inclusive rate, dates, meal plan and advance. Search is available in the booking ledger.
+The database creates **seven placeholder rooms** (Room 1–Room 7), all under category `Unassigned`. Rename them and set the real category in **Room Inventory** before adding genuine reservations. For safety in this initial release, set all seven room categories **before** booking: category changes are blocked after a booking exists, though names remain editable. The booking form accepts category-level holds or one specified room, agreed nightly GST-inclusive rate, dates, meal plan and advance. Search is available in the booking ledger.
 
 ## Implementation status
 - ✅ Basic Node HTTP app and local SQLite storage.
