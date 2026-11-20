@@ -6,6 +6,7 @@ import { bookingTotals, nightsBetween, toPaise } from './finance.js';
 import { createProforma,getInvoice,listInvoices } from './invoices.js';
 import { streamProformaPdf } from './invoice-pdf.js';
 import { getBusinessSettings,updateBusinessSettings } from './business-settings.js';
+import {importMenuCsv,listMenu,createRestaurantBill,listRestaurantBills} from './restaurant.js';
 
 export function createApp(db) {
   const app = express();
@@ -15,6 +16,14 @@ export function createApp(db) {
   app.use(express.static(publicDir));
 
   const listRooms = db.prepare('SELECT * FROM rooms ORDER BY id');
+  app.get('/api/restaurant/menu',(_req,res)=>res.json(listMenu(db)));
+  app.post('/api/restaurant/menu/import',(req,res,next)=>{
+    try{res.json(importMenuCsv(db,req.body.csv));}catch(error){next(error);}
+  });
+  app.get('/api/restaurant/bills',(_req,res)=>res.json(listRestaurantBills(db)));
+  app.post('/api/restaurant/bills',(req,res,next)=>{
+    try{res.status(201).json(createRestaurantBill(db,req.body));}catch(error){next(error);}
+  });
   app.get('/api/settings/business',(_req,res)=>res.json(getBusinessSettings(db)));
   app.put('/api/settings/business',(req,res,next)=>{
     try{res.json(updateBusinessSettings(db,req.body));}
