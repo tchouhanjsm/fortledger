@@ -30,3 +30,12 @@ The database creates **seven placeholder rooms** (Room 1–Room 7), all under ca
 **Tax disclaimer:** The stated 5% GST rule is an agreed business example, not a verified tax determination. Validate lawful tax treatment and invoice requirements before production billing.
 
 Read the [project blueprint](docs/PROJECT_BLUEPRINT.md) and [development log](docs/DEVELOPMENT_LOG.md) before starting a new development session. The blueprint records all decisions, scope, acceptance cases and the next milestones.
+
+## Local backups and recovery (alpha)
+Click **Download database backup** in the booking ledger and securely store the downloaded SQLite file outside your computer. This contains guest/payment information; treat it as sensitive.
+
+To restore: stop the app, verify it is not running, and run:
+```bash
+npm run restore -- /path/to/fortledger-backup.sqlite ./data/fortledger.sqlite --confirm
+```
+The restore command validates SQLite integrity and expected schema, requires explicit confirmation, rejects active WAL files, and preserves the previous database as a timestamped `.before-restore-...` safety copy. **Do not restore while the app is running.** Test first with non-production data. An automated encrypted backup schedule is not yet implemented.

@@ -23,3 +23,9 @@ Append a dated entry for each meaningful implementation or business decision. Ne
 - Added SQLite online backup download API, with cleanup after response. Restore workflow and encrypted off-device backups are still future tasks.
 - Check-in/check-out remain half-open date ranges. Status changes are manual, and cancelled bookings cannot be reactivated in this release.
 - Limitations: basic dialog-based payment workflow, no authentication, and not yet production-ready. Test and CI results recorded with PR before merge.
+
+## 2026-11-20 — Verified offline restore follow-up
+- Added a CLI restore tool to validate SQLite integrity, expected core tables and seven-room inventory before replacement.
+- Restore requires an explicit confirmation flag, refuses active WAL files, and retains a copy of the previous database.
+- Added tests for successful restore and rejection of invalid backup input.
+- Scope restriction: stop the application before restoring; this is a manual recovery operation, not automatic scheduled backups.
