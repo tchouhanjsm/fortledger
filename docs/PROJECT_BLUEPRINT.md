@@ -36,7 +36,7 @@ Garh Jaisal reserves the right to apply the applicable booking terms communicate
 
 ## Incremental implementation roadmap
 - **Milestone 1 (initial development):** Local Node server, SQLite schema, seven configurable rooms, basic booking form/history, revenue/advance/GST calculations, overlap safety, tests, documentation and logs. **Not production ready.**
-- **Milestone 2:** Polished calendar timeline, grouping categories and room assignments, booking edits, status controls, payment ledger UI, backup/export/restore.
+- **Milestone 2:** Weekly calendar timeline and category-held reservation visibility, booking edits, basic status and payment ledger UI, SQLite backup download (initial increment); continue with monthly overview, better payment UI and verified restore/export process.
 - **Milestone 3:** Company/customer directory, accommodation line-item editor, invoice numbers and lifecycle, saved PDFs, brand template including configurable hotel logo in PDF header with exact T&C, GST compliance review, invoice QA.
 - **Milestone 4:** Restaurant CSV import, cashier UI, local restaurant billing and payments, in-house room charge link and settlement reconciliation.
 - **Milestone 5:** Epson TM-T82 discovery and print tests, ESC/POS printing, print retry and status, operational testing, security hardening and installation instructions.

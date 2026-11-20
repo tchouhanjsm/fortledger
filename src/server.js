@@ -55,10 +55,58 @@ export function createApp(db) {
       res.status(201).json({id, ...bookingTotals({...b,paid_paise:toPaise(req.body.amount_paid ?? 0)})});
     } catch(e) {next(e);}
   });
+
+  // Booking updates remain atomic with availability checks; original payment records persist.
+  app.patch('/api/bookings/:id', (req,res,next)=>{
+    try {
+      const id=Number(req.params.id);
+      if (!Number.isSafeInteger(id)||id<1) throw new Error('Invalid booking ID');
+      const previous=db.prepare('SELECT * FROM bookings WHERE id=?').get(id);
+      if (!previous) return res.status(404).json({error:'Booking not found'});
+      if (previous.status==='cancelled') throw new Error('Cancelled bookings cannot be edited');
+      const b=normalizeBooking(req.body);
+      db.transaction(()=>{
+        assertAvailability(db,b,id);
+        db.prepare(`UPDATE bookings SET guest_name=@guest_name,company_name=@company_name,checkin=@checkin,
+          checkout=@checkout,rooms_count=@rooms_count,room_id=@room_id,category=@category,
+          meal_plan=@meal_plan,nightly_rate_paise=@nightly_rate_paise WHERE id=@id`).run({...b,id});
+      })();
+      res.json({ok:true,id});
+    }catch(e){next(e);}
+  });
+  app.get('/api/bookings/:id/payments',(req,res,next)=>{
+    try{
+      const id=Number(req.params.id);
+      if(!Number.isSafeInteger(id)||id<1) throw new Error('Invalid booking ID');
+      if(!db.prepare('SELECT 1 FROM bookings WHERE id=?').get(id)) return res.status(404).json({error:'Booking not found'});
+      res.json(db.prepare('SELECT id,amount_paise,note,created_at FROM payments WHERE booking_id=? ORDER BY id').all(id));
+    }catch(e){next(e);}
+  });
+  app.get('/api/backup', async (_req,res,next)=>{
+    const fs=await import('node:fs');
+    const os=await import('node:os');
+    const pathModule=await import('node:path');
+    let dir;
+    try{
+      dir=fs.mkdtempSync(pathModule.join(os.tmpdir(),'fortledger-backup-'));
+      const file=pathModule.join(dir,'fortledger.sqlite');
+      await db.backup(file);
+      res.download(file,'fortledger-backup.sqlite',error=>{
+        fs.rm(dir,{recursive:true,force:true},()=>{});
+        if(error&&!res.headersSent)next(error);
+      });
+    }catch(error){
+      if(dir)fs.rm(dir,{recursive:true,force:true},()=>{});
+      next(error);
+    }
+  });
+
   app.post('/api/bookings/:id/payments', (req,res,next)=>{
     try {
       const id=Number(req.params.id);
-      if (!Number.isInteger(id)||!db.prepare('SELECT id FROM bookings WHERE id=?').get(id)) return res.status(404).json({error:'Booking not found'});
+      const booking=db.prepare('SELECT id,status FROM bookings WHERE id=?').get(id);
+      if (!Number.isSafeInteger(id)||!booking) return res.status(404).json({error:'Booking not found'});
+      if(booking.status==='cancelled') throw new Error('Cannot record payments against a cancelled booking');
       const amount=toPaise(req.body.amount);
       if (amount<=0) throw new Error('Payment must be greater than zero');
       db.prepare('INSERT INTO payments (booking_id,amount_paise,note) VALUES (?,?,?)').run(id,amount,String(req.body.note||'').slice(0,200));
@@ -70,6 +118,9 @@ export function createApp(db) {
       const id=Number(req.params.id);
       if (!Number.isInteger(id)) throw new Error('Invalid booking');
       const status=String(req.body.status||'');
+      const current=db.prepare('SELECT status FROM bookings WHERE id=?').get(id);
+      if(!current) return res.status(404).json({error:'Booking not found'});
+      if(current.status==='cancelled'&&status!=='cancelled') throw new Error('Cancelled bookings cannot be reactivated in this version');
       if (!['reserved','checked_in','checked_out','cancelled'].includes(status)) throw new Error('Invalid status');
       const update=db.prepare('UPDATE bookings SET status=? WHERE id=?').run(status,id);
       if (!update.changes) return res.status(404).json({error:'Booking not found'});
