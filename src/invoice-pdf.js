@@ -1,5 +1,4 @@
 import PDFDocument from 'pdfkit';
-import { FIXED_TERMS } from './terms.js';
 
 const money=paise=>'INR '+(paise/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
 const dark='#1e4437',muted='#66766e';
@@ -39,7 +38,7 @@ export function streamProformaPdf(snapshot,response){
     y+=30;
   }
   pdf.fillColor(dark).font('Helvetica-Bold').fontSize(10).text('TERMS & CONDITIONS',48,530);
-  pdf.fillColor(muted).font('Helvetica').fontSize(8).text(FIXED_TERMS,48,552,{width:498,lineGap:3});
+  pdf.fillColor(muted).font('Helvetica').fontSize(8).text(snapshot.terms,48,552,{width:498,lineGap:3});
   pdf.fillColor(muted).fontSize(8).text('Proforma only. Not a GST tax invoice.',48,775,{align:'center',width:499});
   pdf.end();
 }
