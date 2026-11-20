@@ -104,7 +104,9 @@ export function createApp(db) {
   app.post('/api/bookings/:id/payments', (req,res,next)=>{
     try {
       const id=Number(req.params.id);
-      if (!Number.isInteger(id)||!db.prepare('SELECT id FROM bookings WHERE id=?').get(id)) return res.status(404).json({error:'Booking not found'});
+      const booking=db.prepare('SELECT id,status FROM bookings WHERE id=?').get(id);
+      if (!Number.isSafeInteger(id)||!booking) return res.status(404).json({error:'Booking not found'});
+      if(booking.status==='cancelled') throw new Error('Cannot record payments against a cancelled booking');
       const amount=toPaise(req.body.amount);
       if (amount<=0) throw new Error('Payment must be greater than zero');
       db.prepare('INSERT INTO payments (booking_id,amount_paise,note) VALUES (?,?,?)').run(id,amount,String(req.body.note||'').slice(0,200));
