@@ -1,3 +1,4 @@
+import {occupiedRoomCount,monthGrid} from './calendar-utils.js';
 const $ = selector => document.querySelector(selector);
 const money = paise => new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(paise/100);
 const label = (tag,text,klass) => {const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(klass)e.className=klass;return e;};
@@ -5,7 +6,7 @@ const dateISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+
 const addDays = (d,days) => { const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+days);return x; };
 const fmtDay = iso => new Date(iso+'T12:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 const statusOptions=['reserved','checked_in','checked_out','cancelled'];
-let rooms=[],bookings=[],invoices=[],businessSettings=null,menu=[],restaurantBills=[],cart=[],editingId=null,weekStart=new Date();
+let rooms=[],bookings=[],invoices=[],businessSettings=null,menu=[],restaurantBills=[],cart=[],editingId=null,weekStart=new Date(),calendarMode='week';
 weekStart=addDays(weekStart,-((weekStart.getDay()+6)%7));
 async function api(url,options={}){
   const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});
@@ -42,6 +43,8 @@ function renderBookings(){
   $('#stat-due').textContent=money(bookings.filter(b=>b.status!=='cancelled').reduce((total,b)=>total+b.due_paise,0));
 }
 function renderCalendar(){
+  if(calendarMode==='month'){renderMonth();return;}
+  $('#calendar-week').hidden=false;$('#calendar-month').hidden=true;
   const grid=$('#calendar-grid');grid.replaceChildren();
   const days=Array.from({length:7},(_,i)=>dateISO(addDays(weekStart,i)));
   $('#week-label').textContent=fmtDay(days[0])+' – '+fmtDay(days[6]);
@@ -62,6 +65,32 @@ function renderCalendar(){
   const heading=label('h3','Category reservations awaiting room assignment');area.append(heading);
   if(!unassigned.length)area.append(label('p','None during this week.','muted'));
   for(const b of unassigned){const button=label('button',b.guest_name+' · '+b.rooms_count+' × '+b.category+' · '+fmtDay(b.checkin)+' – '+fmtDay(b.checkout),'unassigned-chip');button.onclick=()=>openEdit(b);area.append(button);}
+}
+function renderMonth(){
+  $('#calendar-week').hidden=true;
+  $('#unassigned-calendar').replaceChildren();
+  const grid=$('#calendar-month');grid.hidden=false;grid.replaceChildren();
+  const year=weekStart.getFullYear(),month=weekStart.getMonth();
+  $('#week-label').textContent=new Date(year,month,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  const labels=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  for(const weekday of labels)grid.append(label('div',weekday,'month-heading'));
+  const inventory=rooms.filter(r=>r.active).length;
+  for(const item of monthGrid(year,month)){
+    const occupied=occupiedRoomCount(bookings,item.date);
+    const node=label('button',undefined,'month-day'+(item.inMonth?'':' outside-month'));
+    node.type='button';
+    node.append(label('strong',String(item.day)),label('span',occupied+' / '+inventory+' rooms'));
+    node.setAttribute('aria-label',item.date+': '+occupied+' of '+inventory+' rooms booked');
+    node.onclick=()=>{weekStart=new Date(item.date+'T12:00:00');weekStart=addDays(weekStart,-((weekStart.getDay()+6)%7));setCalendarMode('week');};
+    grid.append(node);
+  }
+}
+function setCalendarMode(mode){
+  calendarMode=mode;
+  const button=$('#calendar-mode');
+  button.textContent=mode==='week'?'Month view':'Week view';
+  button.setAttribute('aria-pressed',String(mode==='month'));
+  renderCalendar();
 }
 function renderRooms(){
   const list=$('#room-list');list.replaceChildren();
@@ -348,8 +377,9 @@ $('#category-select').onchange=()=>{updateRoomOptions();updatePreview();};
 $('#room-select').onchange=()=>{updateRoomOptions($('#room-select').value);updatePreview();};
 $('#booking-form').oninput=updatePreview;
 $('#search').oninput=renderBookings;
-$('#week-prev').onclick=()=>{weekStart=addDays(weekStart,-7);renderCalendar();};
-$('#week-next').onclick=()=>{weekStart=addDays(weekStart,7);renderCalendar();};
+$('#calendar-mode').onclick=()=>setCalendarMode(calendarMode==='week'?'month':'week');
+$('#week-prev').onclick=()=>{weekStart=calendarMode==='month'?new Date(weekStart.getFullYear(),weekStart.getMonth()-1,1):addDays(weekStart,-7);renderCalendar();};
+$('#week-next').onclick=()=>{weekStart=calendarMode==='month'?new Date(weekStart.getFullYear(),weekStart.getMonth()+1,1):addDays(weekStart,7);renderCalendar();};
 $('#week-today').onclick=()=>{weekStart=new Date();weekStart=addDays(weekStart,-((weekStart.getDay()+6)%7));renderCalendar();};
 $('#backup-button').onclick=()=>{window.location.href='/api/backup';};
 $('#booking-form').onsubmit=async e=>{

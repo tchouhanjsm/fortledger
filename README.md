@@ -55,3 +55,6 @@ Import a CSV with header `name,category,price,tax_rate` (GST-inclusive price, in
 
 ## Guest folio and room-charge settlement (alpha)
 Open **Guest folio** from a booking. The folio shows accommodation due, unsettled restaurant room charges, and combined due without adding restaurant charges into accommodation proforma totals. Mark an individual restaurant bill paid separately (cash, UPI, card), or settle all remaining accommodation and room charges in a single transaction. Each room bill has at most one settlement record and combined payments only add outstanding accommodation to the hotel payment ledger. This records payments; it is **not** a final GST invoice or receipt generator, and refunds/partial payments are not implemented.
+
+## Calendar views
+The booking calendar has two views: a seven-day room assignment grid and a monthly overview of occupied room counts out of seven physical rooms. Category-held unassigned bookings count as occupied capacity in the monthly overview. Click a date to jump to its week. Checkout date is excluded from occupied nights.
