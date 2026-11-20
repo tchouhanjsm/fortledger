@@ -173,6 +173,35 @@ $('#invoice-form').onsubmit=async event=>{
   finally{button.disabled=false;}
 };
 
+function openNew(){
+  editingId=null;
+  const f=$('#booking-form');f.reset();
+  $('#dialog-title').textContent='Add a booking';$('#booking-submit').textContent='Save booking';
+  $('#initial-advance').disabled=false;$('#initial-advance').closest('label').hidden=false;
+  setMessage('');updateRoomOptions();updatePreview();$('#booking-dialog').showModal();
+}
+function openEdit(b){
+  editingId=b.id;
+  const form=$('#booking-form');form.reset();
+  ['guest_name','company_name','checkin','checkout','rooms_count','meal_plan','nightly_rate'].forEach(k=>{
+    const field=form.elements.namedItem(k);
+    field.value=k==='nightly_rate'?(b.nightly_rate_paise/100):b[k];
+  });
+  $('#category-select').value=b.category;updateRoomOptions(b.room_id);
+  $('#dialog-title').textContent='Edit booking';$('#booking-submit').textContent='Save changes';
+  $('#initial-advance').disabled=true;$('#initial-advance').closest('label').hidden=true;
+  setMessage('');updatePreview();$('#booking-dialog').showModal();
+}
+function updatePreview(){
+  const form=$('#booking-form');const data=Object.fromEntries(new FormData(form));
+  const a=Date.parse(data.checkin+'T00:00:00Z'),b=Date.parse(data.checkout+'T00:00:00Z');
+  const nights=Number.isFinite(a)&&Number.isFinite(b)?(b-a)/86400000:0;
+  const gross=nights*Number(data.rooms_count)*Number(data.nightly_rate);
+  const advance=editingId?bookings.find(b=>b.id===editingId)?.paid_paise/100||0:Number(data.amount_paid||0);
+  $('#form-total').textContent=nights>0&&Number.isFinite(gross)&&gross>=0?
+    nights+' night(s) · Total '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(gross)+' · Due '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(Math.max(0,gross-advance)):
+    'Enter valid dates, room count and GST-inclusive rate.';
+}
 async function addPayment(b){
   const response=prompt('Additional payment received from '+b.guest_name+' (₹):');
   if(response===null)return;
