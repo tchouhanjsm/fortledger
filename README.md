@@ -69,3 +69,6 @@ Every saved restaurant bill has a **Print receipt** button showing a compact 80-
 
 ## Statutory invoicing gate
 The app **does not issue GST tax invoices**. Review [docs/COMPLIANCE_REVIEW.md](docs/COMPLIANCE_REVIEW.md) before enabling final invoices. Hotel accommodation 5% GST has a per-unit value condition under the official 2025 clarification; no blanket rate assumption is valid. The restaurant 80mm slip is a non-statutory payment receipt.
+
+## Multi-room physical allocations
+Bookings may reserve rooms by category, assign any number of physical rooms up to the booked quantity, or remain partially unassigned. A two-room booking can allocate two individual rooms without duplication. Availability validates both category-held capacity and physical-room conflicts on every occupied night, and legacy single-room assignments migrate to the allocation table automatically.

@@ -93,26 +93,41 @@ export function createApp(db,{authRecord=null}={}) {
     } catch(e) {next(e);}
   });
 
+  const allocationsQuery=db.prepare(`
+    SELECT a.booking_id,a.room_id,r.name FROM booking_room_allocations a
+    JOIN rooms r ON r.id=a.room_id ORDER BY a.room_id`);
   const getBookings = db.prepare(`
     SELECT b.*, COALESCE((SELECT sum(amount_paise) FROM payments p WHERE p.booking_id=b.id),0) AS paid_paise,
       r.name AS assigned_room FROM bookings b LEFT JOIN rooms r ON r.id=b.room_id ORDER BY b.checkin DESC,b.id DESC
   `);
   app.get('/api/bookings', (req,res)=>{
     const q=String(req.query.q||'').toLowerCase().slice(0,100);
-    const items=getBookings.all().filter(b=>!q||[b.guest_name,b.company_name,b.category,b.assigned_room||''].some(x=>x.toLowerCase().includes(q)));
-    res.json(items.map(b=>({...b,...bookingTotals(b)})));
+    const items=getBookings.all();
+    const allocated=new Map();
+    for(const a of allocationsQuery.all()){
+      if(!allocated.has(a.booking_id))allocated.set(a.booking_id,[]);
+      allocated.get(a.booking_id).push(a);
+    }
+    res.json(items.map(b=>{
+      const assigned=allocated.get(b.id)||[];
+      return {...b,room_ids:assigned.map(x=>x.room_id),
+        assigned_room:assigned.length?assigned.map(x=>x.name).join(', '):null,...bookingTotals(b)};
+    }).filter(b=>!q||[b.guest_name,b.company_name,b.category,b.assigned_room||''].some(x=>x.toLowerCase().includes(q))));
   });
 
   app.post('/api/bookings', (req,res,next)=>{
     try {
       const b=normalizeBooking(req.body);
       let id;
+      const {room_ids,...sqlBooking}=b;
       db.transaction(()=>{
         assertAvailability(db,b);
         const result=db.prepare(`INSERT INTO bookings
           (guest_name,company_name,checkin,checkout,rooms_count,room_id,category,meal_plan,nightly_rate_paise)
-          VALUES (@guest_name,@company_name,@checkin,@checkout,@rooms_count,@room_id,@category,@meal_plan,@nightly_rate_paise)`).run(b);
+          VALUES (@guest_name,@company_name,@checkin,@checkout,@rooms_count,@room_id,@category,@meal_plan,@nightly_rate_paise)`).run(sqlBooking);
         id=Number(result.lastInsertRowid);
+        const allocate=db.prepare('INSERT INTO booking_room_allocations(booking_id,room_id) VALUES(?,?)');
+        for(const roomId of b.room_ids)allocate.run(id,roomId);
         const initial=toPaise(req.body.amount_paid ?? 0);
         if (initial>0) db.prepare('INSERT INTO payments (booking_id,amount_paise,note) VALUES (?,?,?)').run(id,initial,'Initial advance');
       })();
@@ -129,11 +144,15 @@ export function createApp(db,{authRecord=null}={}) {
       if (!previous) return res.status(404).json({error:'Booking not found'});
       if (previous.status==='cancelled') throw new Error('Cancelled bookings cannot be edited');
       const b=normalizeBooking(req.body);
+      const {room_ids,...sqlBooking}=b;
       db.transaction(()=>{
         assertAvailability(db,b,id);
+        db.prepare('DELETE FROM booking_room_allocations WHERE booking_id=?').run(id);
+        const allocate=db.prepare('INSERT INTO booking_room_allocations(booking_id,room_id) VALUES(?,?)');
+        for(const roomId of b.room_ids)allocate.run(id,roomId);
         db.prepare(`UPDATE bookings SET guest_name=@guest_name,company_name=@company_name,checkin=@checkin,
           checkout=@checkout,rooms_count=@rooms_count,room_id=@room_id,category=@category,
-          meal_plan=@meal_plan,nightly_rate_paise=@nightly_rate_paise WHERE id=@id`).run({...b,id});
+          meal_plan=@meal_plan,nightly_rate_paise=@nightly_rate_paise WHERE id=@id`).run({...sqlBooking,id});
       })();
       res.json({ok:true,id});
     }catch(e){next(e);}
@@ -207,13 +226,16 @@ function normalizeBooking(input) {
   const checkin=String(input.checkin||'');
   const checkout=String(input.checkout||'');
   const rooms_count=Number(input.rooms_count);
-  const room_id=input.room_id===''||input.room_id===undefined||input.room_id===null?null:Number(input.room_id);
+  const room_ids=Array.isArray(input.room_ids)?input.room_ids.map(Number):
+    (input.room_id===undefined||input.room_id===null||input.room_id===''?[]:[Number(input.room_id)]);
+  const room_id=room_ids.length===1&&rooms_count===1?room_ids[0]:null;
   nightsBetween(checkin,checkout);
   if (!guest_name||guest_name.length>150||company_name.length>150) throw new Error('Enter guest name (max 150 characters)');
   if (!category||category.length>80||!meal_plan||meal_plan.length>40) throw new Error('Invalid category or meal plan');
   if (!Number.isInteger(rooms_count)||rooms_count<1||rooms_count>7) throw new Error('Room count must be between 1 and 7');
-  if (room_id!==null&&(!Number.isInteger(room_id)||room_id<1)) throw new Error('Invalid room ID');
-  return {guest_name,company_name,checkin,checkout,rooms_count,room_id,category,meal_plan,
+  if(room_ids.length>rooms_count||new Set(room_ids).size!==room_ids.length||
+     room_ids.some(id=>!Number.isInteger(id)||id<1))throw new Error('Invalid assigned room selection');
+  return {guest_name,company_name,checkin,checkout,rooms_count,room_id,room_ids,category,meal_plan,
     nightly_rate_paise:toPaise(input.nightly_rate)};
 }
 
