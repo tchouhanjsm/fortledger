@@ -41,7 +41,14 @@ export function openDatabase(filename = process.env.FORTLEDGER_DB || path.resolv
     CREATE INDEX IF NOT EXISTS idx_bookings_dates ON bookings(checkin,checkout,status);
     CREATE INDEX IF NOT EXISTS idx_bookings_guest ON bookings(guest_name);
     CREATE INDEX IF NOT EXISTS idx_payments_booking ON payments(booking_id);
+    CREATE TABLE IF NOT EXISTS booking_room_allocations (
+      booking_id INTEGER NOT NULL REFERENCES bookings(id),
+      room_id INTEGER NOT NULL REFERENCES rooms(id),
+      PRIMARY KEY (booking_id,room_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_booking_room_allocations_room ON booking_room_allocations(room_id);
   `);
+  db.exec('INSERT OR IGNORE INTO booking_room_allocations(booking_id,room_id) SELECT id,room_id FROM bookings WHERE room_id IS NOT NULL');
   ensureInvoiceSchema(db);
   ensureBusinessSettings(db);
   ensureRestaurantSchema(db);
@@ -56,11 +63,13 @@ export function openDatabase(filename = process.env.FORTLEDGER_DB || path.resolv
 // Count every unassigned reservation against category capacity, not only those with room IDs.
 export function assertAvailability(db, booking, excludedId = null) {
   const inventory = db.prepare('SELECT id, category FROM rooms WHERE active = 1').all();
-  if (booking.room_id !== null) {
-    if (booking.rooms_count !== 1) throw new Error('A specific room assignment requires exactly one room');
-    const target = inventory.find(r => r.id === booking.room_id);
-    if (!target) throw new Error('Selected room not found or inactive');
-    if (target.category !== booking.category) throw new Error('Room and category do not match');
+  const roomIds=Array.isArray(booking.room_ids)?booking.room_ids:(booking.room_id===null||booking.room_id===undefined?[]:[booking.room_id]);
+  if(roomIds.length>booking.rooms_count||new Set(roomIds).size!==roomIds.length)
+    throw new Error('Invalid or duplicate assigned rooms');
+  for(const roomId of roomIds){
+    const target=inventory.find(r=>r.id===roomId);
+    if(!target)throw new Error('Selected room not found or inactive');
+    if(target.category!==booking.category)throw new Error('Room and category do not match');
   }
   const capacity = inventory.filter(r => r.category === booking.category).length;
   if (capacity < booking.rooms_count) throw new Error('Not enough rooms in this category');
@@ -69,17 +78,25 @@ export function assertAvailability(db, booking, excludedId = null) {
     WHERE category = ? AND status != 'cancelled'
       AND checkin < ? AND checkout > ? AND (? IS NULL OR id != ?)
   `).all(booking.category, booking.checkout, booking.checkin, excludedId, excludedId);
-  // Sweep each night in the reservation: capacity must hold on every date.
-  for (let date = Date.parse(booking.checkin + 'T00:00:00Z'); date < Date.parse(booking.checkout + 'T00:00:00Z'); date += 86400000) {
-    const day = new Date(date).toISOString().slice(0,10);
-    const concurrent = existing.filter(b => b.checkin <= day && day < b.checkout);
-    const reservedCount = concurrent.reduce((sum,b)=>sum+b.rooms_count,0);
-    if (reservedCount + booking.rooms_count > capacity) throw new Error('No availability for ' + day + ' in ' + booking.category);
-    if (booking.room_id !== null && concurrent.some(b=>b.room_id===booking.room_id)) throw new Error('Room already assigned for ' + day);
-    // Never assign an individual room when all remaining inventory is consumed by category holds.
-    const specificallyBooked = new Set(concurrent.filter(b=>b.room_id!==null).map(b=>b.room_id));
-    const unassignedCount = concurrent.filter(b=>b.room_id===null).reduce((s,b)=>s+b.rooms_count,0);
-    const freeSlots = capacity - specificallyBooked.size - unassignedCount;
-    if (booking.room_id!==null && freeSlots<1) throw new Error('Room capacity reserved by unassigned bookings');
+  const allocations=db.prepare(`
+    SELECT a.booking_id,a.room_id FROM booking_room_allocations a
+    JOIN bookings b ON b.id=a.booking_id
+    WHERE b.category=? AND b.status!='cancelled' AND b.checkin<? AND b.checkout>?
+      AND (? IS NULL OR b.id!=?)`).all(booking.category,booking.checkout,booking.checkin,excludedId,excludedId);
+  const allocated=new Map();
+  for(const a of allocations){if(!allocated.has(a.booking_id))allocated.set(a.booking_id,[]);allocated.get(a.booking_id).push(a.room_id);}
+  // Fallback for direct legacy inserts that have a room_id but no allocation row.
+  for(const row of existing){if(!allocated.has(row.id))allocated.set(row.id,row.room_id===null?[]:[row.room_id]);}
+  // Sweep each night to include category-held but not-yet-allocated inventory.
+  for(let date=Date.parse(booking.checkin+'T00:00:00Z');date<Date.parse(booking.checkout+'T00:00:00Z');date+=86400000){
+    const day=new Date(date).toISOString().slice(0,10);
+    const concurrent=existing.filter(b=>b.checkin<=day&&day<b.checkout);
+    const reservedCount=concurrent.reduce((sum,b)=>sum+b.rooms_count,0);
+    if(reservedCount+booking.rooms_count>capacity)throw new Error('No availability for '+day+' in '+booking.category);
+    const assignedIds=new Set(concurrent.flatMap(b=>allocated.get(b.id)||[]));
+    for(const id of roomIds)if(assignedIds.has(id))throw new Error('Room already assigned for '+day);
+    const unassigned=concurrent.reduce((sum,b)=>sum+b.rooms_count-(allocated.get(b.id)||[]).length,0);
+    if(roomIds.length>capacity-assignedIds.size-unassigned)
+      throw new Error('Room capacity reserved by unassigned bookings');
   }
 }

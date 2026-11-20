@@ -95,3 +95,9 @@ All five increments completed in this development session were reviewed and merg
 - PR #13 implemented a browser-printable 80mm restaurant slip and was merged after GitHub Actions run `44811335974` passed. It uses the installed OS driver; no physical Epson TM-T82 print test.
 - Government of India PIB (16 Sep 2025) clarified the 5% without-ITC hotel accommodation regime for value of supply up to INR 7,500 per unit/day. CBIC Rule 46 has tax-invoice requirements absent from current proformas. Documented sources and explicit final-tax-invoice release blockers in `docs/COMPLIANCE_REVIEW.md`.
 - Current alpha is not production-ready. No browser or rendered-PDF visual QA or actual local-device install was performed; GitHub CI validates unit/integration tests only.
+
+## 2026-11-21 — Multi-room assignment review correction
+- Added separate physical room allocation records per booking. Backfills existing single-room bookings on startup without deleting original booking data.
+- Users can assign 0–N physical rooms to a category booking, where N is the booked room quantity; partial allocations retain unassigned category capacity.
+- Availability engine detects conflicts across all assigned room IDs and unassigned category holds; weekly calendar and unassigned list show partial allocation correctly.
+- Regression tests and PR CI required before merge. This closes a gap found during deeper review of the original one-room-only allocation model.
