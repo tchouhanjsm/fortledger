@@ -23,7 +23,8 @@ The database creates **seven placeholder rooms** (Room 1–Room 7), all under ca
 - ✅ Seven configurable room placeholders.
 - ✅ Simple booking entry, availability checks and searchable reservations.
 - ✅ GST-inclusive 5% *illustrative business-rule* breakdown in the backend, ledgered initial advances and balance due.
-- ⏳ Calendar timeline, detailed payment UI, backups, invoices and PDFs.
+- ✅ Seven-day room calendar including unassigned category reservations, booking edits, payment history/entry and SQLite backup download.
+- ⏳ Backup restore verification, invoice PDFs and full month overview.
 - ⏳ Restaurant billing, CSV import, room charging and Epson TM-T82 integration.
 
 **Tax disclaimer:** The stated 5% GST rule is an agreed business example, not a verified tax determination. Validate lawful tax treatment and invoice requirements before production billing.

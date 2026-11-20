@@ -1,71 +1,158 @@
-const $ = (s) => document.querySelector(s);
-const fmt = paise => new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(paise/100);
-const el = (tag,text,cls) => {const node=document.createElement(tag);if(text!==undefined)node.textContent=text;if(cls)node.className=cls;return node;};
-let rooms = [], bookings = [];
-async function request(url,options={}) {
+const $ = selector => document.querySelector(selector);
+const money = paise => new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(paise/100);
+const label = (tag,text,klass) => {const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(klass)e.className=klass;return e;};
+const dateISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const addDays = (d,days) => { const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+days);return x; };
+const fmtDay = iso => new Date(iso+'T12:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+const statusOptions=['reserved','checked_in','checked_out','cancelled'];
+let rooms=[],bookings=[],editingId=null,weekStart=new Date();
+weekStart=addDays(weekStart,-((weekStart.getDay()+6)%7));
+async function api(url,options={}){
   const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});
-  const value=await response.json();
-  if(!response.ok)throw new Error(value.error||'Request failed');
-  return value;
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||'Request failed');
+  return data;
 }
+function setMessage(message){const node=$('#form-error');node.textContent=message;}
 function renderBookings(){
-  const q=$('#search').value.toLowerCase();
-  const list=$('#booking-list');list.replaceChildren();
+  const q=$('#search').value.trim().toLowerCase(),list=$('#booking-list');list.replaceChildren();
   const filtered=bookings.filter(b=>[b.guest_name,b.company_name,b.category,b.assigned_room||''].some(v=>v.toLowerCase().includes(q)));
-  if(!filtered.length)list.append(el('p','No matching reservations. Add a booking to begin.','muted'));
+  if(!filtered.length)list.append(label('p','No matching bookings. Create your first reservation.','muted'));
   for(const b of filtered){
-    const row=el('div',undefined,'booking-row');
-    const guest=el('div');guest.append(el('strong',b.guest_name),el('small',[b.company_name,b.category,b.assigned_room].filter(Boolean).join(' · ')));
-    const date=el('div');date.append(el('strong',b.checkin+' → '+b.checkout),el('small',b.rooms_count+' room(s) · '+b.nights+' night(s) · '+b.meal_plan));
-    const status=el('div');const badge=el('span',b.status.replace('_',' '),'tag');status.append(badge);
-    const sum=el('div',undefined,'money');sum.append(el('strong',fmt(b.total_paise)),el('small','Due '+fmt(b.due_paise)));
-    row.append(guest,date,status,sum);list.append(row);
+    const row=label('div',undefined,'booking-row');
+    const guest=label('div');guest.append(label('strong',b.guest_name),label('small',[b.company_name,b.category,b.assigned_room].filter(Boolean).join(' · ')));
+    const dates=label('div');dates.append(label('strong',fmtDay(b.checkin)+' → '+fmtDay(b.checkout)),label('small',b.rooms_count+' room(s) · '+b.nights+' night(s) · '+b.meal_plan));
+    const stage=label('div');const status=label('select');status.setAttribute('aria-label','Booking status for '+b.guest_name);
+    statusOptions.forEach(s=>{const opt=label('option',s.replaceAll('_',' '));opt.value=s;status.append(opt);});
+    status.value=b.status;status.disabled=b.status==='cancelled';
+    status.onchange=async()=>{try{await api('/api/bookings/'+b.id+'/status',{method:'PATCH',body:JSON.stringify({status:status.value})});await load();}catch(e){alert(e.message);status.value=b.status;}};
+    stage.append(status);
+    const due=label('div',undefined,'money');due.append(label('strong',money(b.total_paise)),label('small','Due '+money(b.due_paise)));
+    const actions=label('div',undefined,'row-actions');
+    const edit=label('button','Edit','secondary');edit.disabled=b.status==='cancelled';edit.onclick=()=>openEdit(b);
+    const payment=label('button','+ Payment','secondary');payment.disabled=b.status==='cancelled';payment.onclick=()=>addPayment(b);
+    const history=label('button','Payments','secondary');history.onclick=()=>showPayments(b);
+    actions.append(edit,payment,history);
+    row.append(guest,dates,stage,due,actions);list.append(row);
   }
   $('#stat-bookings').textContent=bookings.filter(b=>b.status!=='cancelled').length;
-  $('#stat-due').textContent=fmt(bookings.filter(b=>b.status!=='cancelled').reduce((s,b)=>s+b.due_paise,0));
+  $('#stat-due').textContent=money(bookings.filter(b=>b.status!=='cancelled').reduce((total,b)=>total+b.due_paise,0));
+}
+function renderCalendar(){
+  const grid=$('#calendar-grid');grid.replaceChildren();
+  const days=Array.from({length:7},(_,i)=>dateISO(addDays(weekStart,i)));
+  $('#week-label').textContent=fmtDay(days[0])+' – '+fmtDay(days[6]);
+  const corner=label('div','ROOM / DATE','cal-heading');grid.append(corner);
+  days.forEach(d=>grid.append(label('div',new Date(d+'T12:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric'}),'cal-heading')));
+  for(const room of rooms.filter(r=>r.active)){
+    grid.append(label('div',room.name,'cal-room'));
+    for(const day of days){
+      const matches=bookings.filter(b=>b.status!=='cancelled'&&b.room_id===room.id&&b.checkin<=day&&day<b.checkout);
+      const cell=label('div',undefined,'cal-cell');
+      if(matches.length){const b=matches[0];const chip=label('button',b.guest_name,'cal-booking');chip.title=b.guest_name+' · '+b.checkin+' to '+b.checkout;chip.onclick=()=>openEdit(b);cell.append(chip);}
+      else cell.append(label('span','·','cal-free'));
+      grid.append(cell);
+    }
+  }
+  const area=$('#unassigned-calendar');area.replaceChildren();
+  const unassigned=bookings.filter(b=>b.status!=='cancelled'&&b.room_id===null&&b.checkin<dateISO(addDays(weekStart,7))&&b.checkout>days[0]);
+  const heading=label('h3','Category reservations awaiting room assignment');area.append(heading);
+  if(!unassigned.length)area.append(label('p','None during this week.','muted'));
+  for(const b of unassigned){const button=label('button',b.guest_name+' · '+b.rooms_count+' × '+b.category+' · '+fmtDay(b.checkin)+' – '+fmtDay(b.checkout),'unassigned-chip');button.onclick=()=>openEdit(b);area.append(button);}
 }
 function renderRooms(){
   const list=$('#room-list');list.replaceChildren();
   for(const room of rooms){
-    const row=el('form',undefined,'room-row');
-    const name=el('input');name.value=room.name;name.maxLength=80;name.setAttribute('aria-label','Room name');
-    const category=el('input');category.value=room.category;category.maxLength=80;category.setAttribute('aria-label','Room category');
-    const save=el('button','Save','secondary');save.type='submit';
+    const row=label('form',undefined,'room-row');
+    const name=label('input');name.value=room.name;name.maxLength=80;name.setAttribute('aria-label','Room name');
+    const category=label('input');category.value=room.category;category.maxLength=80;category.setAttribute('aria-label','Room category');
+    const save=label('button','Save','secondary');save.type='submit';
     row.append(name,category,save);
-    row.addEventListener('submit',async e=>{e.preventDefault();try{await request('/api/rooms/'+room.id,{method:'PATCH',body:JSON.stringify({name:name.value,category:category.value})});await load();}catch(error){alert(error.message);}});
+    row.onsubmit=async e=>{e.preventDefault();try{await api('/api/rooms/'+room.id,{method:'PATCH',body:JSON.stringify({name:name.value,category:category.value})});await load();}catch(error){alert(error.message);}};
     list.append(row);
   }
-  $('#category-select').replaceChildren(...[...new Set(rooms.filter(x=>x.active).map(x=>x.category))].map(c=>{const x=el('option',c);x.value=c;return x;}));
+  const categorySelect=$('#category-select');
+  const existing=categorySelect.value;
+  categorySelect.replaceChildren(...[...new Set(rooms.filter(x=>x.active).map(x=>x.category))].map(c=>{const option=label('option',c);option.value=c;return option;}));
+  if([...categorySelect.options].some(o=>o.value===existing))categorySelect.value=existing;
   updateRoomOptions();
 }
-function updateRoomOptions(){
-  const category=$('#category-select').value;
-  const select=$('#room-select');select.replaceChildren();
-  const unassigned=el('option','Assign later');unassigned.value='';select.append(unassigned);
-  rooms.filter(r=>r.active&&r.category===category).forEach(r=>{const o=el('option',r.name);o.value=r.id;select.append(o);});
+function updateRoomOptions(selected=''){
+  const select=$('#room-select'),category=$('#category-select').value;
+  select.replaceChildren();
+  const unassigned=label('option','Assign later');unassigned.value='';select.append(unassigned);
+  rooms.filter(r=>r.active&&r.category===category).forEach(r=>{const o=label('option',r.name);o.value=r.id;select.append(o);});
+  select.value=selected&&[...select.options].some(o=>o.value===String(selected))?String(selected):'';
+  const count=$('#booking-form [name=rooms_count]');
+  if(select.value){count.value='1';count.disabled=true;}else count.disabled=false;
 }
-async function load(){[rooms,bookings]=await Promise.all([request('/api/rooms'),request('/api/bookings')]);renderBookings();renderRooms();}
+async function load(){[rooms,bookings]=await Promise.all([api('/api/rooms'),api('/api/bookings')]);renderBookings();renderRooms();renderCalendar();}
+function openNew(){
+  editingId=null;
+  const f=$('#booking-form');f.reset();
+  $('#dialog-title').textContent='Add a booking';$('#booking-submit').textContent='Save booking';
+  $('#initial-advance').disabled=false;$('#initial-advance').closest('label').hidden=false;
+  setMessage('');updateRoomOptions();updatePreview();$('#booking-dialog').showModal();
+}
+function openEdit(b){
+  editingId=b.id;
+  const form=$('#booking-form');form.reset();
+  ['guest_name','company_name','checkin','checkout','rooms_count','meal_plan','nightly_rate'].forEach(k=>{
+    const field=form.elements.namedItem(k);
+    field.value=k==='nightly_rate'?(b.nightly_rate_paise/100):b[k];
+  });
+  $('#category-select').value=b.category;updateRoomOptions(b.room_id);
+  $('#dialog-title').textContent='Edit booking';$('#booking-submit').textContent='Save changes';
+  $('#initial-advance').disabled=true;$('#initial-advance').closest('label').hidden=true;
+  setMessage('');updatePreview();$('#booking-dialog').showModal();
+}
 function updatePreview(){
-  const data=Object.fromEntries(new FormData($('#booking-form')));
-  const start=Date.parse(data.checkin+'T00:00:00Z'), end=Date.parse(data.checkout+'T00:00:00Z');
-  const nights=Number.isFinite(start)&&Number.isFinite(end)?(end-start)/86400000:0;
-  const total=nights*Number(data.rooms_count)*Number(data.nightly_rate);
-  $('#form-total').textContent=nights>0&&Number.isFinite(total)&&total>=0?
-    nights+' night(s) · Total '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(total)+
-    ' · Due '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(Math.max(0,total-Number(data.amount_paid||0))):
+  const form=$('#booking-form');const data=Object.fromEntries(new FormData(form));
+  const a=Date.parse(data.checkin+'T00:00:00Z'),b=Date.parse(data.checkout+'T00:00:00Z');
+  const nights=Number.isFinite(a)&&Number.isFinite(b)?(b-a)/86400000:0;
+  const gross=nights*Number(data.rooms_count)*Number(data.nightly_rate);
+  const advance=editingId?bookings.find(b=>b.id===editingId)?.paid_paise/100||0:Number(data.amount_paid||0);
+  $('#form-total').textContent=nights>0&&Number.isFinite(gross)&&gross>=0?
+    nights+' night(s) · Total '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(gross)+' · Due '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(Math.max(0,gross-advance)):
     'Enter valid dates, room count and GST-inclusive rate.';
 }
-$('#new-booking').addEventListener('click',()=>{$('#form-error').textContent='';$('#booking-dialog').showModal();});
-$('#close-dialog').addEventListener('click',()=>$('#booking-dialog').close());
-$('#cancel-dialog').addEventListener('click',()=>$('#booking-dialog').close());
-$('#category-select').addEventListener('change',updateRoomOptions);
-$('#booking-form').addEventListener('input',updatePreview);
-$('#search').addEventListener('input',renderBookings);
-$('#booking-form').addEventListener('submit',async e=>{
-  e.preventDefault();const form=e.currentTarget;const data=Object.fromEntries(new FormData(form));
-  const submit=form.querySelector('[type=submit]');submit.disabled=true;
-  try{await request('/api/bookings',{method:'POST',body:JSON.stringify(data)});form.reset();$('#booking-dialog').close();await load();}
-  catch(error){$('#form-error').textContent=error.message;}
+async function addPayment(b){
+  const response=prompt('Additional payment received from '+b.guest_name+' (₹):');
+  if(response===null)return;
+  const amount=Number(response);
+  if(!Number.isFinite(amount)||amount<=0){alert('Enter a valid positive payment amount.');return;}
+  if(!confirm('Record an additional payment of ₹'+amount.toFixed(2)+' for '+b.guest_name+'?'))return;
+  try{await api('/api/bookings/'+b.id+'/payments',{method:'POST',body:JSON.stringify({amount})});await load();}
+  catch(e){alert(e.message);}
+}
+async function showPayments(b){
+  try{
+    const rows=await api('/api/bookings/'+b.id+'/payments');
+    const text=rows.length?rows.map(x=>x.created_at+' · '+money(x.amount_paise)+(x.note?' · '+x.note:'')).join('\n'):'No payments recorded.';
+    alert('Payment history — '+b.guest_name+'\n\n'+text);
+  }catch(e){alert(e.message);}
+}
+$('#new-booking').onclick=openNew;
+$('#close-dialog').onclick=()=>$('#booking-dialog').close();
+$('#cancel-dialog').onclick=()=>$('#booking-dialog').close();
+$('#category-select').onchange=()=>{updateRoomOptions();updatePreview();};
+$('#room-select').onchange=()=>{updateRoomOptions($('#room-select').value);updatePreview();};
+$('#booking-form').oninput=updatePreview;
+$('#search').oninput=renderBookings;
+$('#week-prev').onclick=()=>{weekStart=addDays(weekStart,-7);renderCalendar();};
+$('#week-next').onclick=()=>{weekStart=addDays(weekStart,7);renderCalendar();};
+$('#week-today').onclick=()=>{weekStart=new Date();weekStart=addDays(weekStart,-((weekStart.getDay()+6)%7));renderCalendar();};
+$('#backup-button').onclick=()=>{window.location.href='/api/backup';};
+$('#booking-form').onsubmit=async e=>{
+  e.preventDefault();
+  const form=e.currentTarget, data=Object.fromEntries(new FormData(form));
+  if(form.elements.namedItem('rooms_count').disabled)data.rooms_count=1;
+  const submit=$('#booking-submit');submit.disabled=true;
+  try{
+    if(editingId)await api('/api/bookings/'+editingId,{method:'PATCH',body:JSON.stringify(data)});
+    else await api('/api/bookings',{method:'POST',body:JSON.stringify(data)});
+    $('#booking-dialog').close();await load();
+  }catch(error){setMessage(error.message);}
   finally{submit.disabled=false;}
-});
+};
 load().catch(e=>{$('#booking-list').textContent='Unable to load: '+e.message;});
