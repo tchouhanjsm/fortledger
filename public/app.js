@@ -103,43 +103,76 @@ function renderInvoices(){
     row.append(name,sum,link);list.append(row);
   }
 }
-async function createInvoice(booking){
-  if(!confirm('Create or download the saved proforma invoice for '+booking.guest_name+'? Booking details and received advances are snapshotted.'))return;
+let invoiceBookingId=null;
+function makeInvoiceLine(item={description:'',rooms:1,nights:1,rate:0}){
+  const row=label('div',undefined,'invoice-line-edit');
+  for(const [key,title,value,type] of [
+    ['description','Description',item.description,'text'],
+    ['rooms','Rooms',item.rooms,'number'],
+    ['nights','Nights',item.nights,'number'],
+    ['rate','Rate/night (₹)',item.rate,'number']
+  ]){
+    const field=label('label',title);
+    const input=label('input');input.name=key;input.type=type;input.required=true;input.value=value;
+    if(type==='number'){input.min=key==='rate'?'0':'1';input.step=key==='rate'?'0.01':'1';}
+    if(key==='description'){input.maxLength=200;input.setAttribute('list','room-descriptions');}
+    field.append(input);row.append(field);
+  }
+  const remove=label('button','Remove','secondary');remove.type='button';remove.onclick=()=>{row.remove();previewInvoice();};
+  row.append(remove);$('#invoice-line-list').append(row);
+  previewInvoice();
+}
+function readInvoiceLines(){
+  return [...document.querySelectorAll('.invoice-line-edit')].map(row=>Object.fromEntries(
+    [...row.querySelectorAll('input')].map(x=>[x.name,x.value])
+  ));
+}
+function previewInvoice(){
+  const lines=readInvoiceLines();
+  const total=lines.reduce((sum,l)=>sum+(Number(l.rooms)||0)*(Number(l.nights)||0)*(Number(l.rate)||0),0);
+  const invoice=$('#invoice-totals');
+  const paid=bookings.find(b=>b.id===invoiceBookingId)?.paid_paise||0;
+  invoice.textContent=lines.length+' line(s) · Total '+money(Math.round(total*100))+
+    ' · Advance '+money(paid)+' · Due '+money(Math.max(0,Math.round(total*100)-paid));
+}
+function createInvoice(booking){
+  const existing=invoices.find(x=>x.booking_id===booking.id);
+  if(existing){window.location.href='/api/invoices/'+existing.id+'/pdf';return;}
+  invoiceBookingId=booking.id;
+  const form=$('#invoice-form');form.reset();
+  form.elements.namedItem('guest_name').value=booking.guest_name;
+  form.elements.namedItem('bill_to').value=booking.company_name||booking.guest_name;
+  $('#invoice-line-list').replaceChildren();
+  makeInvoiceLine({description:(booking.assigned_room||booking.category)+' - '+booking.meal_plan+' basis',
+    rooms:booking.rooms_count,nights:booking.nights,rate:booking.nightly_rate_paise/100});
+  $('#invoice-error').textContent='';
+  $('#invoice-dialog').showModal();
+}
+$('#add-invoice-line').onclick=()=>{if(document.querySelectorAll('.invoice-line-edit').length<20)makeInvoiceLine();};
+$('#close-invoice').onclick=()=>$('#invoice-dialog').close();
+$('#cancel-invoice').onclick=()=>$('#invoice-dialog').close();
+$('#invoice-form').oninput=previewInvoice;
+$('#invoice-form').onsubmit=async event=>{
+  event.preventDefault();
+  const form=event.currentTarget;
+  const button=form.querySelector('[type=submit]');
+  button.disabled=true;
   try{
-    const inv=await api('/api/bookings/'+booking.id+'/proforma',{method:'POST'});
+    const body={
+      guest_name:form.elements.namedItem('guest_name').value,
+      bill_to:form.elements.namedItem('bill_to').value,
+      bill_to_address:form.elements.namedItem('bill_to_address').value,
+      lines:readInvoiceLines()
+    };
+    const invoice=await api('/api/bookings/'+invoiceBookingId+'/proforma',
+      {method:'POST',body:JSON.stringify(body)});
+    $('#invoice-dialog').close();
     await load();
-    window.location.href='/api/invoices/'+inv.id+'/pdf';
-  }catch(error){alert(error.message);}
-}
-function openNew(){
-  editingId=null;
-  const f=$('#booking-form');f.reset();
-  $('#dialog-title').textContent='Add a booking';$('#booking-submit').textContent='Save booking';
-  $('#initial-advance').disabled=false;$('#initial-advance').closest('label').hidden=false;
-  setMessage('');updateRoomOptions();updatePreview();$('#booking-dialog').showModal();
-}
-function openEdit(b){
-  editingId=b.id;
-  const form=$('#booking-form');form.reset();
-  ['guest_name','company_name','checkin','checkout','rooms_count','meal_plan','nightly_rate'].forEach(k=>{
-    const field=form.elements.namedItem(k);
-    field.value=k==='nightly_rate'?(b.nightly_rate_paise/100):b[k];
-  });
-  $('#category-select').value=b.category;updateRoomOptions(b.room_id);
-  $('#dialog-title').textContent='Edit booking';$('#booking-submit').textContent='Save changes';
-  $('#initial-advance').disabled=true;$('#initial-advance').closest('label').hidden=true;
-  setMessage('');updatePreview();$('#booking-dialog').showModal();
-}
-function updatePreview(){
-  const form=$('#booking-form');const data=Object.fromEntries(new FormData(form));
-  const a=Date.parse(data.checkin+'T00:00:00Z'),b=Date.parse(data.checkout+'T00:00:00Z');
-  const nights=Number.isFinite(a)&&Number.isFinite(b)?(b-a)/86400000:0;
-  const gross=nights*Number(data.rooms_count)*Number(data.nightly_rate);
-  const advance=editingId?bookings.find(b=>b.id===editingId)?.paid_paise/100||0:Number(data.amount_paid||0);
-  $('#form-total').textContent=nights>0&&Number.isFinite(gross)&&gross>=0?
-    nights+' night(s) · Total '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(gross)+' · Due '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(Math.max(0,gross-advance)):
-    'Enter valid dates, room count and GST-inclusive rate.';
-}
+    window.location.href='/api/invoices/'+invoice.id+'/pdf';
+  }catch(error){$('#invoice-error').textContent=error.message;}
+  finally{button.disabled=false;}
+};
+
 async function addPayment(b){
   const response=prompt('Additional payment received from '+b.guest_name+' (₹):');
   if(response===null)return;

@@ -37,3 +37,9 @@ Append a dated entry for each meaningful implementation or business decision. Ne
 - Must test and merge only after GitHub Actions checks succeed.
 
 - PR #5 review correction: render the immutable Terms & Conditions from each saved invoice snapshot, not from a mutable module-level default. Added invoice ledger CSS layout. GitHub Actions checks must rerun on the final PR head before merge.
+
+## 2026-11-21 — Multi-line proforma editor
+- Added an invoice editor with guest/group heading, bill-to name/address, customizable room descriptions, room quantities, nights, GST-inclusive rate per accommodation line.
+- Calculations are server-side integer paise, reverse-tax 5% illustrative, with payment snapshot retained. Issued proformas are immutable and idempotent.
+- PDF now supports multiple lines and flows onto additional pages; company address shown when supplied.
+- Tax invoice conversion, compliance verification, saved bank/UPI settings, brand logo, customer directory and restaurant remain pending. Review automated integration tests and GitHub CI before merging.

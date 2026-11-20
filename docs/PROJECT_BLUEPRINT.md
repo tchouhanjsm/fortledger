@@ -1,5 +1,5 @@
 # FortLedger — Project blueprint and cross-chat handoff
-_Last updated: 2026-11-20. Source of truth for product intent; update this document whenever a decision changes._
+_Last updated: 2026-11-21. Source of truth for product intent; update this document whenever a decision changes._
 
 ## Goal
 Build a premium, fast, low-click, **local-first** Node.js application for Garh Jaisal hotel and restaurant operations. **Ease of use and minimal/zero recurring software cost are equally important.** Own our records and avoid third-party invoice APIs, mandatory cloud hosting, or unnecessary subscription services.

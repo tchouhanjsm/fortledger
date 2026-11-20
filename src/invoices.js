@@ -1,7 +1,8 @@
 import { bookingTotals } from './finance.js';
 import { FIXED_TERMS } from './terms.js';
+import { normalizeInvoiceInput } from './invoice-lines.js';
 
-export function createProforma(db,bookingId){
+export function createProforma(db,bookingId,input={}){
   if(!Number.isSafeInteger(bookingId)||bookingId<1)throw new Error('Invalid booking ID');
   return db.transaction(()=>{
     const existing=db.prepare("SELECT * FROM invoices WHERE booking_id=? AND kind='proforma'").get(bookingId);
@@ -13,17 +14,21 @@ export function createProforma(db,bookingId){
     `).get(bookingId);
     if(!booking)throw new Error('Booking not found');
     if(booking.status==='cancelled')throw new Error('Cannot invoice a cancelled booking');
+    const details=normalizeInvoiceInput(input,booking);
     const totals=bookingTotals(booking);
+    const paid_paise=totals.paid_paise;
     const next=db.prepare('UPDATE invoice_sequence SET last_number=last_number+1 WHERE id=1 RETURNING last_number').get().last_number;
     const year=new Date().getFullYear();
     const number='GH-'+year+'-'+String(next).padStart(3,'0');
     const snapshot={
       number,kind:'proforma',issued_on:new Date().toISOString().slice(0,10),
-      guest_name:booking.guest_name,company_name:booking.company_name,
-      checkin:booking.checkin,checkout:booking.checkout,room_name:booking.room_name,
-      category:booking.category,rooms_count:booking.rooms_count,meal_plan:booking.meal_plan,
-      nightly_rate_paise:booking.nightly_rate_paise,tax_rate:5,
-      ...totals,terms:FIXED_TERMS
+      ...details,company_name:booking.company_name,
+      category:booking.category,room_name:booking.room_name,
+      rooms_count:booking.rooms_count,meal_plan:booking.meal_plan,
+      nightly_rate_paise:booking.nightly_rate_paise,nights:totals.nights,
+      paid_paise,due_paise:Math.max(0,details.total_paise-paid_paise),
+      credit_paise:Math.max(0,paid_paise-details.total_paise),
+      terms:FIXED_TERMS
     };
     const result=db.prepare("INSERT INTO invoices(booking_id,kind,number,snapshot) VALUES(?,'proforma',?,?)")
       .run(bookingId,number,JSON.stringify(snapshot));
