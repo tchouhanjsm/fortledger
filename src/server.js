@@ -102,7 +102,7 @@ export function createApp(db,{authRecord=null}={}) {
   `);
   app.get('/api/bookings', (req,res)=>{
     const q=String(req.query.q||'').toLowerCase().slice(0,100);
-    const items=getBookings.all().filter(b=>!q||[b.guest_name,b.company_name,b.category,b.assigned_room||''].some(x=>x.toLowerCase().includes(q)));
+    const items=getBookings.all();
     const allocated=new Map();
     for(const a of allocationsQuery.all()){
       if(!allocated.has(a.booking_id))allocated.set(a.booking_id,[]);
@@ -112,7 +112,7 @@ export function createApp(db,{authRecord=null}={}) {
       const assigned=allocated.get(b.id)||[];
       return {...b,room_ids:assigned.map(x=>x.room_id),
         assigned_room:assigned.length?assigned.map(x=>x.name).join(', '):null,...bookingTotals(b)};
-    }));
+    }).filter(b=>!q||[b.guest_name,b.company_name,b.category,b.assigned_room||''].some(x=>x.toLowerCase().includes(q))));
   });
 
   app.post('/api/bookings', (req,res,next)=>{
