@@ -119,11 +119,12 @@ export function createApp(db,{authRecord=null}={}) {
     try {
       const b=normalizeBooking(req.body);
       let id;
+      const {room_ids,...sqlBooking}=b;
       db.transaction(()=>{
         assertAvailability(db,b);
         const result=db.prepare(`INSERT INTO bookings
           (guest_name,company_name,checkin,checkout,rooms_count,room_id,category,meal_plan,nightly_rate_paise)
-          VALUES (@guest_name,@company_name,@checkin,@checkout,@rooms_count,@room_id,@category,@meal_plan,@nightly_rate_paise)`).run(b);
+          VALUES (@guest_name,@company_name,@checkin,@checkout,@rooms_count,@room_id,@category,@meal_plan,@nightly_rate_paise)`).run(sqlBooking);
         id=Number(result.lastInsertRowid);
         const allocate=db.prepare('INSERT INTO booking_room_allocations(booking_id,room_id) VALUES(?,?)');
         for(const roomId of b.room_ids)allocate.run(id,roomId);
@@ -143,6 +144,7 @@ export function createApp(db,{authRecord=null}={}) {
       if (!previous) return res.status(404).json({error:'Booking not found'});
       if (previous.status==='cancelled') throw new Error('Cancelled bookings cannot be edited');
       const b=normalizeBooking(req.body);
+      const {room_ids,...sqlBooking}=b;
       db.transaction(()=>{
         assertAvailability(db,b,id);
         db.prepare('DELETE FROM booking_room_allocations WHERE booking_id=?').run(id);
@@ -150,7 +152,7 @@ export function createApp(db,{authRecord=null}={}) {
         for(const roomId of b.room_ids)allocate.run(id,roomId);
         db.prepare(`UPDATE bookings SET guest_name=@guest_name,company_name=@company_name,checkin=@checkin,
           checkout=@checkout,rooms_count=@rooms_count,room_id=@room_id,category=@category,
-          meal_plan=@meal_plan,nightly_rate_paise=@nightly_rate_paise WHERE id=@id`).run({...b,id});
+          meal_plan=@meal_plan,nightly_rate_paise=@nightly_rate_paise WHERE id=@id`).run({...sqlBooking,id});
       })();
       res.json({ok:true,id});
     }catch(e){next(e);}
