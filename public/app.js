@@ -34,7 +34,8 @@ function renderBookings(){
     const history=label('button','Payments','secondary');history.onclick=()=>showPayments(b);
     const proforma=label('button','Proforma PDF','secondary');proforma.disabled=b.status==='cancelled';
     proforma.onclick=()=>createInvoice(b);
-    actions.append(edit,payment,history,proforma);
+    const folioButton=label('button','Guest folio','secondary');folioButton.onclick=()=>showFolio(b);
+    actions.append(edit,payment,history,proforma,folioButton);
     row.append(guest,dates,stage,due,actions);list.append(row);
   }
   $('#stat-bookings').textContent=bookings.filter(b=>b.status!=='cancelled').length;
@@ -283,6 +284,50 @@ $('#import-menu').onclick=async()=>{
   try{const csv=await file.text();const outcome=await api('/api/restaurant/menu/import',{method:'POST',body:JSON.stringify({csv})});
     message.textContent='Imported '+outcome.imported+' menu items.';await load();}
   catch(e){message.textContent=e.message;}
+};
+
+
+let activeFolioBooking=null;
+async function showFolio(booking){
+  activeFolioBooking=booking.id;
+  $('#folio-dialog').showModal();
+  await refreshFolio();
+}
+async function refreshFolio(){
+  const data=await api('/api/bookings/'+activeFolioBooking+'/folio');
+  $('#folio-name').textContent=data.guest_name;
+  $('#folio-summary').textContent='Accommodation due '+money(data.accommodation.due_paise)+
+    ' · Restaurant room charges due '+money(data.restaurant_due_paise)+
+    ' · Combined due '+money(data.combined_due_paise);
+  const list=$('#folio-room-bills');list.replaceChildren();
+  for(const bill of data.bills){
+    const row=label('div',undefined,'menu-item');
+    const details=label('div');details.append(label('strong','Food bill #'+bill.id),label('small',money(bill.total_paise)+(bill.settlement_id?' · Settled':' · Unsettled')));
+    const button=label('button',bill.settlement_id?'Paid':'Settle separately','secondary');
+    button.disabled=Boolean(bill.settlement_id);
+    button.onclick=async()=>{
+      if(!confirm('Record separate payment of '+money(bill.total_paise)+' for food bill #'+bill.id+'?'))return;
+      try{
+        await api('/api/bookings/'+activeFolioBooking+'/folio/room-bills/'+bill.id+'/settle',{method:'POST',body:JSON.stringify({method:$('#folio-method').value})});
+        $('#folio-message').textContent='Separate food payment saved.';await refreshFolio();
+      }catch(e){$('#folio-message').textContent=e.message;}
+    };
+    row.append(details,button);list.append(row);
+  }
+  if(!data.bills.length)list.append(label('p','No restaurant room charges linked to this guest.','muted'));
+  $('#folio-combined').disabled=data.combined_due_paise===0||data.status==='cancelled';
+  $('#folio-combined').textContent='Settle all outstanding · '+money(data.combined_due_paise);
+}
+$('#close-folio').onclick=()=>$('#folio-dialog').close();
+$('#folio-combined').onclick=async()=>{
+  const message=$('#folio-message');
+  if(!confirm('Record full accommodation and unpaid restaurant balance as paid?'))return;
+  const button=$('#folio-combined');button.disabled=true;
+  try{
+    await api('/api/bookings/'+activeFolioBooking+'/folio/settle-combined',{method:'POST',body:JSON.stringify({method:$('#folio-method').value})});
+    message.textContent='Combined payment saved. No duplicate charges recorded.';
+    await load();await refreshFolio();
+  }catch(e){message.textContent=e.message;button.disabled=false;}
 };
 
 $('#business-form').onsubmit=async event=>{

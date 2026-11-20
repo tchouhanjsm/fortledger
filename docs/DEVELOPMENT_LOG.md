@@ -55,3 +55,9 @@ Append a dated entry for each meaningful implementation or business decision. Ne
 - Added searchable menu, quick cart and local restaurant bill snapshots. Cash, UPI and card are supported as operator-recorded payments; room charge requires an existing checked-in booking.
 - Financial snapshots are separate from accommodation invoices. **Room charge settlement and combined totals are not yet implemented**; do not double invoice these charges.
 - Epson TM-T82 printing, offline cashier safety, tax-rate compliance and manually unmatched charges are future work. CI must pass on the PR head before merge.
+
+## 2026-11-21 — Combined / separate guest folio settlement
+- Added booking folio showing remaining accommodation balance, separately tracked room-charge restaurant bills, and combined due.
+- A room charge can be settled individually; combined settlement records accommodation payment and each outstanding restaurant bill atomically, using immutable settlement group references.
+- Duplicate bill settlement is prevented by unique restaurant bill settlement IDs; re-running a combined payment cannot charge already paid items.
+- This is a payment workflow, not a final statutory tax invoice. Refunds, partial payment, tax invoices and merchant reconciliation remain pending.

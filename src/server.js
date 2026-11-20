@@ -7,6 +7,7 @@ import { createProforma,getInvoice,listInvoices } from './invoices.js';
 import { streamProformaPdf } from './invoice-pdf.js';
 import { getBusinessSettings,updateBusinessSettings } from './business-settings.js';
 import {importMenuCsv,listMenu,createRestaurantBill,listRestaurantBills} from './restaurant.js';
+import {getGuestFolio,settleRoomBill,settleCombined} from './folio.js';
 
 export function createApp(db) {
   const app = express();
@@ -16,6 +17,15 @@ export function createApp(db) {
   app.use(express.static(publicDir));
 
   const listRooms = db.prepare('SELECT * FROM rooms ORDER BY id');
+  app.get('/api/bookings/:id/folio',(req,res,next)=>{
+    try{res.json(getGuestFolio(db,Number(req.params.id)));}catch(error){next(error);}
+  });
+  app.post('/api/bookings/:id/folio/settle-combined',(req,res,next)=>{
+    try{res.status(201).json(settleCombined(db,Number(req.params.id),req.body.method));}catch(error){next(error);}
+  });
+  app.post('/api/bookings/:id/folio/room-bills/:billId/settle',(req,res,next)=>{
+    try{res.status(201).json(settleRoomBill(db,Number(req.params.id),Number(req.params.billId),req.body.method));}catch(error){next(error);}
+  });
   app.get('/api/restaurant/menu',(_req,res)=>res.json(listMenu(db)));
   app.post('/api/restaurant/menu/import',(req,res,next)=>{
     try{res.json(importMenuCsv(db,req.body.csv));}catch(error){next(error);}

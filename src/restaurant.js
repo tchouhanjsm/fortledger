@@ -18,6 +18,14 @@ export function ensureRestaurantSchema(db){
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_restaurant_bills_booking ON restaurant_bills(booking_id);
+    CREATE TABLE IF NOT EXISTS restaurant_settlements (
+      id INTEGER PRIMARY KEY,
+      restaurant_bill_id INTEGER NOT NULL UNIQUE REFERENCES restaurant_bills(id),
+      method TEXT NOT NULL CHECK(method IN ('cash','upi','card')),
+      settlement_group TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_settlements_group ON restaurant_settlements(settlement_group);
   `);
 }
 function parseCsv(csv){

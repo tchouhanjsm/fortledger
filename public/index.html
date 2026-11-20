@@ -42,4 +42,12 @@
   <div id="invoice-totals" class="form-preview"></div><p id="invoice-error" role="alert"></p>
   <div class="dialog-actions"><button id="cancel-invoice" type="button" class="secondary">Cancel</button><button type="submit" class="primary">Issue proforma PDF</button></div>
   </form></dialog>
+<dialog id="folio-dialog"><div class="dialog-heading"><div><span class="eyebrow">GUEST FOLIO</span><h2 id="folio-name">Guest settlement</h2></div><button id="close-folio" type="button" class="icon-btn" aria-label="Close">×</button></div>
+  <div id="folio-summary" class="form-preview"></div>
+  <div id="folio-room-bills"></div>
+  <label class="restaurant-field">Payment method<select id="folio-method"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></label>
+  <p id="folio-message" role="status"></p>
+  <div class="dialog-actions"><button id="folio-combined" class="primary">Settle all outstanding</button></div>
+  <p class="muted">Each restaurant room bill can also be settled individually above. This is a payment record, not a tax invoice.</p>
+</dialog>
 <script type="module" src="/app.js"></script></body></html>
