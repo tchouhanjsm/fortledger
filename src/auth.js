@@ -21,7 +21,9 @@ export function verifyPassword(password,record){
 export function loadPasswordRecord(filename=DEFAULT_AUTH_FILE){
   if(!fs.existsSync(filename))return null;
   const record=JSON.parse(fs.readFileSync(filename,'utf8'));
-  if(!verifyPassword('test validation string',record) && (record.version!==1||!record.hash))throw new Error('Invalid admin-auth.json');
+  if(record?.version!==1||typeof record.salt!=='string'||!/^[a-f0-9]{32}$/.test(record.salt)||
+     typeof record.hash!=='string'||!/^[a-f0-9]{128}$/.test(record.hash))
+    throw new Error('Invalid admin-auth.json');
   return record;
 }
 export function savePasswordRecord(filename,password){
