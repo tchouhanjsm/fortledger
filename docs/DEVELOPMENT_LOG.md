@@ -61,3 +61,8 @@ Append a dated entry for each meaningful implementation or business decision. Ne
 - A room charge can be settled individually; combined settlement records accommodation payment and each outstanding restaurant bill atomically, using immutable settlement group references.
 - Duplicate bill settlement is prevented by unique restaurant bill settlement IDs; re-running a combined payment cannot charge already paid items.
 - This is a payment workflow, not a final statutory tax invoice. Refunds, partial payment, tax invoices and merchant reconciliation remain pending.
+
+## 2026-11-21 — Month-at-a-glance calendar
+- Added month view showing room-night occupancy out of seven rooms, including category-held reservations and excluding cancelled bookings.
+- Clicking a month date opens that date's seven-day room assignment view. Month navigation respects year boundaries.
+- Date-only helpers have regression tests for checkout-day availability and category held inventory. No external calendar service or subscription.
