@@ -46,7 +46,7 @@ Merged PRs #1–#10. Booking calendar includes room-wise week and aggregate mont
 
 **NOT built / NOT production-ready:** statutory final tax invoice lifecycle and compliant numbering, guest/customer directory, logo upload (deliberately deferred to late-stage polish), Epson TM-T82 driver/receipt test, local authentication, robust input and CSRF security, automated external backups, refund/adjustment workflow, unmatched manual room charges, transactional audit log beyond existing payment records, and operational installation/QA. Avoid entering real guest, hotel account or payment information until security and tax compliance are verified. Repo was last observed PUBLIC.
 
-**Next engineering order:** security and local authentication; business invoice details/legal tax verification and final conversion; menu tax verification; Epson printing/receipt queue and physical printer test; manual unmatched room-charge review; automated backup and restoration drill; visual QA on PDFs/calendar; packaging and installation. Record new work in the development log.
+**Next engineering order:** refine recently added local authentication and perform security QA; business invoice details/legal tax verification and final conversion; menu tax verification; Epson printing/receipt queue and physical printer test; manual unmatched room-charge review; automated backup and restoration drill; visual QA on PDFs/calendar; packaging and installation. Record new work in the development log.
 
 ## Invoice branding decision (2026-11-20)
 - A hotel logo is mandatory as a supported **feature**, but the logo asset itself is not yet supplied. Provide upload/change/preview in business Settings; validate accepted image types, size and safe storage. Persist local logo and use it consistently on proforma/final tax PDFs.
@@ -61,6 +61,9 @@ Merged PRs #1–#10. Booking calendar includes room-wise week and aggregate mont
 - Conversion to final tax invoice does not silently overwrite or duplicate the proforma.
 - Invalid CSV or failed printer cannot corrupt a saved sale.
 - Full offline local use, reliable backup recovery and no mandatory paid service.
+
+## Tax compliance gate
+See [COMPLIANCE_REVIEW.md](COMPLIANCE_REVIEW.md) for verified government references, the 5% accommodation-rate scope, Rule 46 final invoice requirements and release blockers. Proforma PDFs and restaurant slips remain non-statutory documents; do not enable final tax invoices until the checklist is complete.
 
 ## Work log and handoff
 See [development log](DEVELOPMENT_LOG.md) for the latest implemented items, verification evidence, blockers and next actions. A new chat should read this blueprint, the development log, then inspect the GitHub repository and open PRs before continuing. The blueprint is intent; **only source code/tests establish what is implemented**.
