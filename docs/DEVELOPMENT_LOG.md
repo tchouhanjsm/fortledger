@@ -29,3 +29,9 @@ Append a dated entry for each meaningful implementation or business decision. Ne
 - Restore requires an explicit confirmation flag, refuses active WAL files, and retains a copy of the previous database.
 - Added tests for successful restore and rejection of invalid backup input.
 - Scope restriction: stop the application before restoring; this is a manual recovery operation, not automatic scheduled backups.
+
+## 2026-11-21 — First hotel proforma PDF increment
+- Added immutable, one-per-booking proforma snapshots, deterministic number sequence with year prefix, and local PDF generation/download with fixed T&C and accommodation totals.
+- Duplicate create requests return the existing invoice rather than incrementing the sequence. Saved advance is part of the issuance snapshot and does not change retroactively.
+- Added invoices list and Proforma PDF action from each booking. No real tax invoice issuing, address/bank settings, logo upload or multiple accommodation item lines yet. The 5% breakdown is illustrative pending compliance verification.
+- Must test and merge only after GitHub Actions checks succeed.

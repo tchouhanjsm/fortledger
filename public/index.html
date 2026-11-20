@@ -5,7 +5,7 @@
 <body>
 <aside class="sidebar">
   <div class="brand"><span class="brandmark">F</span><div><strong>FortLedger</strong><small>GARH JAISAL · OPERATIONS</small></div></div>
-  <nav aria-label="Primary"><a class="active" href="#bookings">▦ &nbsp; Booking Calendar</a><a href="#rooms">▤ &nbsp; Room Inventory</a><a class="soon" href="#roadmap">▧ &nbsp; Invoices <span>Soon</span></a><a class="soon" href="#roadmap">☕ &nbsp; Restaurant <span>Soon</span></a></nav>
+  <nav aria-label="Primary"><a class="active" href="#bookings">▦ &nbsp; Booking Calendar</a><a href="#rooms">▤ &nbsp; Room Inventory</a><a href="#invoices">▧ &nbsp; Invoices</a><a class="soon" href="#roadmap">☕ &nbsp; Restaurant <span>Soon</span></a></nav>
   <div class="sidebar-bottom"><span class="status-dot"></span> Local-first workspace <small>Phase 1 · Booking foundation</small></div>
 </aside>
 <main>
@@ -13,6 +13,7 @@
   <section class="stats" id="stats"><article><label>Physical rooms</label><b>7</b><span>Initial inventory</span></article><article><label>Reservations</label><b id="stat-bookings">—</b><span>Saved locally</span></article><article><label>Outstanding</label><b id="stat-due">—</b><span>All active bookings</span></article></section>
   <section class="panel" id="calendar"><div class="panel-head"><div><h2>Room calendar</h2><p>Seven-day view · Checkout day is available for another arrival.</p></div><div class="calendar-controls"><button id="week-prev" class="secondary" aria-label="Previous week">‹</button><span id="week-label"></span><button id="week-next" class="secondary" aria-label="Next week">›</button><button id="week-today" class="secondary">Today</button></div></div><div class="calendar-scroll"><div id="calendar-grid"></div></div><div id="unassigned-calendar" class="unassigned"></div></section>
   <section id="bookings" class="panel"><div class="panel-head"><div><h2>Reservation ledger</h2><p>Search guests, companies and room categories.</p></div><input id="search" type="search" placeholder="Search bookings..." aria-label="Search bookings"></div><div class="toolbar"><button id="backup-button" class="secondary" type="button">↓ Download database backup</button></div><div id="booking-list" class="booking-list"><p class="muted">Loading bookings…</p></div></section>
+  <section id="invoices" class="panel"><div class="panel-head"><div><h2>Proforma invoices</h2><p>Immutable PDF snapshots. Create from a booking and download anytime.</p></div></div><div id="invoice-list"><p class="muted">Loading invoices…</p></div></section>
   <section id="rooms" class="panel"><div class="panel-head"><div><h2>Room inventory</h2><p>Rename the seven placeholders and assign their real accommodation categories before booking.</p></div></div><div id="room-list"></div></section>
   <section id="roadmap" class="footnote">Next increments: branded invoices, tax invoice lifecycle, restaurant CSV billing, room charges and Epson network printing. See <a href="https://github.com/tchouhanjsm/fortledger/blob/main/docs/PROJECT_BLUEPRINT.md">project blueprint</a>.</section>
 </main>

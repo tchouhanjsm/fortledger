@@ -24,7 +24,8 @@ The database creates **seven placeholder rooms** (Room 1–Room 7), all under ca
 - ✅ Simple booking entry, availability checks and searchable reservations.
 - ✅ GST-inclusive 5% *illustrative business-rule* breakdown in the backend, ledgered initial advances and balance due.
 - ✅ Seven-day room calendar including unassigned category reservations, booking edits, payment history/entry and SQLite backup download.
-- ⏳ Backup restore verification, invoice PDFs and full month overview.
+- ✅ Initial immutable proforma snapshot and local PDF download from booking records (no tax invoice issuance).
+- ✅ Verified offline database restore CLI; full month overview and invoice editor still pending.
 - ⏳ Restaurant billing, CSV import, room charging and Epson TM-T82 integration.
 
 **Tax disclaimer:** The stated 5% GST rule is an agreed business example, not a verified tax determination. Validate lawful tax treatment and invoice requirements before production billing.
@@ -39,3 +40,6 @@ To restore: stop the app, verify it is not running, and run:
 npm run restore -- /path/to/fortledger-backup.sqlite ./data/fortledger.sqlite --confirm
 ```
 The restore command validates SQLite integrity and expected schema, requires explicit confirmation, rejects active WAL files, and preserves the previous database as a timestamped `.before-restore-...` safety copy. **Do not restore while the app is running.** Test first with non-production data. An automated encrypted backup schedule is not yet implemented.
+
+## Proforma PDF preview (alpha)
+From a booking, choose **Proforma PDF** to create one immutable snapshot and download its PDF. Repeated clicks return the existing invoice without consuming a new number. The sequence begins at `GH-2026-001` and continues across calendar years. A PDF has the exact fixed T&C, booking figures, advance paid and separate illustrative 5% GST. **No tax invoices are issued yet.** Company addresses, bank details, uploaded hotel logo, custom accommodation lines and the legally compliant invoice workflow remain future milestones. Do not use these preview PDFs for statutory billing.
