@@ -35,3 +35,5 @@ Append a dated entry for each meaningful implementation or business decision. Ne
 - Duplicate create requests return the existing invoice rather than incrementing the sequence. Saved advance is part of the issuance snapshot and does not change retroactively.
 - Added invoices list and Proforma PDF action from each booking. No real tax invoice issuing, address/bank settings, logo upload or multiple accommodation item lines yet. The 5% breakdown is illustrative pending compliance verification.
 - Must test and merge only after GitHub Actions checks succeed.
+
+- PR #5 review correction: render the immutable Terms & Conditions from each saved invoice snapshot, not from a mutable module-level default. Added invoice ledger CSS layout. GitHub Actions checks must rerun on the final PR head before merge.
