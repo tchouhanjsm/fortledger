@@ -11,3 +11,8 @@ Append a dated entry for each meaningful implementation or business decision. Ne
 - Review gates: run available automated tests; inspect PR diff and GitHub checks before merging.
 - Not yet built in this increment: invoice PDFs, billing lifecycle, restaurant CSV, room charge settlement, Epson printing, backup/restore, real calendar timeline, auth.
 - Important limitation: initial booking UI is not for actual production use until security, data validation, persistence recovery and financial compliance review are complete.
+
+## 2026-11-20 — Invoice branding requirement and handoff update
+- Confirmed: support uploading the hotel's existing logo in Settings; render it on every proforma and final tax invoice PDF with preserved aspect ratio. The actual logo asset has not been supplied and the PDF module is not yet built.
+- Verified state: PR #1 was merged into `main` (squash merge `16ee650166ef57bff36338ae5b1962d28b8749eb`). The latest PR head's GitHub Actions run `44740381860` concluded successfully. Earlier entry refers to an intermediate head.
+- Next work: implement a proper calendar, booking edits, payment UI and backups before invoice/PDF workflow; invoice logos belong to the PDF milestone. Keep production readiness restrictions in effect.
