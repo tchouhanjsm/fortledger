@@ -66,3 +66,6 @@ First-time setup requires `npm run setup-auth` in an interactive terminal. A str
 
 ## Browser-based restaurant receipt printing (alpha)
 Every saved restaurant bill has a **Print receipt** button showing a compact 80-mm receipt with preserved item names, quantities, inclusive item totals, recorded tax, payment/room-charge status, and receipt number. Use the browser print dialog with a printer installed in the operating system, including an Epson network printer if correctly configured. **No direct Epson TM-T82 LAN/ESC-POS integration or physical hardware verification yet.** The slip is explicitly marked *Not a tax invoice*; statutory tax receipts require a separate compliant implementation.
+
+## Statutory invoicing gate
+The app **does not issue GST tax invoices**. Review [docs/COMPLIANCE_REVIEW.md](docs/COMPLIANCE_REVIEW.md) before enabling final invoices. Hotel accommodation 5% GST has a per-unit value condition under the official 2025 clarification; no blanket rate assumption is valid. The restaurant 80mm slip is a non-statutory payment receipt.
