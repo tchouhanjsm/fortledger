@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {authGate,loadPasswordRecord} from './auth.js';
+import {renderRestaurantReceipt} from './restaurant-receipt.js';
 import { openDatabase, assertAvailability } from './database.js';
 import { bookingTotals, nightsBetween, toPaise } from './finance.js';
 import { createProforma,getInvoice,listInvoices } from './invoices.js';
@@ -36,6 +37,16 @@ export function createApp(db,{authRecord=null}={}) {
   app.get('/api/restaurant/menu',(_req,res)=>res.json(listMenu(db)));
   app.post('/api/restaurant/menu/import',(req,res,next)=>{
     try{res.json(importMenuCsv(db,req.body.csv));}catch(error){next(error);}
+  });
+  app.get('/api/restaurant/bills/:id/receipt',(req,res,next)=>{
+    try{
+      const html=renderRestaurantReceipt(db,Number(req.params.id));
+      if(!html)return res.status(404).send('Receipt not found');
+      res.setHeader('Content-Type','text/html; charset=utf-8');
+      res.setHeader('Content-Security-Policy',"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'");
+      res.setHeader('X-Content-Type-Options','nosniff');
+      res.send(html);
+    }catch(error){next(error);}
   });
   app.get('/api/restaurant/bills',(_req,res)=>res.json(listRestaurantBills(db)));
   app.post('/api/restaurant/bills',(req,res,next)=>{

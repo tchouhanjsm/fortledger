@@ -84,3 +84,8 @@ All five increments completed in this development session were reviewed and merg
 - Protected all API routes, including backups; same-origin, JSON-only mutation checks and basic login throttling implemented.
 - Test fixture constructors remain unauthenticated only for deterministic integration tests; production invocation explicitly requires auth.
 - Pending: installation test on actual business device, password recovery process, penetration review, encrypted off-device backup, and role-based staff permissions.
+
+## 2026-11-21 — Restaurant print-view fallback
+- Added a thermal-width HTML receipt for each saved restaurant bill, including immutable item snapshots and current room-charge payment status.
+- Receipts can be printed through the operating system's installed print driver and browser dialog, without hosted services.
+- Not a statutory tax invoice; direct Epson TM-T82 LAN commands, hardware tests and failure/reprint audit trails remain pending. Output escapes guest/menu content to prevent HTML injection.

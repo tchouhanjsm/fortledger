@@ -288,8 +288,10 @@ function renderRestaurantHistory(){
   const list=$('#restaurant-history');list.replaceChildren();
   for(const bill of restaurantBills.slice(0,15)){
     const row=label('div',undefined,'menu-item');
-    row.append(label('strong','#'+bill.id+' · '+bill.payment_method.toUpperCase()),
-      label('span',money(bill.total_paise)));
+    const details=label('div');details.append(label('strong','#'+bill.id+' · '+bill.payment_method.toUpperCase()),label('small',money(bill.total_paise)));
+    const print=label('button','Print receipt','secondary');
+    print.onclick=()=>window.open('/api/restaurant/bills/'+bill.id+'/receipt','_blank','noopener');
+    row.append(details,print);
     list.append(row);
   }
   if(!restaurantBills.length)list.append(label('p','No restaurant bills yet.','muted'));
