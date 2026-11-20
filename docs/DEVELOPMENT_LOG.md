@@ -89,3 +89,9 @@ All five increments completed in this development session were reviewed and merg
 - Added a thermal-width HTML receipt for each saved restaurant bill, including immutable item snapshots and current room-charge payment status.
 - Receipts can be printed through the operating system's installed print driver and browser dialog, without hosted services.
 - Not a statutory tax invoice; direct Epson TM-T82 LAN commands, hardware tests and failure/reprint audit trails remain pending. Output escapes guest/menu content to prevent HTML injection.
+
+## 2026-11-21 — Authentication, receipt printing and legal review checkpoint
+- PR #12 implemented local administrator password hashing/session authentication and was merged after GitHub Actions run `44811033034` passed.
+- PR #13 implemented a browser-printable 80mm restaurant slip and was merged after GitHub Actions run `44811335974` passed. It uses the installed OS driver; no physical Epson TM-T82 print test.
+- Government of India PIB (16 Sep 2025) clarified the 5% without-ITC hotel accommodation regime for value of supply up to INR 7,500 per unit/day. CBIC Rule 46 has tax-invoice requirements absent from current proformas. Documented sources and explicit final-tax-invoice release blockers in `docs/COMPLIANCE_REVIEW.md`.
+- Current alpha is not production-ready. No browser or rendered-PDF visual QA or actual local-device install was performed; GitHub CI validates unit/integration tests only.
