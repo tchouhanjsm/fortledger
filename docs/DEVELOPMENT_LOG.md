@@ -66,3 +66,14 @@ Append a dated entry for each meaningful implementation or business decision. Ne
 - Added month view showing room-night occupancy out of seven rooms, including category-held reservations and excluding cancelled bookings.
 - Clicking a month date opens that date's seven-day room assignment view. Month navigation respects year boundaries.
 - Date-only helpers have regression tests for checkout-day availability and category held inventory. No external calendar service or subscription.
+
+## 2026-11-21 — PR verification and cross-chat checkpoint
+All five increments completed in this development session were reviewed and merged:
+- PR #6: multi-line proforma editor and PDF; GitHub Actions run `44809237028` passed.
+- PR #7: hotel/payment settings and immutable branding snapshot; run `44809491799` passed.
+- PR #8: restaurant CSV import, cash/UPI/card bills and checked-in room charges; run `44809826861` passed.
+- PR #9: atomically recorded combined/separate guest folio settlement; run `44810094745` passed.
+- PR #10: weekly/monthly calendar switch and month-room occupancy; run `44810377943` passed.
+- Testing evidence is GitHub Actions unit/integration checks; no physical Epson test, tax/legal review, live-user test or rendered PDF visual approval has been performed.
+- Prior dated log entries describe historical stage limitations; consult this checkpoint and source code for current state.
+- **Next blockers:** local login/security, legally verified final tax invoices, Epson printer implementation and physical validation, automatic backups, manual charge review, refunds and app packaging. Do not mark production-ready.

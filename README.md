@@ -2,7 +2,7 @@
 
 **Local-first hotel booking, invoicing and restaurant billing for Garh Jaisal.**
 
-> **Status:** Initial booking foundation only. NOT production-ready. Do not enter real guest/payment data yet.
+> **Status:** Active alpha with booking calendar, proformas, local business settings, restaurant billing and guest folios. NOT production-ready. Do not enter real guest, bank or payment details yet.
 
 ## Start locally
 Requires Node.js 22+ and a local build toolchain for the SQLite native dependency.
@@ -26,7 +26,8 @@ The database creates **seven placeholder rooms** (Room 1–Room 7), all under ca
 - ✅ Seven-day room calendar including unassigned category reservations, booking edits, payment history/entry and SQLite backup download.
 - ✅ Initial immutable proforma snapshot and local PDF download from booking records (no tax invoice issuance).
 - ✅ Verified offline database restore CLI; full month overview and invoice editor still pending.
-- ⏳ Restaurant billing, CSV import, room charging and Epson TM-T82 integration.
+- ✅ Restaurant CSV import, saved bills, cash/UPI/card records, checked-in guest room charges and combined/separate settlement.
+- ⏳ Epson TM-T82 printing, statutory receipts, authentication, live-tax compliance and production hardening.
 
 **Tax disclaimer:** The stated 5% GST rule is an agreed business example, not a verified tax determination. Validate lawful tax treatment and invoice requirements before production billing.
 
@@ -51,7 +52,7 @@ The **Proforma PDF** action opens a pre-issue editor: guest/group name, bill-to 
 The **Hotel & payment settings** section stores hotel name, optional address/GSTIN/contact details and bank/IFSC/UPI information locally. New proforma PDFs snapshot the current settings, keeping previously issued invoices unchanged. Do not enter real account details until the local app has authentication and access controls; the repository remains public, although runtime database files are gitignored. Uploaded logo support remains pending.
 
 ## Restaurant MVP (alpha)
-Import a CSV with header `name,category,price,tax_rate` (GST-inclusive price, integer percent rate configured per menu item). Menu imports update matching name/category items without erasing historical bills. Search items, add quantities, settle by cash/UPI/card, or charge to a **checked-in booking**. Each bill preserves item, quantity, rate, tax and payment snapshots in SQLite. The restaurant module does not yet print to Epson, create statutory tax receipts, reconcile room charges at checkout or support manual unmatched room entries. Do not use for live trading until those and security safeguards are implemented.
+Import a CSV with header `name,category,price,tax_rate` (GST-inclusive price, integer percent rate configured per menu item). Menu imports update matching name/category items without erasing historical bills. Search items, add quantities, settle by cash/UPI/card, or charge to a **checked-in booking**. Each bill preserves item, quantity, rate, tax and payment snapshots in SQLite. The restaurant module does not yet print to Epson, create statutory tax receipts or support manual unmatched room entries. Do not use for live trading until those and security safeguards are implemented.
 
 ## Guest folio and room-charge settlement (alpha)
 Open **Guest folio** from a booking. The folio shows accommodation due, unsettled restaurant room charges, and combined due without adding restaurant charges into accommodation proforma totals. Mark an individual restaurant bill paid separately (cash, UPI, card), or settle all remaining accommodation and room charges in a single transaction. Each room bill has at most one settlement record and combined payments only add outstanding accommodation to the hotel payment ledger. This records payments; it is **not** a final GST invoice or receipt generator, and refunds/partial payments are not implemented.
