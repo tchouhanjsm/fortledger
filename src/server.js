@@ -17,7 +17,7 @@ export function createApp(db) {
   app.get('/api/invoices',(_req,res)=>res.json(listInvoices(db)));
   app.post('/api/bookings/:id/proforma',(req,res,next)=>{
     try{
-      const invoice=createProforma(db,Number(req.params.id));
+      const invoice=createProforma(db,Number(req.params.id),req.body);
       res.status(invoice.already_existed?200:201).json(invoice);
     }catch(e){next(e);}
   });
