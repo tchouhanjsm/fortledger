@@ -5,7 +5,7 @@ const dateISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+
 const addDays = (d,days) => { const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+days);return x; };
 const fmtDay = iso => new Date(iso+'T12:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 const statusOptions=['reserved','checked_in','checked_out','cancelled'];
-let rooms=[],bookings=[],editingId=null,weekStart=new Date();
+let rooms=[],bookings=[],invoices=[],editingId=null,weekStart=new Date();
 weekStart=addDays(weekStart,-((weekStart.getDay()+6)%7));
 async function api(url,options={}){
   const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});
@@ -32,7 +32,9 @@ function renderBookings(){
     const edit=label('button','Edit','secondary');edit.disabled=b.status==='cancelled';edit.onclick=()=>openEdit(b);
     const payment=label('button','+ Payment','secondary');payment.disabled=b.status==='cancelled';payment.onclick=()=>addPayment(b);
     const history=label('button','Payments','secondary');history.onclick=()=>showPayments(b);
-    actions.append(edit,payment,history);
+    const proforma=label('button','Proforma PDF','secondary');proforma.disabled=b.status==='cancelled';
+    proforma.onclick=()=>createInvoice(b);
+    actions.append(edit,payment,history,proforma);
     row.append(guest,dates,stage,due,actions);list.append(row);
   }
   $('#stat-bookings').textContent=bookings.filter(b=>b.status!=='cancelled').length;
@@ -86,7 +88,29 @@ function updateRoomOptions(selected=''){
   const count=$('#booking-form [name=rooms_count]');
   if(select.value){count.value='1';count.disabled=true;}else count.disabled=false;
 }
-async function load(){[rooms,bookings]=await Promise.all([api('/api/rooms'),api('/api/bookings')]);renderBookings();renderRooms();renderCalendar();}
+async function load(){
+  [rooms,bookings,invoices]=await Promise.all([api('/api/rooms'),api('/api/bookings'),api('/api/invoices')]);
+  renderBookings();renderRooms();renderCalendar();renderInvoices();
+}
+function renderInvoices(){
+  const list=$('#invoice-list');list.replaceChildren();
+  if(!invoices.length)list.append(label('p','No proforma invoices yet. Create one from a booking.','muted'));
+  for(const inv of invoices){
+    const row=label('div',undefined,'invoice-row');
+    const name=label('div');name.append(label('strong',inv.number),label('small',inv.snapshot.guest_name+' · '+inv.snapshot.issued_on));
+    const sum=label('strong',money(inv.snapshot.total_paise));
+    const link=label('a','Download PDF','secondary');link.href='/api/invoices/'+inv.id+'/pdf';link.setAttribute('download','');
+    row.append(name,sum,link);list.append(row);
+  }
+}
+async function createInvoice(booking){
+  if(!confirm('Create or download the saved proforma invoice for '+booking.guest_name+'? Booking details and received advances are snapshotted.'))return;
+  try{
+    const inv=await api('/api/bookings/'+booking.id+'/proforma',{method:'POST'});
+    await load();
+    window.location.href='/api/invoices/'+inv.id+'/pdf';
+  }catch(error){alert(error.message);}
+}
 function openNew(){
   editingId=null;
   const f=$('#booking-form');f.reset();

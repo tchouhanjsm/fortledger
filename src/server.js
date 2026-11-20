@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDatabase, assertAvailability } from './database.js';
 import { bookingTotals, nightsBetween, toPaise } from './finance.js';
+import { createProforma,getInvoice,listInvoices } from './invoices.js';
+import { streamProformaPdf } from './invoice-pdf.js';
 
 export function createApp(db) {
   const app = express();
@@ -12,6 +14,25 @@ export function createApp(db) {
   app.use(express.static(publicDir));
 
   const listRooms = db.prepare('SELECT * FROM rooms ORDER BY id');
+  app.get('/api/invoices',(_req,res)=>res.json(listInvoices(db)));
+  app.post('/api/bookings/:id/proforma',(req,res,next)=>{
+    try{
+      const invoice=createProforma(db,Number(req.params.id));
+      res.status(invoice.already_existed?200:201).json(invoice);
+    }catch(e){next(e);}
+  });
+  app.get('/api/invoices/:id',(req,res,next)=>{
+    const invoice=getInvoice(db,Number(req.params.id));
+    if(!invoice)return res.status(404).json({error:'Invoice not found'});
+    res.json(invoice);
+  });
+  app.get('/api/invoices/:id/pdf',(req,res,next)=>{
+    try{
+      const invoice=getInvoice(db,Number(req.params.id));
+      if(!invoice)return res.status(404).json({error:'Invoice not found'});
+      streamProformaPdf(invoice.snapshot,res);
+    }catch(e){next(e);}
+  });
   app.get('/api/health', (_req,res)=>res.json({ ok:true }));
   app.get('/api/rooms', (_req,res)=>res.json(listRooms.all()));
   app.patch('/api/rooms/:id', (req,res,next)=>{
