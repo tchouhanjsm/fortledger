@@ -10,6 +10,7 @@ Requires Node.js 22+ and a local build toolchain for the SQLite native dependenc
 ```bash
 npm install
 npm test
+npm run setup-auth  # first use; choose a strong local password
 npm start
 ```
 
@@ -59,3 +60,6 @@ Open **Guest folio** from a booking. The folio shows accommodation due, unsettle
 
 ## Calendar views
 The booking calendar has two views: a seven-day room assignment grid and a monthly overview of occupied room counts out of seven physical rooms. Category-held unassigned bookings count as occupied capacity in the monthly overview. Click a date to jump to its week. Checkout date is excluded from occupied nights.
+
+## Local administrator sign-in (alpha)
+First-time setup requires `npm run setup-auth` in an interactive terminal. A strong password is hashed using Node.js scrypt and stored under the gitignored `data/admin-auth.json` (mode 0600); it is never sent to a cloud service. `npm start` refuses to start until a password has been configured. The browser signs in using an HttpOnly SameSite=Strict session cookie; sessions expire after eight hours or logout, and repeated failed attempts trigger a local cooldown. API requests are protected, including backup downloads, and mutations require JSON with same-origin checks. Existing automated integration tests use a deliberately unauthenticated in-memory app fixture; production startup enforces authentication. **Do not reuse banking or other passwords.** Security and physical-device deployment still require review.

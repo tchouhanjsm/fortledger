@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in · FortLedger</title><link rel="stylesheet" href="/styles.css"></head>
+<body class="login-page"><main class="login-main"><div class="login-card"><span class="eyebrow">GARH JAISAL / OPERATIONS</span><h1>FortLedger</h1><p>Sign in to your local business workspace.</p><form id="login-form"><label>Administrator password<input type="password" name="password" autocomplete="current-password" required autofocus></label><button class="primary" type="submit">Sign in</button><p id="login-error" role="alert"></p></form><small>Stored locally. No cloud account required.</small></div></main>
+<script type="module">
+const form=document.querySelector('#login-form'),error=document.querySelector('#login-error');
+form.onsubmit=async e=>{
+  e.preventDefault();error.textContent='';
+  const button=form.querySelector('button');button.disabled=true;
+  try{
+    const res=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password:form.elements.namedItem('password').value})});
+    if(!res.ok){const data=await res.json();throw new Error(data.error||'Sign in failed');}
+    window.location.replace('/');
+  }catch(e){error.textContent=e.message;}
+  finally{button.disabled=false;}
+};
+fetch('/api/auth/status').then(r=>r.json()).then(data=>{if(data.authenticated)window.location.replace('/');}).catch(()=>{});
+</script></body></html>

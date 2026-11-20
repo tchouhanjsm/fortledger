@@ -77,3 +77,10 @@ All five increments completed in this development session were reviewed and merg
 - Testing evidence is GitHub Actions unit/integration checks; no physical Epson test, tax/legal review, live-user test or rendered PDF visual approval has been performed.
 - Prior dated log entries describe historical stage limitations; consult this checkpoint and source code for current state.
 - **Next blockers:** local login/security, legally verified final tax invoices, Epson printer implementation and physical validation, automatic backups, manual charge review, refunds and app packaging. Do not mark production-ready.
+
+## 2026-11-21 — Local administrator authentication
+- Added first-use CLI password setup with scrypt salted hash in ignored local data file, no plain password in Git.
+- Production startup refuses to serve business data without a configured password; browser uses HttpOnly SameSite=Strict session cookies and logs out.
+- Protected all API routes, including backups; same-origin, JSON-only mutation checks and basic login throttling implemented.
+- Test fixture constructors remain unauthenticated only for deterministic integration tests; production invocation explicitly requires auth.
+- Pending: installation test on actual business device, password recovery process, penetration review, encrypted off-device backup, and role-based staff permissions.
