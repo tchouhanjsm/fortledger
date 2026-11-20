@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {authGate,loadPasswordRecord} from './auth.js';
 import { openDatabase, assertAvailability } from './database.js';
 import { bookingTotals, nightsBetween, toPaise } from './finance.js';
 import { createProforma,getInvoice,listInvoices } from './invoices.js';
@@ -9,10 +10,16 @@ import { getBusinessSettings,updateBusinessSettings } from './business-settings.
 import {importMenuCsv,listMenu,createRestaurantBill,listRestaurantBills} from './restaurant.js';
 import {getGuestFolio,settleRoomBill,settleCombined} from './folio.js';
 
-export function createApp(db) {
+export function createApp(db,{authRecord=null}={}) {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '64kb' }));
+  const gate=authGate(authRecord);
+  app.use('/api',gate.checkRequest);
+  app.post('/api/auth/login',gate.login);
+  app.get('/api/auth/status',(req,res)=>res.json(gate.status(req)));
+  app.use('/api',gate.protect);
+  app.post('/api/auth/logout',gate.logout);
   const publicDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public');
   app.use(express.static(publicDir));
 
@@ -202,5 +209,12 @@ function normalizeBooking(input) {
 if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const db=openDatabase();
   const port=Number(process.env.PORT||3000);
-  createApp(db).listen(port,'127.0.0.1',()=>console.log('FortLedger local app: http://127.0.0.1:'+port));
+  const authRecord=loadPasswordRecord();
+  if(!authRecord){
+    console.error('FortLedger requires local admin authentication. Run: npm run setup-auth');
+    process.exitCode=1;db.close();
+  }else{
+    createApp(db,{authRecord}).listen(port,'127.0.0.1',
+      ()=>console.log('FortLedger local app: http://127.0.0.1:'+port));
+  }
 }

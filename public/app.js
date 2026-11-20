@@ -11,6 +11,7 @@ weekStart=addDays(weekStart,-((weekStart.getDay()+6)%7));
 async function api(url,options={}){
   const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});
   const data=await response.json();
+  if(response.status===401&&url!=='/api/auth/status'){window.location.href='/login.html';throw new Error('Login required');}
   if(!response.ok)throw new Error(data.error||'Request failed');
   return data;
 }
@@ -369,6 +370,10 @@ $('#business-form').onsubmit=async event=>{
     message.textContent='Saved successfully';
   }catch(e){message.textContent=e.message;}
   finally{button.disabled=false;}
+};
+$('#logout').onclick=async()=>{
+  try{await api('/api/auth/logout',{method:'POST',body:'{}'});window.location.href='/login.html';}
+  catch(e){alert(e.message);}
 };
 $('#new-booking').onclick=openNew;
 $('#close-dialog').onclick=()=>$('#booking-dialog').close();

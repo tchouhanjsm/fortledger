@@ -10,7 +10,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test",
-    "restore": "node src/restore.js"
+    "restore": "node src/restore.js",
+    "setup-auth": "node src/setup-auth.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
