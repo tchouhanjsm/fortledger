@@ -17,3 +17,5 @@
 #folio-dialog{width:min(620px,95vw)}#folio-room-bills{margin-top:15px}#folio-message{color:#426b51;font-size:12px}#folio-combined{white-space:normal}
 
 .month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-left:1px solid #e5ebe6;border-top:1px solid #e5ebe6}.month-heading{text-align:center;padding:10px 5px;font-size:11px;font-weight:700;background:#f5f8f4;color:#53685b;border-right:1px solid #e5ebe6;border-bottom:1px solid #e5ebe6}.month-day{min-height:86px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;gap:8px;padding:11px;border:0;border-right:1px solid #e5ebe6;border-bottom:1px solid #e5ebe6;background:white;color:#234937;cursor:pointer}.month-day:hover{background:#edf4ef}.month-day strong{font-size:12px}.month-day span{font-size:10px;color:#50715d}.outside-month{opacity:.35}@media(max-width:650px){.month-day{min-height:61px;padding:5px}.month-day span{font-size:9px}}
+
+[hidden]{display:none!important}
