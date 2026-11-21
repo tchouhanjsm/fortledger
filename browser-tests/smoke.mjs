@@ -6,7 +6,7 @@ import {createApp} from '../src/server.js';
 import {importMenuCsv} from '../src/restaurant.js';
 
 const db=openDatabase(':memory:');
-importMenuCsv(db,'name,category,price,tax_rate\\nMasala Chai,Hot Drinks,80,5');
+importMenuCsv(db,'name,category,price,tax_rate\nMasala Chai,Hot Drinks,80,5');
 const server=createApp(db).listen(0,'127.0.0.1');
 await new Promise((resolve,reject)=>{
   server.once('listening',resolve);
@@ -140,7 +140,7 @@ try{
       await page.locator('#restaurant').waitFor({state:'visible'});
       await page.locator('#menu-items').getByRole('button',{name:'+ Add'}).first().click();
       const sum=await page.locator('#cart-total').textContent();
-      assert.match(sum,/80\\.00/);
+      assert.match(sum,/80\.00/);
       let submissions=0;
       await page.route('**/api/restaurant/bills',async route=>{
         if(route.request().method()!=='POST')return route.continue();
