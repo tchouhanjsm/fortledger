@@ -86,7 +86,7 @@ test('HTTP permissions enforce owner-only DELETE while manager PATCH stays avail
   const base='http://127.0.0.1:'+server.address().port;
   const request=async(path,method='GET',body,cookie)=>{
     const res=await fetch(base+path,{method,headers:{'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{})},
-      body:body===undefined?undefined:JSON.stringify(body)});
+      body:body===undefined?(method==='DELETE'?'{}':undefined):JSON.stringify(body)});
     return {status:res.status,data:await res.json(),cookie:res.headers.get('set-cookie')?.split(';')[0]};
   };
   try{
