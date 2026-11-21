@@ -728,7 +728,7 @@ async function load(){
     can('maintenance.read')?api('/api/maintenance'):Promise.resolve([]),
     can('guests.read')?api('/api/guests'):Promise.resolve([])
   ]);
-  renderMenu();renderCart();renderRestaurantHistory();
+  renderMenu();refreshRestaurantGuestPicker();renderCart();renderRestaurantHistory();
   if(businessSettings){
     for(const [key,value] of Object.entries(businessSettings)){
       const field=$('#business-form').elements.namedItem(key);if(field)field.value=value;
@@ -1147,17 +1147,20 @@ async function recordPaymentRefund(b){
   }catch(error){alert(error.message);}
 }
 
-function renderMenu(){
-  const list=$('#menu-items');list.replaceChildren();
-  const query=$('#menu-search').value.trim().toLowerCase();
-  for(const item of menu.filter(x=>(x.name+' '+x.category).toLowerCase().includes(query))){
-    const row=label('div',undefined,'menu-item');
-    const details=label('div');details.append(label('strong',item.name),label('small',item.category+' · '+money(item.price_paise)));
-    const add=label('button','+ Add','secondary');add.onclick=()=>{const existing=cart.find(x=>x.menu_item_id===item.id);if(existing)existing.quantity++;else cart.push({menu_item_id:item.id,quantity:1});renderCart();};
-    if(can('restaurant.write'))row.append(details,add);else row.append(details);
-    list.append(row);
+let selectedMenuCategory='all';
+function renderMenuCategories(){
+  const categories=$('#menu-categories'),available=[...new Set(menu.map(x=>x.category))].sort((a,b)=>a.localeCompare(b));
+  if(selectedMenuCategory!=='all'&&!available.includes(selectedMenuCategory))selectedMenuCategory='all';
+  categories.replaceChildren();
+  for(const category of ['all',...available]){
+    const chip=label('button',category==='all'?'All items':category,'secondary');
+    chip.type='button';chip.classList.add('pos-category');
+    chip.setAttribute('aria-pressed',String(selectedMenuCategory===category));
+    chip.onclick=()=>{selectedMenuCategory=category;renderMenu();};
+    categories.append(chip);
   }
-  if(!list.children.length)list.append(label('p','No menu items found. Import a CSV to start.','muted'));
+}
+function refreshRestaurantGuestPicker(){
   const guest=$('#restaurant-guest'),old=guest.value;guest.replaceChildren();
   const manual=label('option','Manual room / guest entry');manual.value='manual';guest.append(manual);
   for(const b of bookings.filter(x=>x.status==='checked_in')){
@@ -1166,6 +1169,29 @@ function renderMenu(){
   if([...guest.options].some(x=>x.value===old))guest.value=old;
   updateManualRoomFields();
 }
+function renderMenu(){
+  renderMenuCategories();
+  const list=$('#menu-items');list.replaceChildren();
+  const query=$('#menu-search').value.trim().toLocaleLowerCase();
+  const matching=menu.filter(x=>(selectedMenuCategory==='all'||x.category===selectedMenuCategory)&&
+    (x.name+' '+x.category).toLocaleLowerCase().includes(query));
+  $('#menu-result-count').textContent=matching.length+' of '+menu.length+' items';
+  for(const item of matching){
+    const row=label('div',undefined,'menu-item');
+    const details=label('div');details.append(label('strong',item.name),label('small',item.category+' · '+money(item.price_paise)));
+    const add=label('button','+ Add','secondary');add.type='button';
+    add.setAttribute('aria-label','Add '+item.name+' to bill');
+    add.onclick=()=>{
+      const existing=cart.find(x=>x.menu_item_id===item.id);
+      if(existing){if(existing.quantity>=100)return;existing.quantity++;}
+      else cart.push({menu_item_id:item.id,quantity:1});
+      renderCart();
+    };
+    if(can('restaurant.write'))row.append(details,add);else row.append(details);
+    list.append(row);
+  }
+  if(!list.children.length)list.append(label('p',menu.length?'No matching menu items. Clear the search or select All items.':'No menu items found. Import a CSV to start.','muted'));
+}
 function renderCart(){
   const list=$('#cart-items');list.replaceChildren();
   for(const entry of cart){
@@ -1173,13 +1199,21 @@ function renderCart(){
     const row=label('div',undefined,'cart-row');
     const text=label('span',item.name+' · '+money(item.price_paise));
     const controls=label('div',undefined,'cart-actions');
-    const minus=label('button','−','secondary');minus.onclick=()=>{entry.quantity--;if(entry.quantity<1)cart=cart.filter(x=>x!==entry);renderCart();};
-    const count=label('strong',String(entry.quantity));
-    const plus=label('button','+','secondary');plus.onclick=()=>{if(entry.quantity<100)entry.quantity++;renderCart();};
+    const minus=label('button','−','secondary');minus.type='button';
+    minus.setAttribute('aria-label','Remove one '+item.name);
+    minus.onclick=()=>{entry.quantity--;if(entry.quantity<1)cart=cart.filter(x=>x!==entry);renderCart();};
+    const count=label('strong',String(entry.quantity));count.setAttribute('aria-label',entry.quantity+' portions');
+    const plus=label('button','+','secondary');plus.type='button';
+    plus.setAttribute('aria-label','Add one '+item.name);
+    plus.disabled=entry.quantity>=100;
+    plus.onclick=()=>{if(entry.quantity<100)entry.quantity++;renderCart();};
     controls.append(minus,count,plus);row.append(text,controls);list.append(row);
   }
   if(!cart.length)list.append(label('p','Select a menu item to begin.','muted'));
-  const total=cart.reduce((s,x)=>s+(menu.find(y=>y.id===x.menu_item_id)?.price_paise||0)*x.quantity,0);
+  const total=cart.reduce((sum,x)=>sum+(menu.find(y=>y.id===x.menu_item_id)?.price_paise||0)*x.quantity,0);
+  const quantity=cart.reduce((sum,x)=>sum+x.quantity,0);
+  $('#cart-count').textContent=quantity+' item'+(quantity===1?'':'s');
+  $('#clear-restaurant-cart').disabled=!cart.length||Boolean(pendingRestaurantBill);
   $('#cart-total').textContent='Total (inclusive) '+money(total);
 }
 function renderRestaurantHistory(){
@@ -1241,6 +1275,14 @@ async function linkPendingCharge(bill){
   }catch(error){alert(error.message);}
 }
 $('#menu-search').oninput=renderMenu;
+$('#clear-restaurant-cart').onclick=()=>{
+  if(pendingRestaurantBill){
+    $('#restaurant-message').textContent='An earlier bill submission is not confirmed. Review saved bills and retry the original request before starting another bill.';
+    return;
+  }
+  if(!cart.length||!confirm('Clear this unsaved bill?'))return;
+  cart=[];renderCart();$('#restaurant-message').textContent='Unsaved bill cleared.';
+};
 $('#restaurant-method').onchange=()=>{
   $('#room-charge-choice').hidden=$('#restaurant-method').value!=='room';
   updateManualRoomFields();

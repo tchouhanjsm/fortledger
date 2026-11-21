@@ -138,9 +138,21 @@ try{
       // POST response. The UI must lookup the UUID, not create a second bill.
       await page.evaluate(()=>{window.location.hash='restaurant';});
       await page.locator('#restaurant').waitFor({state:'visible'});
-      await page.locator('#menu-items').getByRole('button',{name:'+ Add'}).first().click();
+      const chip=page.locator('#menu-categories').getByRole('button',{name:'Hot Drinks'});
+      await chip.click();
+      assert.equal(await chip.getAttribute('aria-pressed'),'true');
+      assert.equal(await page.locator('#menu-result-count').textContent(),'1 of 1 items');
+      await page.locator('#menu-search').fill('no-such-dish');
+      assert.equal(await page.locator('#menu-result-count').textContent(),'0 of 1 items');
+      await page.locator('#menu-search').fill('');
+      await page.locator('#menu-items').getByRole('button',{name:'Add Masala Chai to bill'}).first().click();
       const sum=await page.locator('#cart-total').textContent();
       assert.match(sum,/80\.00/);
+      assert.equal(await page.locator('#cart-count').textContent(),'1 item');
+      await page.locator('#cart-items').getByRole('button',{name:'Add one Masala Chai'}).click();
+      assert.equal(await page.locator('#cart-count').textContent(),'2 items');
+      await page.locator('#cart-items').getByRole('button',{name:'Remove one Masala Chai'}).click();
+      assert.equal(await page.locator('#cart-count').textContent(),'1 item');
       let submissions=0;
       await page.route('**/api/restaurant/bills',async route=>{
         if(route.request().method()!=='POST')return route.continue();
