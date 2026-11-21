@@ -2,17 +2,19 @@ import PDFDocument from 'pdfkit';
 
 const money=paise=>'INR '+(paise/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
 const dark='#1e4437',muted='#66766e';
-export function streamProformaPdf(snapshot,response){
+export function streamProformaPdf(snapshot,response,logo=null){
   const pdf=new PDFDocument({size:'A4',margin:48,info:{Title:'Proforma '+snapshot.number,Author:'Garh Jaisal'}});
   response.setHeader('Content-Type','application/pdf');
   response.setHeader('Content-Disposition','attachment; filename="'+snapshot.number+'-proforma.pdf"');
   pdf.pipe(response);
   pdf.rect(0,0,595,10).fill(dark);
   const business=snapshot.business||{hotel_name:'Garh Jaisal'};
-  pdf.fillColor(dark).font('Helvetica-Bold').fontSize(23).text((business.hotel_name||'Garh Jaisal').toUpperCase(),48,45,{width:270});
+  if(logo?.data)pdf.image(logo.data,48,36,{fit:[65,65]});
+  const titleX=logo?.data?125:48;
+  pdf.fillColor(dark).font('Helvetica-Bold').fontSize(23).text((business.hotel_name||'Garh Jaisal').toUpperCase(),titleX,45,{width:logo?.data?212:270});
   const subtitle=[business.address,business.gstin?'GSTIN: '+business.gstin:''].filter(Boolean).join('  ·  ');
   if(subtitle)pdf.fillColor(muted).font('Helvetica').fontSize(8).text(subtitle,48,109,{width:499,height:30,ellipsis:true});
-  pdf.fillColor(muted).font('Helvetica').fontSize(10).text('PROFORMA INVOICE',48,79);
+  pdf.fillColor(muted).font('Helvetica').fontSize(10).text('PROFORMA INVOICE',logo?.data?125:48,83);
   pdf.fillColor(dark).font('Helvetica-Bold').fontSize(11).text(snapshot.number,350,55,{align:'right',width:195});
   pdf.fillColor(muted).font('Helvetica').fontSize(9).text('Issued: '+snapshot.issued_on,350,75,{align:'right',width:195});
   pdf.moveTo(48,145).lineTo(547,145).strokeColor('#d7e2da').stroke();
