@@ -138,3 +138,8 @@ All five increments completed in this development session were reviewed and merg
 - New proforma snapshots reference the logo active when issued; PDFs resolve that historical asset even after later branding changes. Tax draft PDFs use the logo selected at draft preparation.
 - Added Settings upload/preview UI, authenticated logo file API, and fallback to hotel name when no logo exists. Image aspect ratio is maintained.
 - Actual Garh Jaisal logo artwork has not yet been provided, so precise visual branding approval remains pending.
+
+## 2026-11-21 — Read-only operational diagnostics and release checkpoint
+- Added `npm run doctor` to verify administrator password configuration, SQLite integrity/foreign keys/schema, seven active rooms, pending manual charges and uncertain printing jobs.
+- Diagnostics check encrypted backup freshness and printer configuration without displaying guests, bank details or secrets; output is always labeled pre-production.
+- Remaining external blockers: real Epson model verification/printing, legally complete signed tax invoice issuance with accountant review, actual hotel logo artwork/visual acceptance, recovery drill on target computer, and production installation/QA.
