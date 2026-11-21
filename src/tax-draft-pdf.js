@@ -44,14 +44,17 @@ export function streamTaxDraftPdf(s,res,logo=null){
   let y=318;
   for(const entry of s.lines){
     const item=entry.rooms+' x '+entry.description+' / '+entry.nights+' night(s)';
-    if(y+37>464){
+    pdf.font('Helvetica').fontSize(8.5);
+    const itemHeight=Math.max(20,pdf.heightOfString(item,{width:365,lineGap:1})+3);
+    const rowHeight=itemHeight+19;
+    if(y+rowHeight>464){
       pdf.addPage();pageHeader(pdf,s.proforma_number);y=105;
     }
-    txt(pdf,item,LEFT,y,365,{size:8.5,height:22});
-    txt(pdf,'SAC '+entry.sac+'   |   '+money(entry.rate_paise)+' per room/night',LEFT,y+17,355,
+    txt(pdf,item,LEFT,y,365,{size:8.5,height:itemHeight});
+    txt(pdf,'SAC '+entry.sac+'   |   '+money(entry.rate_paise)+' per room/night',LEFT,y+itemHeight,355,
       {size:7.3,height:16,color:MUTED});
     txt(pdf,money(entry.total_paise),428,y,124,{size:8.7,bold:true,height:18,align:'right'});
-    y+=38;
+    y+=rowHeight;
   }
   line(pdf,y+1);
   y+=13;
