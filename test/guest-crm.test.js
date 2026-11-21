@@ -102,18 +102,12 @@ test('v5 to v6 upgrade preserves historic reservations, payments and no false gu
     const id=Number(db.prepare(`INSERT INTO bookings(guest_name,checkin,checkout,rooms_count,category,nightly_rate_paise)
       VALUES('Historic guest','2026-12-01','2026-12-02',1,'Unassigned',450000)`).run().lastInsertRowid);
     db.prepare("INSERT INTO payments(booking_id,amount_paise,method) VALUES(?,150000,'upi')").run(id);
-    // Mimic the previous schema before nullable booking link existed.
-    db.exec(`CREATE TABLE bookings_pre_v6 AS SELECT
-      id,guest_name,company_name,checkin,checkout,rooms_count,room_id,category,meal_plan,
-      nightly_rate_paise,status,created_at FROM bookings`);
-    // SQLite DROP/rename rebuild is ONLY for synthetic test fixture.
-    db.pragma('foreign_keys = OFF');
-    db.exec('DROP TABLE bookings');
-    db.exec('ALTER TABLE bookings_pre_v6 RENAME TO bookings');
+    // Recreate v5 structure in a disposable fixture without rewriting bookings.
+    db.exec('DROP INDEX idx_bookings_guest_profile');
+    db.exec('ALTER TABLE bookings DROP COLUMN guest_id');
     db.exec('DROP TABLE guest_profiles');
     db.pragma('user_version = 5');
     db.close();
-    // This synthetic rewrite does not preserve FKs. Use a cleaner v5 simulation below if needed.
     const reopened=openDatabase(file);
     assert.equal(reopened.pragma('user_version',{simple:true}),6);
     assert.equal(reopened.prepare('SELECT COUNT(*) AS n FROM guest_profiles').get().n,0);
