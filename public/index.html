@@ -9,7 +9,7 @@
   <div class="sidebar-bottom"><span class="status-dot"></span> Local-first workspace <small>Local alpha · Modules in development</small></div>
 </aside>
 <main>
-  <header><div><div class="eyebrow">GARH JAISAL / FORTLEDGER</div><h1 id="workspace-title">Bookings <em>&</em> guest stays</h1><p id="workspace-subtitle">Calendar, arrivals, advances and balances.</p><p id="connection-status" role="status" aria-live="polite" data-state="checking">Checking local server…</p></div><div class="header-actions"><button id="logout" class="secondary">Log out</button><button id="new-booking" class="primary">+ New booking</button></div></header>
+  <header><div><div class="eyebrow">GARH JAISAL / FORTLEDGER</div><h1 id="workspace-title">Bookings <em>&</em> guest stays</h1><p id="workspace-subtitle">Calendar, arrivals, advances and balances.</p><p id="connection-status" role="status" aria-live="polite" data-state="checking">Checking local server…</p><p id="refresh-message" role="status" aria-live="polite" class="muted"></p></div><div class="header-actions"><button id="refresh-workspace" type="button" class="secondary">↻ Refresh</button><button id="logout" class="secondary">Log out</button><button id="new-booking" class="primary">+ New booking</button></div></header>
   <section id="dashboard" class="home-dashboard">
   <div class="dashboard-welcome">
     <div><span class="eyebrow">YOUR WORKSPACE</span><h2 id="home-welcome">Welcome to FortLedger</h2>
@@ -192,7 +192,9 @@
     <p id="menu-import-message" role="status" aria-live="polite"></p>
     <div id="menu-import-preview"></div>
   </details>
-  <h3>Saved restaurant bills</h3><div id="restaurant-history"></div>
+  <div class="pos-history-head"><div><h3>Saved restaurant bills</h3><p class="muted">Find an existing bill and reopen its original receipt. A saved bill is never recreated.</p></div>
+    <div class="pos-history-tools"><label class="sr-only" for="restaurant-history-search">Search saved bills</label><input id="restaurant-history-search" type="search" placeholder="Bill #, guest or room" aria-label="Search saved restaurant bills"><button id="restaurant-history-more" class="secondary" type="button" hidden>Show more</button></div></div>
+  <p id="restaurant-history-count" class="muted" role="status"></p><div id="restaurant-history"></div>
 </section>
 <section id="profile" class="panel" hidden>
     <div class="panel-head"><div><h2>My profile</h2><p>Your local account and access permissions.</p></div></div>
