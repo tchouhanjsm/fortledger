@@ -113,6 +113,9 @@ export function openDatabase(filename = databasePath()) {
       ensureBookingCreateSchema(db);
       db.pragma('user_version = 7');
     })();
+    // Additive v7 support table: existing v7 installations also need tombstones
+    // without modifying historical booking or payment records.
+    ensureBookingCreateSchema(db);
     // Preserve the established repair for legacy direct room_id records on reopen.
     // This is idempotent DML, not a schema migration.
     db.exec('INSERT OR IGNORE INTO booking_room_allocations(booking_id,room_id) SELECT id,room_id FROM bookings WHERE room_id IS NOT NULL');
