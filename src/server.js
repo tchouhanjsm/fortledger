@@ -5,6 +5,7 @@ import {authGate,loadPasswordRecord} from './auth.js';
 import {renderRestaurantReceipt} from './restaurant-receipt.js';
 import {prepareTaxDraft,getTaxDraft} from './tax-draft.js';
 import {streamTaxDraftPdf} from './tax-draft-pdf.js';
+import {setHotelLogo,getCurrentLogo,getActiveLogoId,getLogoAsset} from './hotel-logo.js';
 import {scheduleEncryptedBackups} from './encrypted-backups.js';
 import {printSavedBill,getPrintStatus} from './printer.js';
 import { openDatabase, assertAvailability } from './database.js';
@@ -19,6 +20,7 @@ import { NET_PAYMENTS_SQL, paymentHistory,recordRefund } from './payment-ledger.
 export function createApp(db,{authRecord=null}={}) {
   const app = express();
   app.disable('x-powered-by');
+  app.use('/api/settings/logo',express.json({limit:'1.2mb'}));
   app.use(express.json({ limit: '64kb' }));
   const gate=authGate(authRecord);
   app.use('/api',gate.checkRequest);
@@ -72,6 +74,18 @@ export function createApp(db,{authRecord=null}={}) {
   app.post('/api/restaurant/bills',(req,res,next)=>{
     try{res.status(201).json(createRestaurantBill(db,req.body));}catch(error){next(error);}
   });
+  app.get('/api/settings/logo',(_req,res)=>res.json({active:getCurrentLogo(db)}));
+  app.get('/api/settings/logo/image',(_req,res)=>{
+    const logo=getLogoAsset(db,getActiveLogoId(db));
+    if(!logo)return res.status(404).send('Hotel logo not configured');
+    res.setHeader('Content-Type',logo.mime);
+    res.setHeader('Cache-Control','no-store');
+    res.setHeader('X-Content-Type-Options','nosniff');
+    res.send(logo.data);
+  });
+  app.post('/api/settings/logo',(req,res,next)=>{
+    try{res.status(201).json(setHotelLogo(db,req.body));}catch(error){next(error);}
+  });
   app.get('/api/settings/business',(_req,res)=>res.json(getBusinessSettings(db)));
   app.put('/api/settings/business',(req,res,next)=>{
     try{res.json(updateBusinessSettings(db,req.body));}
@@ -90,7 +104,7 @@ export function createApp(db,{authRecord=null}={}) {
     try{
       const draft=getTaxDraft(db,Number(req.params.id));
       if(!draft)return res.status(404).json({error:'Tax draft not found'});
-      streamTaxDraftPdf(draft.snapshot,res);
+      streamTaxDraftPdf(draft.snapshot,res,getLogoAsset(db,draft.snapshot.logo_asset_id));
     }catch(error){next(error);}
   });
   app.get('/api/invoices',(_req,res)=>res.json(listInvoices(db)));
@@ -109,7 +123,7 @@ export function createApp(db,{authRecord=null}={}) {
     try{
       const invoice=getInvoice(db,Number(req.params.id));
       if(!invoice)return res.status(404).json({error:'Invoice not found'});
-      streamProformaPdf(invoice.snapshot,res);
+      streamProformaPdf(invoice.snapshot,res,getLogoAsset(db,invoice.snapshot.logo_asset_id));
     }catch(e){next(e);}
   });
   app.get('/api/health', (_req,res)=>res.json({ ok:true }));
