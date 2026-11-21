@@ -81,13 +81,42 @@ try{
       await page.locator('#booking-payment-dialog').waitFor({state:'hidden'});
       assert.equal(db.prepare('SELECT count(*) AS n FROM payments').get().n,1);
       assert.equal(db.prepare('SELECT sum(amount_paise) AS n FROM payments').get().n,50000);
+
+      // Reproduce the browser's Failed to fetch AFTER SQLite has committed.
+      // Route the real POST through the server, then deliberately drop its
+      // response. The client must confirm by UUID without submitting again.
+      let attemptedCreates=0;
+      await page.route('**/api/bookings',async route=>{
+        if(route.request().method()!=='POST')return route.continue();
+        attemptedCreates++;
+        const serverResponse=await route.fetch();
+        assert.equal(serverResponse.status(),201);
+        await route.abort('failed');
+      });
+      await page.locator('#new-booking').click();
+      await page.locator('#booking-dialog').waitFor({state:'visible'});
+      await page.locator('#booking-form [name="guest_name"]').fill('Synthetic Lost Response Guest');
+      await page.locator('#booking-form [name="checkin"]').fill('2027-01-15');
+      await page.locator('#booking-form [name="checkout"]').fill('2027-01-16');
+      await page.locator('#booking-form [name="nightly_rate"]').fill('4200');
+      await page.locator('#booking-form [name="amount_paid"]').fill('0');
+      page.once('dialog',dialog=>dialog.accept());
+      await page.locator('#booking-submit').click();
+      await page.locator('#booking-dialog').waitFor({state:'hidden'});
+      await page.locator('#booking-list .booking-row')
+        .filter({hasText:'Synthetic Lost Response Guest'}).waitFor({state:'visible'});
+      assert.equal(attemptedCreates,1,'Lost response must not create another booking');
+      assert.equal(db.prepare('SELECT count(*) AS n FROM bookings').get().n,2);
+      assert.equal(db.prepare('SELECT count(*) AS n FROM booking_create_requests').get().n,2);
+      assert.equal(db.prepare('SELECT count(*) AS n FROM payments').get().n,1);
+      await page.unroute('**/api/bookings');
     }
     assert.deepEqual(errors,[],'Uncaught browser errors at '+width+'px: '+errors.join('; '));
     await page.close();
   }
-  assert.equal(db.prepare('SELECT count(*) AS n FROM bookings').get().n,1);
-  assert.equal(db.prepare('SELECT count(*) AS n FROM booking_create_requests').get().n,1);
-  console.log('PASS: Chromium reception flow at 390, 768, and 1440 px, booking and payment recorded once.');
+  assert.equal(db.prepare('SELECT count(*) AS n FROM bookings').get().n,2);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM booking_create_requests').get().n,2);
+  console.log('PASS: Chromium receipt-loss reconciliation, real booking/payment flow, 390/768/1440 px.');
 }finally{
   await browser?.close();
   await new Promise(resolve=>server.close(resolve));
