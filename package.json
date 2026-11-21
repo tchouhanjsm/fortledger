@@ -15,7 +15,8 @@
     "backup:decrypt": "node src/decrypt-backup.js",
     "doctor": "node src/doctor.js",
     "recovery:drill": "node src/recovery-drill.js",
-    "test:browser": "node browser-tests/smoke.mjs"
+    "test:browser": "node browser-tests/smoke.mjs",
+    "recovery:encrypted-drill": "node src/encrypted-recovery-drill.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
