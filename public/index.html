@@ -5,7 +5,7 @@
 <body>
 <aside class="sidebar">
   <div class="brand"><span class="brandmark">F</span><div><strong>FortLedger</strong><small>GARH JAISAL · OPERATIONS</small></div></div>
-  <nav aria-label="Primary"><a class="active" href="#bookings">▦ &nbsp; Booking Calendar</a><a href="#rooms">▤ &nbsp; Room Inventory</a><a href="#invoices">▧ &nbsp; Invoices</a><a href="#business-settings">⚙ &nbsp; Hotel Settings</a><a href="#restaurant">☕ &nbsp; Restaurant</a></nav>
+  <nav aria-label="Primary"><a class="active" href="#bookings">▦ &nbsp; Booking Calendar</a><a href="#rooms">▤ &nbsp; Room Inventory</a><a href="#invoices">▧ &nbsp; Invoices</a><a href="#business-settings">⚙ &nbsp; Hotel Settings</a><a href="#restaurant">☕ &nbsp; Restaurant</a><a href="#profile">◉ &nbsp; My Profile</a></nav>
   <div class="sidebar-bottom"><span class="status-dot"></span> Local-first workspace <small>Local alpha · Modules in development</small></div>
 </aside>
 <main>
@@ -42,6 +42,25 @@
   </details>
   <h3>Saved restaurant bills</h3><div id="restaurant-history"></div>
 </section>
+<section id="profile" class="panel" hidden>
+    <div class="panel-head"><div><h2>My profile</h2><p>Your local account and access permissions.</p></div></div>
+    <div class="profile-hero"><span id="profile-avatar" class="profile-avatar">FL</span><div><h3 id="profile-name">Loading profile</h3><p id="profile-role"></p><p id="profile-username"></p></div></div>
+    <form id="profile-form" class="profile-form"><label>Display name<input name="display_name" required maxlength="90"></label><button type="submit" class="primary">Save my profile</button></form>
+    <p id="profile-message" role="status"></p>
+    <h3>My permissions</h3><div id="profile-permissions" class="profile-permissions"></div>
+    <div id="staff-admin" hidden>
+      <h3>Staff accounts</h3><p class="muted">Owner-only account management. Deactivated staff lose access immediately.</p>
+      <div id="staff-list"></div>
+      <form id="staff-create" class="staff-create">
+        <label>Username<input name="username" required minlength="3" maxlength="32" autocomplete="off" placeholder="e.g. reception1"></label>
+        <label>Display name<input name="display_name" required maxlength="90" placeholder="Staff name"></label>
+        <label>Role<select name="role"><option value="frontdesk">Front desk</option><option value="cashier">Restaurant cashier</option><option value="manager">Manager</option></select></label>
+        <label>Temporary password<input name="password" type="password" required minlength="12" autocomplete="new-password"></label>
+        <button type="submit" class="primary">Create staff account</button>
+      </form>
+      <p id="staff-message" role="status"></p>
+    </div>
+  </section>
 <section id="business-settings" class="panel"><div class="panel-head"><div><h2>Hotel & payment settings</h2><p>Saved locally and copied into new proforma invoices. Previously issued PDFs remain unchanged.</p></div></div>
   <form id="business-form" class="settings-grid">
     <label>Hotel name<input name="hotel_name" required maxlength="80"></label>
