@@ -103,3 +103,6 @@ Room inventory now stores physical housekeeping state with a v3 additive migrati
 
 ## Phase 3C — End-of-day cash review
 Owner/manager can perform a manually confirmed closing with opening float and physically counted cash, preserving a dated immutable ledger snapshot. The app detects when later transactions make that snapshot stale and flags it for review. SQLite schema v4; full statutory accounting and discrepancy correction workflows remain out of scope.
+
+## Phase 3D — Maintenance management and inventory protection
+SQLite v5 adds a lightweight maintenance issue register and optional date-scoped room outages. Report an issue without blocking a room; only owner/manager may block or release room availability. Proposed outages are refused if they would invalidate any existing named-room allocation or category-held reservation. New reservations and check-ins must respect outages. This remains a seven-room local-first workflow; no external task system.
