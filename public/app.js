@@ -76,7 +76,14 @@ function renderBookings(){
       if(next==='checked_in'&&(b.room_ids||[]).length!==b.rooms_count){
         alert('Assign every booked physical room before checking in.');status.value=b.status;return;
       }
+      if(next==='checked_in'&&!confirm(
+        'Confirm the guest has physically arrived and the assigned room is ready for check-in?')){
+        status.value=b.status;return;
+      }
       if(next==='checked_out'){
+        if(!confirm('Confirm the guest has physically departed? Checkout will mark assigned rooms as needing cleaning.')){
+          status.value=b.status;return;
+        }
         try{
           const folio=await api('/api/bookings/'+b.id+'/folio');
           if(folio.combined_due_paise>0){
@@ -897,6 +904,29 @@ $('#invoice-form').onsubmit=async event=>{
   finally{button.disabled=false;}
 };
 
+/* Booking editor safety: an accidental dismissal must not silently discard work.
+   The snapshot covers native fields AND physical room assignment checkboxes. */
+let bookingFormBaseline='',bookingSavePending=false;
+function bookingFormSnapshot(){
+  const form=$('#booking-form');
+  const fields=[...form.elements].filter(element=>element.name&&!element.disabled)
+    .map(element=>[element.name,element.type==='checkbox'?element.checked:element.value]);
+  const roomIds=[...document.querySelectorAll('#room-assignment-list input:checked')]
+    .map(input=>Number(input.value)).sort((a,b)=>a-b);
+  return JSON.stringify({fields,roomIds});
+}
+function captureBookingBaseline(){bookingFormBaseline=bookingFormSnapshot();}
+function closeBookingEditor(){
+  if(bookingSavePending)return;
+  if(bookingFormSnapshot()!==bookingFormBaseline&&
+      !confirm('Discard unsaved booking changes? No reservation will be saved.'))return;
+  $('#booking-dialog').close();
+}
+$('#booking-dialog').addEventListener('cancel',event=>{
+  if(bookingSavePending){event.preventDefault();return;}
+  if(bookingFormSnapshot()!==bookingFormBaseline&&
+     !confirm('Discard unsaved booking changes? No reservation will be saved.'))event.preventDefault();
+});
 function openNew(){
   editingId=null;
   const f=$('#booking-form');f.reset();
@@ -904,7 +934,7 @@ function openNew(){
   $('#dialog-title').textContent='Add a booking';$('#booking-submit').textContent='Save booking';
   $('#initial-advance').disabled=false;$('#initial-advance').closest('label').hidden=false;
   $('#advance-method').disabled=false;$('#advance-method').closest('label').hidden=false;
-  setMessage('');updateRoomOptions();updatePreview();$('#booking-dialog').showModal();
+  setMessage('');updateRoomOptions();updatePreview();captureBookingBaseline();$('#booking-dialog').showModal();
 }
 function openEdit(b){
   editingId=b.id;
@@ -918,7 +948,7 @@ function openEdit(b){
   $('#dialog-title').textContent='Edit booking';$('#booking-submit').textContent='Save changes';
   $('#initial-advance').disabled=true;$('#initial-advance').closest('label').hidden=true;
   $('#advance-method').disabled=true;$('#advance-method').closest('label').hidden=true;
-  setMessage('');updatePreview();$('#booking-dialog').showModal();
+  setMessage('');updatePreview();captureBookingBaseline();$('#booking-dialog').showModal();
 }
 function updatePreview(){
   const form=$('#booking-form');const data=Object.fromEntries(new FormData(form));
@@ -1282,8 +1312,8 @@ $('#logout').onclick=async()=>{
   catch(e){alert(e.message);}
 };
 $('#new-booking').onclick=openNew;
-$('#close-dialog').onclick=()=>$('#booking-dialog').close();
-$('#cancel-dialog').onclick=()=>$('#booking-dialog').close();
+$('#close-dialog').onclick=closeBookingEditor;
+$('#cancel-dialog').onclick=closeBookingEditor;
 $('#category-select').onchange=()=>{updateRoomOptions();updatePreview();};
 $('#room-assignment-list').onchange=()=>{updatePreview();};
 $('#booking-form').oninput=updatePreview;
@@ -1301,18 +1331,37 @@ $('#week-today').onclick=()=>{weekStart=new Date();weekStart=addDays(weekStart,-
 $('#backup-button').onclick=()=>{window.location.href='/api/backup';};
 $('#booking-form').onsubmit=async e=>{
   e.preventDefault();
+  if(bookingSavePending)return;
   const form=e.currentTarget, data=Object.fromEntries(new FormData(form));
   data.room_ids=[...document.querySelectorAll('#room-assignment-list input:checked')].map(x=>Number(x.value));
+  if(!data.checkin||!data.checkout||data.checkout<=data.checkin){
+    setMessage('Check-out must be after check-in. Dates are hotel nights.');return;
+  }
+  if(data.room_ids.length>Number(data.rooms_count)){
+    setMessage('Assigned physical rooms cannot exceed the booked room count.');return;
+  }
   if(!editingId&&Number(data.amount_paid)>0&&!['cash','upi','card','bank'].includes(data.advance_method)){
     setMessage('Choose the advance payment method before saving.');return;
   }
-  const submit=$('#booking-submit');submit.disabled=true;
+  const submit=$('#booking-submit');
+  bookingSavePending=true;submit.disabled=true;
+  const editing=editingId!==null;
   try{
-    if(editingId)await api('/api/bookings/'+editingId,{method:'PATCH',body:JSON.stringify(data)});
+    if(editing)await api('/api/bookings/'+editingId,{method:'PATCH',body:JSON.stringify(data)});
     else await api('/api/bookings',{method:'POST',body:JSON.stringify(data)});
-    $('#booking-dialog').close();await load();
-  }catch(error){setMessage(error.message);}
-  finally{submit.disabled=false;}
+    captureBookingBaseline();
+    $('#booking-dialog').close();
+  }catch(error){
+    setMessage(error.message);
+    if(!editing)setMessage('Booking could not be confirmed: '+error.message+
+      '. Check the reservation ledger before submitting again to avoid a duplicate booking.');
+    return;
+  }finally{
+    bookingSavePending=false;submit.disabled=false;
+  }
+  try{await load();}
+  catch(error){alert('Booking saved, but refreshing failed: '+error.message+
+    '. Reload to view the saved reservation.');}
 };
 applyWorkspaceView();
 load().catch(e=>{$('#booking-list').textContent='Unable to load: '+e.message;});
