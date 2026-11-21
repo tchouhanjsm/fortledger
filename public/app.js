@@ -154,7 +154,7 @@ function renderBookings(){
           '? Only untouched reservations without payments, invoices, stays or restaurant charges can be removed. This cannot be undone.'))return;
         remove.disabled=true;row.setAttribute('aria-busy','true');
         try{
-          await api('/api/bookings/'+b.id,{method:'DELETE'});
+          await api('/api/bookings/'+b.id,{method:'DELETE',body:JSON.stringify({})});
         }catch(error){
           alert('Booking was not deleted: '+error.message);
           remove.disabled=false;row.removeAttribute('aria-busy');return;
@@ -331,7 +331,7 @@ function renderGuests(){
       remove.onclick=async()=>{
         if(!confirm('Permanently delete unused guest profile '+guest.name+'? This cannot be undone.'))return;
         remove.disabled=true;row.setAttribute('aria-busy','true');
-        try{await api('/api/guests/'+guest.id,{method:'DELETE'});}
+        try{await api('/api/guests/'+guest.id,{method:'DELETE',body:JSON.stringify({})});}
         catch(error){alert('Guest profile was not deleted: '+error.message);
           remove.disabled=false;row.removeAttribute('aria-busy');return;}
         try{await load();}
