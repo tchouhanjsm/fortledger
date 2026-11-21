@@ -29,6 +29,14 @@ try{
     assert.equal(await page.getByRole('navigation',{name:'Primary'}).isVisible(),true);
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-
       document.documentElement.clientWidth);
+    if(overflow>2){
+      const offenders=await page.evaluate(()=>[...document.querySelectorAll('body *')]
+        .filter(el=>!el.hidden&&getComputedStyle(el).display!=='none'&&
+          el.getBoundingClientRect().right>document.documentElement.clientWidth+2)
+        .slice(0,12).map(el=>({tag:el.tagName,id:el.id,klass:el.className,
+          right:Math.round(el.getBoundingClientRect().right)})));
+      console.error('Horizontal overflow candidates at '+width+'px:',JSON.stringify(offenders));
+    }
     assert.ok(overflow<=2,'Unexpected page horizontal overflow at '+width+'px: '+overflow);
 
     if(width===390){
