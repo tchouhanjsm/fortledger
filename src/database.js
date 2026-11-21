@@ -4,6 +4,7 @@ import path from 'node:path';
 import { ensureInvoiceSchema } from './invoice-schema.js';
 import { ensureBusinessSettings } from './business-settings.js';
 import { ensureRestaurantSchema } from './restaurant.js';
+import { ensureRefundSchema } from './payment-ledger.js';
 
 export function openDatabase(filename = process.env.FORTLEDGER_DB || path.resolve('data/fortledger.sqlite')) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -52,6 +53,7 @@ export function openDatabase(filename = process.env.FORTLEDGER_DB || path.resolv
   ensureInvoiceSchema(db);
   ensureBusinessSettings(db);
   ensureRestaurantSchema(db);
+  ensureRefundSchema(db);
   if (db.prepare('SELECT count(*) AS count FROM rooms').get().count === 0) {
     const add = db.prepare('INSERT INTO rooms (name) VALUES (?)');
     db.transaction(() => { for (let i = 1; i <= 7; i++) add.run('Room ' + i); })();

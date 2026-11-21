@@ -10,6 +10,7 @@ import { streamProformaPdf } from './invoice-pdf.js';
 import { getBusinessSettings,updateBusinessSettings } from './business-settings.js';
 import {importMenuCsv,listMenu,createRestaurantBill,listRestaurantBills} from './restaurant.js';
 import {getGuestFolio,settleRoomBill,settleCombined} from './folio.js';
+import { NET_PAYMENTS_SQL, paymentHistory,recordRefund } from './payment-ledger.js';
 
 export function createApp(db,{authRecord=null}={}) {
   const app = express();
@@ -97,7 +98,7 @@ export function createApp(db,{authRecord=null}={}) {
     SELECT a.booking_id,a.room_id,r.name FROM booking_room_allocations a
     JOIN rooms r ON r.id=a.room_id ORDER BY a.room_id`);
   const getBookings = db.prepare(`
-    SELECT b.*, COALESCE((SELECT sum(amount_paise) FROM payments p WHERE p.booking_id=b.id),0) AS paid_paise,
+    SELECT b.*, ${NET_PAYMENTS_SQL} AS paid_paise,
       r.name AS assigned_room FROM bookings b LEFT JOIN rooms r ON r.id=b.room_id ORDER BY b.checkin DESC,b.id DESC
   `);
   app.get('/api/bookings', (req,res)=>{
@@ -162,8 +163,14 @@ export function createApp(db,{authRecord=null}={}) {
       const id=Number(req.params.id);
       if(!Number.isSafeInteger(id)||id<1) throw new Error('Invalid booking ID');
       if(!db.prepare('SELECT 1 FROM bookings WHERE id=?').get(id)) return res.status(404).json({error:'Booking not found'});
-      res.json(db.prepare('SELECT id,amount_paise,note,created_at FROM payments WHERE booking_id=? ORDER BY id').all(id));
+      res.json(paymentHistory(db,id));
     }catch(e){next(e);}
+  });
+  app.post('/api/bookings/:id/payments/:paymentId/refunds',(req,res,next)=>{
+    try{
+      const refund=recordRefund(db,Number(req.params.id),Number(req.params.paymentId),req.body);
+      res.status(refund.already_recorded?200:201).json(refund);
+    }catch(error){next(error);}
   });
   app.get('/api/backup', async (_req,res,next)=>{
     const fs=await import('node:fs');

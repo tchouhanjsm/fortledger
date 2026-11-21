@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { bookingTotals } from './finance.js';
+import { NET_PAYMENTS_SQL } from './payment-ledger.js';
 
 const METHODS=['cash','upi','card'];
 function validMethod(method){if(!METHODS.includes(method))throw new Error('Choose cash, UPI, or card');return method;}
 function getBooking(db,id){
   if(!Number.isSafeInteger(id)||id<1)throw new Error('Invalid booking ID');
   const booking=db.prepare(`
-    SELECT b.*, COALESCE((SELECT sum(amount_paise) FROM payments WHERE booking_id=b.id),0) AS paid_paise
+    SELECT b.*, ${NET_PAYMENTS_SQL} AS paid_paise
     FROM bookings b WHERE b.id=?`).get(id);
   if(!booking)throw new Error('Booking not found');
   return booking;
