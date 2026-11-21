@@ -108,3 +108,6 @@ In **Hotel & payment settings**, select a PNG or JPEG logo (maximum 800 KB) and 
 
 ## Local readiness diagnostics
 Run `npm run doctor` from the project directory after setting up the administrator login and starting the app at least once. The tool uses read-only SQLite checks for integrity, foreign keys and expected schema, verifies the seven-room inventory, counts pending manual room charges and uncertain printer jobs, and checks whether encrypted backup files are recent. It reports configuration status without printing guest names, banking details or secrets. It **never** labels the app production-ready: signed final GST invoice issuance, physical Epson tests and a complete recovery drill are independent release gates.
+
+## Focused module navigation
+FortLedger now opens a single operational area at a time instead of stacking unrelated sections on one long page. The five navigation links show booking calendar/ledger, seven-room inventory, invoices, restaurant billing, or hotel settings. The current module is reflected in the URL fragment, so bookmarks work. On mobile, the navigation remains accessible via a horizontally scrollable menu. This improves first-screen clarity and reduces unnecessary scrolling without introducing client-side routing dependencies.
