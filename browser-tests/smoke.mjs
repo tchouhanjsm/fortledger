@@ -69,6 +69,16 @@ try{
       horizontalPan+'px (document intrinsic overflow '+overflow+'px)');
 
     if(width===390){
+      // A read-only status check must report a lost local server without
+      // submitting or replaying any financial mutation.
+      await page.waitForFunction(()=>document.querySelector('#connection-status')?.dataset.state==='connected');
+      await page.route('**/api/auth/status',route=>route.abort('failed'));
+      await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+      await page.waitForFunction(()=>document.querySelector('#connection-status')?.dataset.state==='lost');
+      assert.match(await page.locator('#connection-status').textContent(),/check the ledger before retrying/);
+      await page.unroute('**/api/auth/status');
+      await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+      await page.waitForFunction(()=>document.querySelector('#connection-status')?.dataset.state==='connected');
       await page.locator('#new-booking').click();
       await page.locator('#booking-dialog').waitFor({state:'visible'});
       await page.locator('#booking-form [name="guest_name"]').fill('Synthetic Browser Guest');
