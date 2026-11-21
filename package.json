@@ -11,7 +11,8 @@
     "dev": "node --watch src/server.js",
     "test": "node --test",
     "restore": "node src/restore.js",
-    "setup-auth": "node src/setup-auth.js"
+    "setup-auth": "node src/setup-auth.js",
+    "backup:decrypt": "node src/decrypt-backup.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
