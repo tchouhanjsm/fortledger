@@ -120,3 +120,11 @@ dialog::backdrop{background:rgba(23,38,62,.72)}
   #mobile-more-panel a{display:flex;align-items:center;justify-content:center;text-align:center;border-radius:9px;background:#f0f5f0;min-height:48px;color:#234338;font-weight:650;font-size:12px;text-decoration:none;padding:9px}
   #mobile-more-panel a.active{background:#dae9de}
 }
+
+/* Read-only local connection status — reachability, not payment confirmation. */
+#connection-status{display:inline-flex;align-items:center;max-width:100%;gap:7px;padding:6px 10px;margin:8px 0 0;border-radius:9px;background:#edf3f0;color:#355f4b;border:1px solid #dce9e0;font-size:11px;font-weight:650;line-height:1.5}
+#connection-status::before{content:'';width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#5a9167}
+#connection-status[data-state="lost"]{background:#fff2ef;color:#943c30;border-color:#f1d5d0}
+#connection-status[data-state="lost"]::before{background:#c34c38}
+#connection-status[data-state="checking"],#connection-status[data-state="login"]{background:#f8f4ea;color:#755d2c;border-color:#e8ddc2}
+#connection-status[data-state="checking"]::before,#connection-status[data-state="login"]::before{background:#b49453}
