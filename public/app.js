@@ -1,17 +1,22 @@
 import {occupiedRoomCount,monthGrid} from './calendar-utils.js';
 import {VIEWS,viewForHash} from './navigation.js';
 const $ = selector => document.querySelector(selector);
+let currentUser=null;
+const can=permission=>Boolean(currentUser&&(currentUser.permissions.includes('*')||currentUser.permissions.includes(permission)));
+const VIEW_ACCESS={bookings:'bookings.read',rooms:'rooms.read',invoices:'invoices.read',restaurant:'restaurant.read','business-settings':'settings.read',profile:'profile.read'};
 function applyWorkspaceView(){
-  const view=viewForHash(window.location.hash);
+  let view=viewForHash(window.location.hash);
+  if(currentUser&&!can(VIEW_ACCESS[view]))view=can('bookings.read')?'bookings':can('restaurant.read')?'restaurant':'profile';
   const config=VIEWS[view],shown=new Set(config.sections);
-  for(const id of ['stats','calendar','bookings','rooms','invoices','restaurant','business-settings','roadmap']){
+  for(const id of ['stats','calendar','bookings','rooms','invoices','restaurant','business-settings','roadmap','profile']){
     const panel=document.getElementById(id);
     if(panel)panel.hidden=!shown.has(id);
   }
   $('#workspace-title').textContent=config.title;
   $('#workspace-subtitle').textContent=config.subtitle;
-  $('#new-booking').hidden=view!=='bookings';
+  $('#new-booking').hidden=view!=='bookings'||!can('bookings.write');
   for(const nav of document.querySelectorAll('.sidebar nav a')){
+    nav.hidden=Boolean(currentUser&&!can(VIEW_ACCESS[viewForHash(nav.getAttribute('href'))]));
     const active=viewForHash(nav.getAttribute('href'))===view;
     nav.classList.toggle('active',active);
     if(active)nav.setAttribute('aria-current','page');
@@ -144,11 +149,32 @@ function updateRoomOptions(selected=[]){
   if(!list.children.length)list.append(label('p','Set up physical rooms for this category first.','muted'));
 }
 async function load(){
-  [rooms,bookings,invoices,businessSettings,menu,restaurantBills]=await Promise.all([api('/api/rooms'),api('/api/bookings'),api('/api/invoices'),api('/api/settings/business'),api('/api/restaurant/menu'),api('/api/restaurant/bills')]);
+  currentUser=await api('/api/me');
+  [rooms,bookings,invoices,businessSettings,menu,restaurantBills]=await Promise.all([
+    can('rooms.read')?api('/api/rooms'):Promise.resolve([]),
+    can('bookings.read')?api('/api/bookings'):can('restaurant.read')?api('/api/restaurant/checked-in'):Promise.resolve([]),
+    can('invoices.read')?api('/api/invoices'):Promise.resolve([]),
+    can('settings.read')?api('/api/settings/business'):Promise.resolve(null),
+    can('restaurant.read')?api('/api/restaurant/menu'):Promise.resolve([]),
+    can('restaurant.read')?api('/api/restaurant/bills'):Promise.resolve([])
+  ]);
   renderMenu();renderCart();renderRestaurantHistory();
-  for(const [key,value] of Object.entries(businessSettings)){const field=$('#business-form').elements.namedItem(key);if(field)field.value=value;}
+  if(businessSettings){
+    for(const [key,value] of Object.entries(businessSettings)){
+      const field=$('#business-form').elements.namedItem(key);if(field)field.value=value;
+    }
+  }
   renderBookings();renderRooms();renderCalendar();renderInvoices();
-  await refreshHotelLogo();
+  if(can('settings.read'))await refreshHotelLogo();
+  $('#backup-button').hidden=!can('settings.admin');
+  $('#save-restaurant-bill').hidden=!can('restaurant.write');
+  $('#import-menu').hidden=!can('restaurant.write');
+  $('#preview-menu').hidden=!can('restaurant.write');
+  $('#staff-admin').hidden=currentUser.role!=='owner';
+  const settingsSave=$('#business-form').querySelector('[type=submit]');
+  if(settingsSave)settingsSave.disabled=!can('settings.admin');
+  await renderProfile();
+  applyWorkspaceView();
 }
 function renderInvoices(){
   const list=$('#invoice-list');list.replaceChildren();
