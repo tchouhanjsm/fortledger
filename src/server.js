@@ -10,7 +10,7 @@ import { bookingTotals, nightsBetween, toPaise } from './finance.js';
 import { createProforma,getInvoice,listInvoices } from './invoices.js';
 import { streamProformaPdf } from './invoice-pdf.js';
 import { getBusinessSettings,updateBusinessSettings } from './business-settings.js';
-import {importMenuCsv,listMenu,createRestaurantBill,listRestaurantBills} from './restaurant.js';
+import {importMenuCsv,listMenu,createRestaurantBill,listRestaurantBills,linkManualRoomCharge} from './restaurant.js';
 import {getGuestFolio,settleRoomBill,settleCombined} from './folio.js';
 import { NET_PAYMENTS_SQL, paymentHistory,recordRefund } from './payment-ledger.js';
 
@@ -61,6 +61,10 @@ export function createApp(db,{authRecord=null}={}) {
       res.setHeader('X-Content-Type-Options','nosniff');
       res.send(html);
     }catch(error){next(error);}
+  });
+  app.post('/api/restaurant/bills/:id/link-booking',(req,res,next)=>{
+    try{res.json(linkManualRoomCharge(db,Number(req.params.id),Number(req.body?.booking_id)));}
+    catch(error){next(error);}
   });
   app.get('/api/restaurant/bills',(_req,res)=>res.json(listRestaurantBills(db)));
   app.post('/api/restaurant/bills',(req,res,next)=>{
