@@ -68,3 +68,15 @@
  .booking-more summary{width:100%;justify-content:center}
  .booking-more-actions{max-width:none}
 }
+
+/* Phase 7A Chromium regression: at narrow widths, panel headings and their
+   filter controls must stack rather than stretch the document beyond viewport. */
+@media(max-width:700px){
+  .panel-head{flex-direction:column;align-items:stretch;gap:13px}
+  .panel-head > *{min-width:0;max-width:100%}
+  .booking-filters{min-width:0;max-width:100%;align-items:stretch}
+  .booking-filters > *{min-width:0}
+  .booking-filters input{min-width:0;width:100%}
+  .booking-filters select{min-width:0;max-width:100%}
+  .calendar-controls{max-width:100%;flex-wrap:wrap}
+}
