@@ -214,3 +214,8 @@ All five increments completed in this development session were reviewed and merg
 - Recovery validation now rejects future schema versions and foreign-key corruption before copying into a live location. Restore CLI path handling now uses a cross-platform file URL conversion.
 - Regression tests simulate pre-versioned populated ledgers, incompatible future versions, corrupt legacy FK records and repeated startup.
 - **Remaining:** This v1 baseline is a migration foundation, not proof of production safe restore. Before each future migration, perform an external verified backup and full Windows recovery drill.
+
+## 2026-11-21 — Phase 2B: automated isolated recovery rehearsal
+- Implemented `npm run recovery:drill` to use a consistent SQLite backup, exercise the existing offline restore into an isolated temporary directory, and cryptographically compare every restored table and value to the snapshot.
+- The verification also tests copying the local administrator authentication file without printing the credential or private guest data. The temporary restored data is removed afterward; the live database remains untouched.
+- Regression tests cover bookings, payments, issued proforma, menu, food bills, staff, branding and missing credential files. This is **not** a verified external-drive disaster recovery and does not certify Windows installation hardware.
