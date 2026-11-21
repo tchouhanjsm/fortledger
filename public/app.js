@@ -65,8 +65,8 @@ function setConnectionStatus(state){
   const el=$('#connection-status');
   if(!el)return;
   el.dataset.state=state;
-  el.textContent=state==='connected'?'Local server reachable':
-    state==='login'?'Local server reachable — sign-in required':
+  el.textContent=state==='connected'?'FortLedger server reachable':
+    state==='login'?'FortLedger server reachable — sign-in required':
     state==='lost'?'Connection lost — check the ledger before retrying a booking or bill':
     'Checking local server…';
 }
@@ -1749,7 +1749,7 @@ $('#booking-form').onsubmit=async e=>{
       }catch(lookupError){
         setMessage('Cannot confirm booking because the local server is unreachable ('+
           error.message+'). Check that FortLedger is still running, reconnect or reopen '+
-          'http://127.0.0.1:3000, then check the ledger. Retry only unchanged details '+
+          window.location.origin+', then check the ledger. Retry only unchanged details '+
           'with this same request ID. Verification: '+lookupError.message);
         return;
       }
