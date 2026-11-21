@@ -61,7 +61,7 @@ export function diagnose({
       const dataDir=path.resolve(path.dirname(databaseFile));
       const sameDataFolder=resolvedDir===dataDir||resolvedDir.startsWith(dataDir+path.sep);
       const filenames=fs.readdirSync(resolvedDir)
-        .filter(f=>/^fortledger-.*\\.flbk$/.test(f))
+        .filter(f=>/^fortledger-.*\.flbk$/.test(f))
         .map(f=>({file:path.join(resolvedDir,f),mtime:fs.statSync(path.join(resolvedDir,f)).mtimeMs}))
         .sort((a,b)=>b.mtime-a.mtime);
       const latest=filenames[0];
