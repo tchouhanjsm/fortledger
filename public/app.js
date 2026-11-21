@@ -139,7 +139,15 @@ function renderBookings(){
     const refundButton=label('button','Record refund','secondary');
     refundButton.disabled=!can('refunds.write');
     refundButton.onclick=()=>recordPaymentRefund(b);
-    actions.append(edit,payment,history,refundButton,proforma,folioButton);
+    // Three routine actions stay visible. Infrequent actions are one disclosure
+    // away instead of six equally weighted controls on every reservation.
+    const more=label('details',undefined,'booking-more');
+    const moreTitle=label('summary','More actions');
+    moreTitle.setAttribute('aria-label','More actions for booking #'+b.id);
+    const moreItems=label('div',undefined,'booking-more-actions');
+    moreItems.append(history,refundButton,proforma);
+    more.append(moreTitle,moreItems);
+    actions.append(edit,payment,folioButton,more);
     row.append(guest,dates,stage,due,actions);list.append(row);
   }
   $('#stat-bookings').textContent=bookings.filter(b=>b.status!=='cancelled').length;
