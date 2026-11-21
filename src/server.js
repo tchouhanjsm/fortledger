@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {authGate,loadPasswordRecord} from './auth.js';
 import {renderRestaurantReceipt} from './restaurant-receipt.js';
+import {prepareTaxDraft,getTaxDraft} from './tax-draft.js';
+import {streamTaxDraftPdf} from './tax-draft-pdf.js';
 import {scheduleEncryptedBackups} from './encrypted-backups.js';
 import {printSavedBill,getPrintStatus} from './printer.js';
 import { openDatabase, assertAvailability } from './database.js';
@@ -74,6 +76,22 @@ export function createApp(db,{authRecord=null}={}) {
   app.put('/api/settings/business',(req,res,next)=>{
     try{res.json(updateBusinessSettings(db,req.body));}
     catch(error){next(error);}
+  });
+  app.post('/api/invoices/:id/tax-draft',(req,res,next)=>{
+    try{res.status(201).json(prepareTaxDraft(db,Number(req.params.id),req.body));}
+    catch(error){next(error);}
+  });
+  app.get('/api/tax-drafts/:id',(req,res,next)=>{
+    const draft=getTaxDraft(db,Number(req.params.id));
+    if(!draft)return res.status(404).json({error:'Tax draft not found'});
+    res.json(draft);
+  });
+  app.get('/api/tax-drafts/:id/pdf',(req,res,next)=>{
+    try{
+      const draft=getTaxDraft(db,Number(req.params.id));
+      if(!draft)return res.status(404).json({error:'Tax draft not found'});
+      streamTaxDraftPdf(draft.snapshot,res);
+    }catch(error){next(error);}
   });
   app.get('/api/invoices',(_req,res)=>res.json(listInvoices(db)));
   app.post('/api/bookings/:id/proforma',(req,res,next)=>{
