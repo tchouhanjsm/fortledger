@@ -83,7 +83,13 @@
 </section>
 <section class="stats" id="stats"><article><label>Physical rooms</label><b>7</b><span>Initial inventory</span></article><article><label>Reservations</label><b id="stat-bookings">—</b><span>Saved locally</span></article><article><label>Outstanding</label><b id="stat-due">—</b><span>All active bookings</span></article></section>
   <section class="panel" id="calendar"><div class="panel-head"><div><h2>Room calendar</h2><p>Week-by-room or month-by-occupancy. Checkout day is available for another arrival.</p></div><div class="calendar-controls"><button id="calendar-mode" class="secondary" aria-pressed="false">Month view</button><button id="week-prev" class="secondary" aria-label="Previous week">‹</button><span id="week-label"></span><button id="week-next" class="secondary" aria-label="Next week">›</button><button id="week-today" class="secondary">Today</button></div></div><div class="calendar-scroll" id="calendar-week"><div id="calendar-grid"></div></div><div id="calendar-month" class="month-grid" hidden></div><div id="unassigned-calendar" class="unassigned"></div></section>
-  <section id="bookings" class="panel"><div class="panel-head"><div><h2>Reservation ledger</h2><p>Search guests, companies and room categories.</p></div><div class="booking-filters"><label class="sr-only" for="booking-status-filter">Filter booking status</label>
+  <section id="bookings" class="panel"><div class="panel-head"><div><h2>Reservation ledger</h2><p>Search guests, companies and room categories.</p></div><div id="booking-quick-queues" class="booking-quick-queues" role="group" aria-label="Quick booking filters">
+  <button type="button" class="secondary" data-booking-queue="all" aria-pressed="true">All</button>
+  <button type="button" class="secondary" data-booking-queue="arrivals" aria-pressed="false">Arrivals</button>
+  <button type="button" class="secondary" data-booking-queue="departures" aria-pressed="false">Departures</button>
+  <button type="button" class="secondary" data-booking-queue="unassigned" aria-pressed="false">Unassigned</button>
+  <button type="button" class="secondary" data-booking-queue="outstanding" aria-pressed="false">Balances</button>
+</div><div class="booking-filters"><label class="sr-only" for="booking-status-filter">Filter booking status</label>
   <select id="booking-status-filter" aria-label="Filter booking status">
     <option value="all">All statuses</option><option value="reserved">Reserved</option>
     <option value="checked_in">Checked in</option><option value="checked_out">Checked out</option>
