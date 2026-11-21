@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildPrinterTestSlip,runPrinterSelfTest} from '../src/printer-self-test.js';
+import {buildPrinterTestSlip,runPrinterSelfTest} from '../src/epson-diagnostic-slip.js';
 
 test('synthetic Epson slip is visually distinct from a real sale',()=>{
   const payload=buildPrinterTestSlip();
