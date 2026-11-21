@@ -837,18 +837,26 @@ $('#daily-close-form').onsubmit=async event=>{
 };
 $('#daily-close-form').oninput=()=>{delete $('#daily-close-form').dataset.pendingRequestId;};
 $('#daily-close-form').elements.namedItem('business_date').onchange=renderDailyClose;
+// Multiple refreshes can overlap with a saved booking/room update. Only the
+// latest complete response is allowed to replace the displayed hotel ledger.
+let workspaceLoadRevision=0;
 async function load(){
-  currentUser=await api('/api/me');
-  [rooms,bookings,invoices,businessSettings,menu,restaurantBills,maintenanceIssues,guests]=await Promise.all([
-    can('rooms.read')?api('/api/rooms'):Promise.resolve([]),
-    can('bookings.read')?api('/api/bookings'):can('restaurant.read')?api('/api/restaurant/checked-in'):Promise.resolve([]),
-    can('invoices.read')?api('/api/invoices'):Promise.resolve([]),
-    can('settings.read')?api('/api/settings/business'):Promise.resolve(null),
-    can('restaurant.read')?api('/api/restaurant/menu'):Promise.resolve([]),
-    can('restaurant.read')?api('/api/restaurant/bills'):Promise.resolve([]),
-    can('maintenance.read')?api('/api/maintenance'):Promise.resolve([]),
-    can('guests.read')?api('/api/guests'):Promise.resolve([])
+  const revision=++workspaceLoadRevision;
+  const operator=await api('/api/me');
+  const allowed=permission=>Boolean(operator&&(operator.permissions.includes('*')||operator.permissions.includes(permission)));
+  const snapshot=await Promise.all([
+    allowed('rooms.read')?api('/api/rooms'):Promise.resolve([]),
+    allowed('bookings.read')?api('/api/bookings'):allowed('restaurant.read')?api('/api/restaurant/checked-in'):Promise.resolve([]),
+    allowed('invoices.read')?api('/api/invoices'):Promise.resolve([]),
+    allowed('settings.read')?api('/api/settings/business'):Promise.resolve(null),
+    allowed('restaurant.read')?api('/api/restaurant/menu'):Promise.resolve([]),
+    allowed('restaurant.read')?api('/api/restaurant/bills'):Promise.resolve([]),
+    allowed('maintenance.read')?api('/api/maintenance'):Promise.resolve([]),
+    allowed('guests.read')?api('/api/guests'):Promise.resolve([])
   ]);
+  if(revision!==workspaceLoadRevision)return false;
+  currentUser=operator;
+  [rooms,bookings,invoices,businessSettings,menu,restaurantBills,maintenanceIssues,guests]=snapshot;
   renderMenu();refreshRestaurantGuestPicker();renderCart();renderRestaurantHistory();
   if(businessSettings){
     for(const [key,value] of Object.entries(businessSettings)){
@@ -875,6 +883,7 @@ async function load(){
   $('#invoice-empty-action').hidden=Boolean(invoices.length)||!can('bookings.read');
   if(!menu.length&&can('restaurant.write'))$('#menu-import-section').open=true;
   applyWorkspaceView();
+  return true;
 }
 function renderInvoices(){
   const picker=$('#invoice-booking-select');picker.replaceChildren();
@@ -1337,13 +1346,27 @@ function renderCart(){
   $('#clear-restaurant-cart').disabled=!cart.length||Boolean(pendingRestaurantBill);
   $('#cart-total').textContent='Total (inclusive) '+money(total);
 }
+let restaurantHistoryLimit=15;
+function showRestaurantReceipt(id){
+  const href='/api/restaurant/bills/'+encodeURIComponent(id)+'/receipt';
+  window.open(href,'_blank','noopener');
+}
 function renderRestaurantHistory(){
   const list=$('#restaurant-history');list.replaceChildren();
-  for(const bill of restaurantBills.slice(0,15)){
+  const query=$('#restaurant-history-search').value.trim().toLocaleLowerCase().replace(/^#/,'');
+  const matched=restaurantBills.filter(bill=>
+    [String(bill.id),bill.payment_method,bill.manual_room||'',bill.manual_guest||'',
+      bill.booking_id==null?'':String(bill.booking_id)]
+      .some(value=>String(value).toLocaleLowerCase().includes(query)));
+  $('#restaurant-history-count').textContent=matched.length+' of '+restaurantBills.length+' saved bills'+
+    (query?' matching search':'');
+  const more=$('#restaurant-history-more');
+  more.hidden=matched.length<=restaurantHistoryLimit;
+  for(const bill of matched.slice(0,restaurantHistoryLimit)){
     const row=label('div',undefined,'menu-item');
     const details=label('div');details.append(label('strong','#'+bill.id+' · '+bill.payment_method.toUpperCase()),label('small',money(bill.total_paise)));
     const print=label('button','Print receipt','secondary');
-    print.onclick=()=>window.open('/api/restaurant/bills/'+bill.id+'/receipt','_blank','noopener');
+    print.onclick=()=>showRestaurantReceipt(bill.id);
     const lan=label('button','LAN Print','secondary');
     lan.onclick=async()=>{
       if(!confirm('Send existing saved receipt #'+bill.id+' to configured Epson LAN printer?'))return;
@@ -1370,8 +1393,11 @@ function renderRestaurantHistory(){
     row.append(details,print,lan);
     list.append(row);
   }
-  if(!restaurantBills.length)list.append(label('p','No restaurant bills yet.','muted'));
+  if(!matched.length)list.append(label('p',restaurantBills.length?
+    'No saved bills match this search. Clear the search to see all receipts.':'No restaurant bills yet.','muted'));
 }
+$('#restaurant-history-search').oninput=()=>{restaurantHistoryLimit=15;renderRestaurantHistory();};
+$('#restaurant-history-more').onclick=()=>{restaurantHistoryLimit+=20;renderRestaurantHistory();};
 function updateManualRoomFields(){
   $('#manual-room-fields').hidden=$('#restaurant-guest').value!=='manual';
 }
@@ -1464,9 +1490,18 @@ $('#save-restaurant-bill').onclick=async()=>{
     }
     pendingRestaurantBill=null;
     cart=[];
-    message.textContent='Bill #'+saved.id+' saved once. Receipt is available in Saved restaurant bills. Payment was recorded manually; no bank transfer was verified by FortLedger.';
-    try{await load();}
-    catch(error){message.textContent='Bill #'+saved.id+' saved, but refreshing failed: '+error.message+'. Reload the bill list; do not save again.';}
+    message.replaceChildren();
+    message.append(document.createTextNode('Bill #'+saved.id+' saved once. Payment was recorded manually; FortLedger did not verify a bank transfer. '));
+    const link=label('a','Open saved receipt #'+saved.id);
+    link.href='/api/restaurant/bills/'+encodeURIComponent(saved.id)+'/receipt';
+    link.target='_blank';link.rel='noopener';
+    message.append(link);
+    try{
+      const updated=await load();
+      if(updated===false)message.append(document.createTextNode(' A newer workspace refresh is in progress.'));
+    }catch(error){
+      message.append(document.createTextNode(' Refresh failed: '+error.message+'. The bill is already saved; use Refresh to reload, not Save again.'));
+    }
   }catch(error){message.textContent='Bill was not saved: '+error.message;}
   finally{restaurantBillSubmitting=false;button.disabled=false;}
 };
@@ -1735,6 +1770,17 @@ $('#booking-form').onsubmit=async e=>{
     }
   }catch(error){alert('Booking saved, but refreshing failed: '+error.message+
     '. Reload to view the saved reservation.');}
+};
+$('#refresh-workspace').onclick=async()=>{
+  const button=$('#refresh-workspace'),status=$('#refresh-message');
+  button.disabled=true;status.textContent='Refreshing current hotel records…';
+  try{
+    const complete=await load();
+    status.textContent=complete?'Hotel records refreshed.':'A newer refresh is replacing this one.';
+  }catch(error){
+    status.textContent='Could not refresh: '+error.message+
+      '. Existing data may be outdated. Check connection before taking further action.';
+  }finally{button.disabled=false;}
 };
 window.addEventListener('online',()=>{void probeServerConnection();});
 window.addEventListener('offline',()=>setConnectionStatus('lost'));
