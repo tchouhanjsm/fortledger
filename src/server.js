@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'node:path';
 import https from 'node:https';
+import {backupFreshness} from './backup-freshness.js';
 import { fileURLToPath } from 'node:url';
 import {authGate,loadPasswordRecord,DEFAULT_AUTH_FILE} from './auth.js';
 import {renderRestaurantReceipt} from './restaurant-receipt.js';
@@ -60,6 +61,7 @@ export function createApp(db,{authRecord=null,authFile=null,network=null}={}) {
   app.post('/api/auth/logout',gate.logout);
   app.use('/api',gate.authorize);
   app.get('/api/me',(req,res)=>res.json({...req.actor,permissions:ROLE_PERMISSIONS[req.actor.role]||[]}));
+  app.get('/api/system/backup-status',(_req,res)=>res.json(backupFreshness()));
   app.post('/api/me/password',gate.changePassword);
   app.patch('/api/me',(req,res,next)=>{
     try{res.json(updateOwnProfile(db,req.actor,req.body?.display_name));}

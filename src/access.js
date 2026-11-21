@@ -2,7 +2,7 @@ export const ROLE_PERMISSIONS={
   owner:['*'],
   manager:['bookings.read','bookings.write','payments.write','refunds.write','rooms.read','rooms.write',
     'invoices.read','invoices.write','restaurant.read','restaurant.write','folio.read','folio.write',
-    'settings.read','audit.read','finance.read','finance.write','analytics.read','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','maintenance.manage','guests.read','guests.write','profile.read','profile.write'],
+    'settings.read','audit.read','finance.read','finance.write','analytics.read','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','maintenance.manage','guests.read','guests.write','profile.read','profile.write','system.health.read'],
   frontdesk:['bookings.read','bookings.write','payments.write','rooms.read',
     'invoices.read','invoices.write','restaurant.read','folio.read','folio.write','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','guests.read','guests.write',
     'profile.read','profile.write'],
@@ -14,6 +14,7 @@ export function may(role,permission){
 }
 export function requiredPermission(method,path){
   if(path==='/health')return 'profile.read';
+  if(path==='/system/backup-status')return method==='GET'?'system.health.read':null;
   if(path==='/me')return method==='GET'?'profile.read':'profile.write';
   if(path==='/me/password')return method==='POST'?'profile.write':null;
   if(path.startsWith('/staff'))return 'staff.admin';

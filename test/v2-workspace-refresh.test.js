@@ -11,9 +11,9 @@ test('manual refresh is read-only and old load response cannot overwrite newer r
   assert.match(app,/const revision=\+\+workspaceLoadRevision/);
   assert.match(app,/if\(revision!==workspaceLoadRevision\)return false/);
   assert.match(app,/const snapshot=await Promise\.all/);
-  assert.match(app,/\[rooms,bookings,invoices,businessSettings,menu,restaurantBills,maintenanceIssues,guests\]=snapshot/);
+  assert.match(app,/\[rooms,bookings,invoices,businessSettings,menu,restaurantBills,maintenanceIssues,guests,backupStatus\]=snapshot/);
   assert.ok(app.indexOf('if(revision!==workspaceLoadRevision)return false')<
-    app.indexOf('[rooms,bookings,invoices,businessSettings,menu,restaurantBills,maintenanceIssues,guests]=snapshot'));
+    app.indexOf('[rooms,bookings,invoices,businessSettings,menu,restaurantBills,maintenanceIssues,guests,backupStatus]=snapshot'));
   assert.match(app,/\$\('#refresh-workspace'\)\.onclick=async\(\)=>/);
 });
 test('saved restaurant bills remain searchable without creating new bills',()=>{
