@@ -365,7 +365,7 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
     }catch(error){next(error);}
   });
   app.use((err,req,res,_next)=>{
-    const isConflict=/availability|capacity|already assigned|Not enough|out of service|Existing room assignment conflicts|reservations exceed/i.test(err.message);
+    const isConflict=/availability|capacity|already assigned|Not enough|^Room out of service|^Assigned room is out of service|Existing room assignment conflicts|reservations exceed/i.test(err.message);
     const isDuplicate=/UNIQUE constraint/.test(err.message);
     res.status(isConflict||isDuplicate?409:400).json({error:isDuplicate?'Room name already exists':err.message});
   });
