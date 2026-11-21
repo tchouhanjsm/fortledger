@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {DEFAULT_AUTH_FILE,loadPasswordRecord} from './auth.js';
 import {databasePath} from './data-paths.js';
 import {validatePrinterAddress} from './printer.js';
+import {verifyEncryptedBackupFile} from './encrypted-backups.js';
 
 export function diagnose({
   databaseFile=databasePath(),
@@ -55,11 +56,37 @@ export function diagnose({
   else if(!path.isAbsolute(dir)||secret.length<16)add('Encrypted backups','fail','Backup path must be absolute and passphrase at least 16 characters');
   else if(!fs.existsSync(dir))add('Encrypted backups','warn','Backup folder does not exist yet');
   else{
-    const filenames=fs.readdirSync(dir).filter(f=>/^fortledger-.*\.flbk$/.test(f));
-    const newest=filenames.map(f=>fs.statSync(path.join(dir,f)).mtimeMs).sort((a,b)=>b-a)[0];
-    const ageHours=newest===undefined?Infinity:(now.getTime()-newest)/3600000;
-    add('Encrypted backups',ageHours<=36?'pass':'warn',
-      ageHours<=36?'At least one encrypted backup written in last 36 hours':'No recent encrypted backup; check scheduler');
+    try{
+      const resolvedDir=fs.realpathSync(dir);
+      const dataDir=path.resolve(path.dirname(databaseFile));
+      const sameDataFolder=resolvedDir===dataDir||resolvedDir.startsWith(dataDir+path.sep);
+      const filenames=fs.readdirSync(resolvedDir)
+        .filter(f=>/^fortledger-.*\\.flbk$/.test(f))
+        .map(f=>({file:path.join(resolvedDir,f),mtime:fs.statSync(path.join(resolvedDir,f)).mtimeMs}))
+        .sort((a,b)=>b.mtime-a.mtime);
+      const latest=filenames[0];
+      const ageHours=latest?(now.getTime()-latest.mtime)/3600000:Infinity;
+      if(!latest){
+        add('Encrypted backups','warn','No encrypted backup found; check scheduler');
+      }else{
+        try{
+          const summary=verifyEncryptedBackupFile(latest.file,secret);
+          if(summary.rooms!==7)throw new Error('Invalid room inventory');
+          add('Encrypted backup integrity','pass','Latest encrypted snapshot authenticated and SQLite validated');
+          add('Encrypted backups',ageHours>=0&&ageHours<=36?'pass':'warn',
+            ageHours>=0&&ageHours<=36?'Latest verified snapshot within 36 hours':
+              'Latest verified backup is stale; check scheduler');
+        }catch{
+          add('Encrypted backup integrity','fail','Latest encrypted snapshot could not be authenticated or validated; restore readiness unknown');
+          add('Encrypted backups','warn','Do not rely on this backup until a verified replacement exists');
+        }
+      }
+      add('Backup storage separation','warn',sameDataFolder?
+        'Backup is inside the live database folder; move backups to independently protected storage':
+        'Path is separate from live data; a physically separate drive has not been verified');
+    }catch{
+      add('Encrypted backups','fail','Unable to safely inspect configured backup folder');
+    }
   }
   if(!env.FORTLEDGER_PRINTER_HOST)add('Epson printer','warn','No LAN printer configured; browser print remains available');
   else{
