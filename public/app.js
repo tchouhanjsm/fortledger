@@ -51,13 +51,45 @@ function renderBookings(){
     const guest=label('div');guest.append(label('strong',b.guest_name),label('small',[b.company_name,b.category,b.assigned_room].filter(Boolean).join(' · ')));
     const dates=label('div');dates.append(label('strong',fmtDay(b.checkin)+' → '+fmtDay(b.checkout)),label('small',b.rooms_count+' room(s) · '+b.nights+' night(s) · '+b.meal_plan));
     const stage=label('div');const status=label('select');status.setAttribute('aria-label','Booking status for '+b.guest_name);
-    statusOptions.forEach(s=>{const opt=label('option',s.replaceAll('_',' '));opt.value=s;status.append(opt);});
-    status.value=b.status;status.disabled=b.status==='cancelled';
-    status.onchange=async()=>{try{await api('/api/bookings/'+b.id+'/status',{method:'PATCH',body:JSON.stringify({status:status.value})});await load();}catch(e){alert(e.message);status.value=b.status;}};
+    const possible={reserved:['reserved','checked_in','cancelled'],checked_in:['checked_in','checked_out'],
+      checked_out:['checked_out'],cancelled:['cancelled']};
+    for(const state of possible[b.status]||[b.status]){
+      const opt=label('option',state.replaceAll('_',' '));opt.value=state;status.append(opt);
+    }
+    status.value=b.status;status.disabled=!can('bookings.write')||['cancelled','checked_out'].includes(b.status);
+    status.onchange=async()=>{
+      const next=status.value;
+      const body={status:next};
+      if(next==='checked_in'&&(b.room_ids||[]).length!==b.rooms_count){
+        alert('Assign every booked physical room before checking in.');status.value=b.status;return;
+      }
+      if(next==='checked_out'){
+        try{
+          const folio=await api('/api/bookings/'+b.id+'/folio');
+          if(folio.combined_due_paise>0){
+            if(!confirm('Guest has an outstanding folio of '+money(folio.combined_due_paise)+
+              '. Confirm checkout with outstanding balance for later follow-up?')){
+              status.value=b.status;return;
+            }
+            body.acknowledge_balance=true;
+          }
+        }catch(error){alert(error.message);status.value=b.status;return;}
+      }
+      if(next==='cancelled'){
+        const reason=prompt('Reason for cancelling '+b.guest_name+'?');
+        if(reason===null){status.value=b.status;return;}
+        body.reason=reason;
+      }
+      try{
+        const outcome=await api('/api/bookings/'+b.id+'/status',{method:'PATCH',body:JSON.stringify(body)});
+        await load();
+        if(outcome.warnings?.length)alert(outcome.warnings.join('\\n'));
+      }catch(error){alert(error.message);status.value=b.status;}
+    };
     stage.append(status);
     const due=label('div',undefined,'money');due.append(label('strong',money(b.total_paise)),label('small','Due '+money(b.due_paise)));
     const actions=label('div',undefined,'row-actions');
-    const edit=label('button','Edit','secondary');edit.disabled=b.status==='cancelled';edit.onclick=()=>openEdit(b);
+    const edit=label('button','Edit','secondary');edit.disabled=!can('bookings.write')||['cancelled','checked_out'].includes(b.status)||invoices.some(i=>i.booking_id===b.id);edit.onclick=()=>openEdit(b);
     const payment=label('button','+ Payment','secondary');payment.disabled=b.status==='cancelled';payment.onclick=()=>addPayment(b);
     const history=label('button','Payments','secondary');history.onclick=()=>showPayments(b);
     const proforma=label('button','Proforma PDF','secondary');proforma.disabled=b.status==='cancelled';
