@@ -99,13 +99,31 @@ function renderBookings(){
       if(next==='cancelled'){
         const reason=prompt('Reason for cancelling '+b.guest_name+'?');
         if(reason===null){status.value=b.status;return;}
-        body.reason=reason;
+        if(reason.trim().length<3){alert('Provide a short reason for the cancellation.');status.value=b.status;return;}
+        if(!confirm('Cancel this reservation? This releases room inventory but does not automatically refund any advance.')){
+          status.value=b.status;return;
+        }
+        body.reason=reason.trim();
       }
+      // Persist first, refresh second. A refresh failure does not mean the
+      // status transition failed or that a checkout should be attempted again.
+      status.disabled=true;row.setAttribute('aria-busy','true');
+      let outcome;
       try{
-        const outcome=await api('/api/bookings/'+b.id+'/status',{method:'PATCH',body:JSON.stringify(body)});
-        await load();
-        if(outcome.warnings?.length)alert(outcome.warnings.join('\\n'));
-      }catch(error){alert(error.message);status.value=b.status;}
+        outcome=await api('/api/bookings/'+b.id+'/status',{method:'PATCH',body:JSON.stringify(body)});
+      }catch(error){
+        status.disabled=false;row.removeAttribute('aria-busy');
+        status.value=b.status;
+        alert('Status change not confirmed: '+error.message+'. Refresh the booking ledger before retrying.');
+        return;
+      }
+      try{await load();}
+      catch(error){
+        row.removeAttribute('aria-busy');
+        alert('Booking status saved, but refresh failed: '+error.message+'. Reload to review the status.');
+        return;
+      }
+      if(outcome.warnings?.length)alert(outcome.warnings.join('\\n'));
     };
     stage.append(status);
     const due=label('div',undefined,'money');due.append(label('strong',money(b.total_paise)),label('small','Due '+money(b.due_paise)));
