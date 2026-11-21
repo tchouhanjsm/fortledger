@@ -1246,23 +1246,66 @@ $('#restaurant-method').onchange=()=>{
   updateManualRoomFields();
 };
 $('#restaurant-guest').onchange=updateManualRoomFields;
+// Keep the same immutable intent and UUID after an uncertain response. Never
+// create a second financial record while the original attempt is unresolved.
+let pendingRestaurantBill=null,restaurantBillSubmitting=false;
 $('#save-restaurant-bill').onclick=async()=>{
-  const method=$('#restaurant-method').value,message=$('#restaurant-message');
-  if(!cart.length){message.textContent='Add at least one item.';return;}
-  const manual=method==='room'&&$('#restaurant-guest').value==='manual';
-  const body={payment_method:method,items:cart,
-    booking_id:method==='room'&&!manual?Number($('#restaurant-guest').value):undefined};
-  if(manual){
-    body.manual_room=$('#manual-room-number').value.trim();
-    body.manual_guest=$('#manual-room-guest').value.trim();
-    if(!body.manual_room||!body.manual_guest){message.textContent='Enter room identifier and guest name for manual review.';return;}
+  const button=$('#save-restaurant-bill'),message=$('#restaurant-message');
+  if(restaurantBillSubmitting)return;
+  if(!pendingRestaurantBill){
+    const method=$('#restaurant-method').value;
+    if(!cart.length){message.textContent='Add at least one item.';return;}
+    const manual=method==='room'&&$('#restaurant-guest').value==='manual';
+    const body={payment_method:method,items:cart.map(x=>({...x})),
+      booking_id:method==='room'&&!manual?Number($('#restaurant-guest').value):undefined};
+    if(manual){
+      body.manual_room=$('#manual-room-number').value.trim();
+      body.manual_guest=$('#manual-room-guest').value.trim();
+      if(!body.manual_room||!body.manual_guest){
+        message.textContent='Enter room identifier and guest name for manual review.';return;
+      }
+    }
+    if(method==='room'&&!manual&&!body.booking_id){
+      message.textContent='Choose a checked-in guest or manual entry.';return;
+    }
+    if(!confirm('Save this restaurant bill? Recording cash, UPI or card means staff have manually confirmed receipt of payment.'))return;
+    body.request_id=crypto.randomUUID();
+    pendingRestaurantBill=body;
+  }else if(!confirm('A previous bill submission was not confirmed. Check the saved bills first. Retry the EXACT original bill with the same request ID? Changes to the current cart will not be submitted.')){
+    return;
   }
-  if(method==='room'&&!manual&&!body.booking_id){message.textContent='Choose a checked-in guest or manual entry.';return;}
-  if(!confirm('Save this restaurant bill?'))return;
-  const button=$('#save-restaurant-bill');button.disabled=true;
-  try{await api('/api/restaurant/bills',{method:'POST',body:JSON.stringify(body)});cart=[];message.textContent='Bill saved locally.';await load();}
-  catch(e){message.textContent=e.message;}
-  finally{button.disabled=false;}
+  restaurantBillSubmitting=true;button.disabled=true;
+  try{
+    let saved;
+    try{
+      saved=await api('/api/restaurant/bills',{
+        method:'POST',body:JSON.stringify(pendingRestaurantBill)
+      });
+    }catch(error){
+      if(!(error instanceof TypeError)){
+        pendingRestaurantBill=null;
+        throw error;
+      }
+      try{
+        const receipt=await api('/api/restaurant/bills/request/'+encodeURIComponent(pendingRestaurantBill.request_id));
+        if(receipt.recorded){
+          saved={id:receipt.id};
+        }else{
+          message.textContent='Bill not confirmed under this request ID. Check saved bills before retrying the unchanged bill; this screen preserves the original request ID.';
+          return;
+        }
+      }catch(lookupError){
+        message.textContent='Connection lost. Bill may already be saved. Reconnect, check saved bills and retry only the unchanged bill with the same request ID. '+lookupError.message;
+        return;
+      }
+    }
+    pendingRestaurantBill=null;
+    cart=[];
+    message.textContent='Bill #'+saved.id+' saved once. Receipt is available in Saved restaurant bills. Payment was recorded manually; no bank transfer was verified by FortLedger.';
+    try{await load();}
+    catch(error){message.textContent='Bill #'+saved.id+' saved, but refreshing failed: '+error.message+'. Reload the bill list; do not save again.';}
+  }catch(error){message.textContent='Bill was not saved: '+error.message;}
+  finally{restaurantBillSubmitting=false;button.disabled=false;}
 };
 let validatedMenuCsv=null;
 async function readMenuCsv(){
