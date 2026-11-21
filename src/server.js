@@ -24,6 +24,7 @@ import {recordExpense,listExpenses} from './expenses.js';
 import {listHousekeeping,markRoomState} from './housekeeping.js';
 import {createDailyClose,getDailyClose} from './daily-close.js';
 import {createMaintenanceIssue,resolveMaintenanceIssue,listMaintenance,blockedRoomIds} from './maintenance.js';
+import {saveGuest,listGuests,guestStays,validateGuestLink} from './guests.js';
 import {paymentMethod,recordAudit,auditEvents,recordHotelPayment} from './financial-audit.js';
 
 export function createApp(db,{authRecord=null,authFile=null}={}) {
@@ -60,6 +61,18 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
 
   const listRooms = db.prepare(`SELECT r.*,h.status AS housekeeping_status
     FROM rooms r LEFT JOIN room_housekeeping h ON h.room_id=r.id ORDER BY r.id`);
+  app.get('/api/guests',(req,res,next)=>{
+    try{res.json(listGuests(db,req.query.q||''));}catch(error){next(error);}
+  });
+  app.get('/api/guests/:id/stays',(req,res,next)=>{
+    try{res.json(guestStays(db,Number(req.params.id)));}catch(error){next(error);}
+  });
+  app.post('/api/guests',(req,res,next)=>{
+    try{res.status(201).json(saveGuest(db,req.body,req.actor));}catch(error){next(error);}
+  });
+  app.patch('/api/guests/:id',(req,res,next)=>{
+    try{res.json(saveGuest(db,req.body,req.actor,Number(req.params.id)));}catch(error){next(error);}
+  });
   app.get('/api/maintenance',(req,res,next)=>{
     try{res.json(listMaintenance(db,{status:req.query.status||'open'}));}
     catch(error){next(error);}
@@ -260,13 +273,14 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
   app.post('/api/bookings', (req,res,next)=>{
     try {
       const b=normalizeBooking(req.body);
+      validateGuestLink(db,b.guest_id);
       let id;
       const {room_ids,...sqlBooking}=b;
       db.transaction(()=>{
         assertAvailability(db,b);
         const result=db.prepare(`INSERT INTO bookings
-          (guest_name,company_name,checkin,checkout,rooms_count,room_id,category,meal_plan,nightly_rate_paise)
-          VALUES (@guest_name,@company_name,@checkin,@checkout,@rooms_count,@room_id,@category,@meal_plan,@nightly_rate_paise)`).run(sqlBooking);
+          (guest_name,company_name,checkin,checkout,rooms_count,room_id,category,meal_plan,nightly_rate_paise,guest_id)
+          VALUES (@guest_name,@company_name,@checkin,@checkout,@rooms_count,@room_id,@category,@meal_plan,@nightly_rate_paise,@guest_id)`).run(sqlBooking);
         id=Number(result.lastInsertRowid);
         const allocate=db.prepare('INSERT INTO booking_room_allocations(booking_id,room_id) VALUES(?,?)');
         for(const roomId of b.room_ids)allocate.run(id,roomId);
@@ -294,6 +308,9 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
       if (!previous) return res.status(404).json({error:'Booking not found'});
       assertBookingEditAllowed(db,id,previous);
       const b=normalizeBooking(req.body);
+      // Old clients that omit guest_id keep their existing explicit link.
+      if(req.body.guest_id===undefined)b.guest_id=previous.guest_id;
+      validateGuestLink(db,b.guest_id);
       const {room_ids,...sqlBooking}=b;
       db.transaction(()=>{
         assertAvailability(db,b,id);
@@ -302,7 +319,7 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
         for(const roomId of b.room_ids)allocate.run(id,roomId);
         db.prepare(`UPDATE bookings SET guest_name=@guest_name,company_name=@company_name,checkin=@checkin,
           checkout=@checkout,rooms_count=@rooms_count,room_id=@room_id,category=@category,
-          meal_plan=@meal_plan,nightly_rate_paise=@nightly_rate_paise WHERE id=@id`).run({...sqlBooking,id});
+          meal_plan=@meal_plan,nightly_rate_paise=@nightly_rate_paise,guest_id=@guest_id WHERE id=@id`).run({...sqlBooking,id});
         recordAudit(db,req.actor,'booking.updated','booking',id,
           {previous:{checkin:previous.checkin,checkout:previous.checkout,rooms_count:previous.rooms_count,
             nightly_rate_paise:previous.nightly_rate_paise},
@@ -380,6 +397,9 @@ function normalizeBooking(input) {
   const checkin=String(input.checkin||'');
   const checkout=String(input.checkout||'');
   const rooms_count=Number(input.rooms_count);
+  const guest_id=input.guest_id===undefined||input.guest_id===null||input.guest_id===''?null:Number(input.guest_id);
+  if(guest_id!==null&&(!Number.isSafeInteger(guest_id)||guest_id<1))
+    throw new Error('Invalid guest profile selection');
   const room_ids=Array.isArray(input.room_ids)?input.room_ids.map(Number):
     (input.room_id===undefined||input.room_id===null||input.room_id===''?[]:[Number(input.room_id)]);
   const room_id=room_ids.length===1&&rooms_count===1?room_ids[0]:null;
@@ -389,7 +409,7 @@ function normalizeBooking(input) {
   if (!Number.isInteger(rooms_count)||rooms_count<1||rooms_count>7) throw new Error('Room count must be between 1 and 7');
   if(room_ids.length>rooms_count||new Set(room_ids).size!==room_ids.length||
      room_ids.some(id=>!Number.isInteger(id)||id<1))throw new Error('Invalid assigned room selection');
-  return {guest_name,company_name,checkin,checkout,rooms_count,room_id,room_ids,category,meal_plan,
+  return {guest_name,company_name,checkin,checkout,rooms_count,room_id,room_ids,category,guest_id,meal_plan,
     nightly_rate_paise:toPaise(input.nightly_rate)};
 }
 
