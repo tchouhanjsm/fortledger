@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 
 export const REQUIRED_TABLES=['rooms','bookings','payments'];
 
@@ -10,11 +11,15 @@ export function validateBackup(filename) {
   try {
     const integrity=db.pragma('integrity_check',{simple:true});
     if (integrity!=='ok') throw new Error('Backup integrity check failed: '+integrity);
+    const version=db.pragma('user_version',{simple:true});
+    if(version>1)throw new Error('Backup database version '+version+' is newer than this application');
+    const foreignKeys=db.pragma('foreign_key_check');
+    if(foreignKeys.length)throw new Error('Backup foreign-key consistency check failed');
     const tables=new Set(db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(x=>x.name));
     for(const name of REQUIRED_TABLES)if(!tables.has(name))throw new Error('Backup missing required table: '+name);
     const count=db.prepare('SELECT count(*) AS n FROM rooms').get().n;
     if(count!==7)throw new Error('Backup must contain the seven-room inventory (found '+count+')');
-    return {rooms:count,bookings:db.prepare('SELECT count(*) AS n FROM bookings').get().n};
+    return {rooms:count,bookings:db.prepare('SELECT count(*) AS n FROM bookings').get().n,schema_version:version};
   }finally{db.close();}
 }
 
@@ -48,7 +53,7 @@ export function restoreDatabase(backupFile,targetFile,{confirm=false}={}) {
   }
 }
 
-if(process.argv[1]&&path.resolve(process.argv[1])===path.resolve(new URL(import.meta.url).pathname)){
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const [, ,backupArg,targetArg,confirmation]=process.argv;
   if(!backupArg||!targetArg||confirmation!=='--confirm'){
     console.error('Usage: npm run restore -- <backup.sqlite> <target.sqlite> --confirm');
