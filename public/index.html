@@ -15,6 +15,29 @@
   <section id="bookings" class="panel"><div class="panel-head"><div><h2>Reservation ledger</h2><p>Search guests, companies and room categories.</p></div><input id="search" type="search" placeholder="Search bookings..." aria-label="Search bookings"></div><div class="toolbar"><button id="backup-button" class="secondary" type="button">↓ Download database backup</button></div><div id="booking-list" class="booking-list"><p class="muted">Loading bookings…</p></div></section>
   <section id="invoices" class="panel"><div class="panel-head"><div><h2>Proforma invoices</h2><p>Immutable PDF snapshots. Create from a booking and download anytime.</p></div></div><div id="invoice-list"><p class="muted">Loading invoices…</p></div></section>
   <section id="rooms" class="panel"><div class="panel-head"><div><h2>Room inventory</h2><p>Rename the seven placeholders and assign their real accommodation categories before booking.</p></div></div><div id="room-list"></div></section>
+<section id="restaurant" class="panel">
+  <div class="panel-head"><div><h2>Restaurant billing</h2><p>Fast local billing, room charges, and payment records.</p></div></div>
+  <div class="restaurant-flex">
+    <div><h3>Menu</h3><input id="menu-search" type="search" placeholder="Search menu items" aria-label="Search menu"><div id="menu-items"></div></div>
+    <div><h3>Current bill</h3><div id="cart-items" class="cart-items"></div><div id="cart-total" class="form-preview">₹0.00</div>
+      <label class="restaurant-field">Payment method<select id="restaurant-method"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option><option value="room">Charge to room</option></select></label>
+      <div id="room-charge-choice" hidden>
+        <label class="restaurant-field">Checked-in guest or manual entry<select id="restaurant-guest"></select></label>
+        <div id="manual-room-fields" hidden>
+          <label class="restaurant-field">Room identifier<input id="manual-room-number" maxlength="80" placeholder="Room number or category"></label>
+          <label class="restaurant-field">Guest name<input id="manual-room-guest" maxlength="150" placeholder="Guest name for verification"></label>
+          <p class="muted">Unmatched charges are saved for review and will not appear in a guest folio until linked.</p>
+        </div>
+      </div>
+      <p id="restaurant-message" role="status"></p>
+      <button type="button" class="primary" id="save-restaurant-bill">Save restaurant bill</button>
+    </div>
+  </div>
+  <details class="menu-import"><summary>Import menu from CSV</summary><p class="muted">Columns: name,category,price,tax_rate. Prices include configured tax.</p>
+    <input type="file" id="menu-csv" accept=".csv,text/csv"><button type="button" id="import-menu" class="secondary">Import menu</button>
+  </details>
+  <h3>Saved restaurant bills</h3><div id="restaurant-history"></div>
+</section>
 <section id="business-settings" class="panel"><div class="panel-head"><div><h2>Hotel & payment settings</h2><p>Saved locally and copied into new proforma invoices. Previously issued PDFs remain unchanged.</p></div></div>
   <form id="business-form" class="settings-grid">
     <label>Hotel name<input name="hotel_name" required maxlength="80"></label>
