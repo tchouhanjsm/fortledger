@@ -19,7 +19,8 @@ try{
     const errors=[];
     page.on('pageerror',error=>errors.push(error.message));
     await page.goto(base+'/#bookings');
-    await page.locator('#booking-results-count').waitFor();
+    await page.waitForFunction(()=>document.querySelector('#booking-results-count')?.textContent?.includes('bookings shown'),
+      {timeout:10000});
     const heading=await page.locator('#workspace-title').textContent();
     assert.ok(heading?.length>2,'Workspace header should be populated');
     assert.equal(await page.locator('#bookings').isVisible(),true);
