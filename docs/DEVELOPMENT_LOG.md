@@ -179,3 +179,10 @@ All five increments completed in this development session were reviewed and merg
 - Added a personalized Dashboard with focused actions, occupancy/arrival/outstanding indicators or cashier-facing food sales/menu/pending charges. User-specific data obey existing RBAC permissions.
 - Added contextual invoices CTA and made menu import more discoverable when the menu is empty; retitled duplicated restaurant section to 'New food bill'.
 - Added responsive dashboard styles, navigation regression tests and no extra hosted analytics dependencies.
+
+## 2026-11-21 — Phase 1A: payment methods and actor attribution
+- Identified missing structured payment method in legacy hotel advances and additional receipts; previously only restaurant settlements had method detail.
+- Additive migration adds payments.method with default `unrecorded` for historic records rather than inventing the original payment method. New booking/payment UI asks for Cash/UPI/Card/Bank and highlights unrecorded historic methods in payment history.
+- Added `operation_audit` table for actor-attributed booking create/edit/status, hotel payment and refund, and folio settlement actions. Audit events are stored with server-resolved username, role and limited non-sensitive action metadata.
+- Existing bookings, restaurant bills, payments, refunds and invoice snapshots are preserved. No destructive migration. The audit ledger is new; historic actions are not fabricated.
+- Added migration/integration tests; release remains pre-production and requires audited recovery, strict status transitions and reconciliation follow-up.
