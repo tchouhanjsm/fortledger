@@ -218,6 +218,18 @@ try{
       assert.equal(submissions,1,'Lost response must not duplicate restaurant bill');
       assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bills').get().n,1);
       assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bill_requests').get().n,1);
+      const receiptLink=page.locator('#restaurant-message a').filter({hasText:'Open saved receipt #1'});
+      await receiptLink.waitFor({state:'visible'});
+      assert.match(await receiptLink.getAttribute('href'),/\/api\/restaurant\/bills\/1\/receipt/);
+      await page.locator('#restaurant-history-search').fill('999999');
+      assert.equal(await page.locator('#restaurant-history-count').textContent(),'0 of 1 saved bills matching search');
+      await page.locator('#restaurant-history-search').fill('1');
+      assert.equal(await page.locator('#restaurant-history-count').textContent(),'1 of 1 saved bills matching search');
+      await page.locator('#restaurant-history-search').fill('');
+      await page.locator('#refresh-workspace').click();
+      await page.waitForFunction(()=>document.querySelector('#refresh-message')?.textContent?.includes('Hotel records refreshed'));
+      assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bills').get().n,1,
+        'Read-only refresh and receipt search must not recreate bills');
       await page.unroute('**/api/restaurant/bills');
     }
     assert.deepEqual(errors,[],'Uncaught browser errors at '+width+'px: '+errors.join('; '));
