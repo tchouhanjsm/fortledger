@@ -32,3 +32,9 @@ _Last reviewed 2026-11-21. This is a research checklist, not a tax opinion. Conf
 Awaita, 1 Dec to 2 Dec 2026, two rooms at INR 4,500 gross per room/night:
 Gross INR 9,000; base at illustrative 5% INR 8,571.43; GST INR 428.57; paid INR 4,500; due INR 4,500.
 This test is **not** proof that the same rate applies to any other booking.
+
+## Implemented review-only draft (2026-11-21)
+- A proforma can produce a separately persisted, editable draft PDF with recipient GSTIN/address, SAC per accommodation line, and an illustrative intra-Rajasthan CGST/SGST 2.5% split.
+- Drafts include explicit warnings for incomplete supplier registration/address, signatory and thresholds; they are visibly marked **NOT A TAX INVOICE** and never consume legal invoice numbers.
+- Official service classification source: https://gstcouncil.gov.in/sites/default/files/2024-02/scheme_of_classification_of_services_amended.pdf (996311 hotel accommodation, 996312 campsite services).
+- **No statutory issuance is enabled** until supplier/e-invoice applicability, signatures, credit notes, and full Rule 46 verification are addressed.
