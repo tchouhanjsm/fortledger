@@ -58,3 +58,31 @@ test('printing failure records uncertain state without duplicating sale',async()
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bills').get().n,1);
   }finally{db.close();}
 });
+
+test('interrupted printer sends remain blocked until old enough and staff explicitly confirms reprint',async()=>{
+  const {db,bill}=fixture();
+  let transmissions=0;
+  try{
+    db.prepare(`INSERT INTO restaurant_print_jobs(restaurant_bill_id,state,attempts,updated_at)
+      VALUES(?,'sending',1,datetime('now'))`).run(bill.id);
+    const send=async()=>{transmissions++;};
+    await assert.rejects(
+      ()=>printSavedBill(db,bill.id,{host:'127.0.0.1',port:9100},{send,reprint:true}),
+      /already running or its outcome is still uncertain/
+    );
+    assert.equal(transmissions,0);
+    db.prepare("UPDATE restaurant_print_jobs SET updated_at=datetime('now','-11 minutes') WHERE restaurant_bill_id=?")
+      .run(bill.id);
+    await assert.rejects(
+      ()=>printSavedBill(db,bill.id,{host:'127.0.0.1',port:9100},{send}),
+      /Previously attempted; interrupted print is unverified/
+    );
+    assert.equal(transmissions,0);
+    assert.equal(getPrintStatus(db,bill.id).attempts,1);
+    const retried=await printSavedBill(db,bill.id,{host:'127.0.0.1',port:9100},{send,reprint:true});
+    assert.equal(retried.state,'sent_unverified');
+    assert.equal(retried.attempts,2);
+    assert.equal(transmissions,1);
+    assert.equal(db.prepare('SELECT count(*) AS n FROM restaurant_bills').get().n,1);
+  }finally{db.close();}
+});
