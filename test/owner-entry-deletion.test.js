@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {openDatabase} from '../src/database.js';
 import {deleteUnusedBooking,deleteUnusedGuest} from '../src/entry-deletion.js';
-import {createBookingSafely} from '../src/booking-create.js';
 import {may,requiredPermission} from '../src/access.js';
 import {auditEvents} from '../src/financial-audit.js';
+import {createApp} from '../src/server.js';
+import {createPasswordRecord} from '../src/auth.js';
+import {createStaff} from '../src/staff.js';
 
 const owner={id:1,role:'owner',username:'owner'};
 const manager={id:2,role:'manager',username:'manager'};
@@ -74,4 +76,33 @@ test('deleted idempotent request remains blocked after reopen',()=>{
     assert.ok(db.prepare('SELECT 1 FROM deleted_booking_requests WHERE request_id=?').get(request_id));
     assert.equal(db.prepare('SELECT 1 FROM booking_create_requests WHERE request_id=?').get(request_id),undefined);
   }finally{db.close();}
+});
+
+test('HTTP permissions enforce owner-only DELETE while manager PATCH stays available',async()=>{
+  const db=openDatabase(':memory:');
+  createStaff(db,{username:'managerdelete',display_name:'Manager',role:'manager',password:'manager-pass-123456'});
+  const server=createApp(db,{authRecord:createPasswordRecord('owner-pass-123456')}).listen(0,'127.0.0.1');
+  await new Promise(resolve=>server.once('listening',resolve));
+  const base='http://127.0.0.1:'+server.address().port;
+  const request=async(path,method='GET',body,cookie)=>{
+    const res=await fetch(base+path,{method,headers:{'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{})},
+      body:body===undefined?undefined:JSON.stringify(body)});
+    return {status:res.status,data:await res.json(),cookie:res.headers.get('set-cookie')?.split(';')[0]};
+  };
+  try{
+    const ownerSession=await request('/api/auth/login','POST',{password:'owner-pass-123456'});
+    const managerSession=await request('/api/auth/login','POST',{username:'managerdelete',password:'manager-pass-123456'});
+    assert.equal(ownerSession.status,200);assert.equal(managerSession.status,200);
+    const guest=await request('/api/guests','POST',{name:'Delete permission sample'},ownerSession.cookie);
+    assert.equal(guest.status,201);
+    const patched=await request('/api/guests/'+guest.data.id,'PATCH',{name:'Updated by manager'},managerSession.cookie);
+    assert.equal(patched.status,200);
+    assert.equal(patched.data.name,'Updated by manager');
+    assert.equal((await request('/api/guests/'+guest.data.id,'DELETE',undefined,managerSession.cookie)).status,403);
+    const bookingId=make(db);
+    assert.equal((await request('/api/bookings/'+bookingId,'DELETE',undefined,managerSession.cookie)).status,403);
+    assert.ok(db.prepare('SELECT 1 FROM bookings WHERE id=?').get(bookingId));
+    assert.equal((await request('/api/bookings/'+bookingId,'DELETE',undefined,ownerSession.cookie)).status,200);
+    assert.equal((await request('/api/guests/'+guest.data.id,'DELETE',undefined,ownerSession.cookie)).status,200);
+  }finally{await new Promise(resolve=>server.close(resolve));db.close();}
 });
