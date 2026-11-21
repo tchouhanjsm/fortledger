@@ -1,8 +1,22 @@
 export function toPaise(rupees) {
-  if (rupees === '' || rupees === null || rupees === undefined || !Number.isFinite(Number(rupees)) || Number(rupees) < 0) {
-    throw new Error('Amount must be a non-negative number');
+  // Parse decimal money as text, not a floating-point multiplication.
+  // Never silently round half-paise values or accept scientific notation.
+  if (typeof rupees !== 'number' && typeof rupees !== 'string') {
+    throw new Error('Amount must be a non-negative number with up to 2 decimal places');
   }
-  return Math.round(Number(rupees) * 100);
+  if (typeof rupees === 'number' && !Number.isFinite(rupees)) {
+    throw new Error('Amount must be a non-negative number with up to 2 decimal places');
+  }
+  const value = String(rupees).trim();
+  if (!/^\\d+(?:\\.\\d{1,2})?$/.test(value)) {
+    throw new Error('Amount must be a non-negative number with up to 2 decimal places');
+  }
+  const [whole, decimals = ''] = value.split('.');
+  const paise = BigInt(whole) * 100n + BigInt(decimals.padEnd(2, '0') || '0');
+  if (paise > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error('Amount exceeds safe financial range');
+  }
+  return Number(paise);
 }
 
 export function nightsBetween(checkin, checkout) {
