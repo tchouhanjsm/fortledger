@@ -63,7 +63,8 @@ try{
       assert.match(preview,/2 night\(s\)/);
       await page.locator('#booking-submit').click();
       await page.locator('#booking-dialog').waitFor({state:'hidden'});
-      await page.getByText('Synthetic Browser Guest',{exact:true}).first().waitFor();
+      await page.locator('#booking-list .booking-row')
+        .filter({hasText:'Synthetic Browser Guest'}).waitFor({state:'visible'});
       const count=await page.locator('#booking-results-count').textContent();
       assert.match(count,/1 of 1/);
 
