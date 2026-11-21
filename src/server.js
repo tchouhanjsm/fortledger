@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'node:path';
+import https from 'node:https';
 import { fileURLToPath } from 'node:url';
 import {authGate,loadPasswordRecord,DEFAULT_AUTH_FILE} from './auth.js';
 import {renderRestaurantReceipt} from './restaurant-receipt.js';
@@ -29,14 +30,15 @@ import {saveGuest,listGuests,guestStays,validateGuestLink} from './guests.js';
 import {paymentMethod,recordAudit,auditEvents,recordHotelPayment} from './financial-audit.js';
 import {createBookingSafely} from './booking-create.js';
 import {deleteUnusedBooking,deleteUnusedGuest} from './entry-deletion.js';
-import {requireLoopbackHost,localListenerSettings} from './network-policy.js';
+import {requireConfiguredHost,localListenerSettings,readLanTlsCredentials} from './network-policy.js';
 
-export function createApp(db,{authRecord=null,authFile=null}={}) {
+export function createApp(db,{authRecord=null,authFile=null,network=null}={}) {
+  if(network?.mode==='lan'&&!authRecord)throw new Error('LAN access requires configured authentication');
   const app = express();
   app.disable('x-powered-by');
   // Fail closed against hostile Host headers and DNS rebinding on the
   // single-machine alpha. Private staff-LAN mode requires a separate review.
-  app.use(requireLoopbackHost);
+  app.use(requireConfiguredHost(network));
   // Sensitive API data and authenticated entry pages must never be stored by
   // browsers, intermediaries, or a future installable-app cache.
   app.use((req,res,next)=>{
@@ -50,7 +52,7 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
   });
   app.use('/api/settings/logo',express.json({limit:'1.2mb'}));
   app.use(express.json({ limit: '64kb' }));
-  const gate=authGate(authRecord,db,{authFile});
+  const gate=authGate(authRecord,db,{authFile,network});
   app.use('/api',gate.checkRequest);
   app.post('/api/auth/login',gate.login);
   app.get('/api/auth/status',(req,res)=>res.json(gate.status(req)));
@@ -455,16 +457,21 @@ function normalizeBooking(input) {
 
 if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const db=openDatabase();
-  const {host,port}=localListenerSettings();
+  const network=localListenerSettings();
+  const {host,port}=network;
+  // Validate certificate and matching private key before opening any LAN socket.
+  const tls=network.mode==='lan'?readLanTlsCredentials(network):null;
   const authRecord=loadPasswordRecord();
   if(!authRecord){
     console.error('FortLedger requires local admin authentication. Run: npm run setup-auth');
     process.exitCode=1;db.close();
   }else{
-    createApp(db,{authRecord,authFile:DEFAULT_AUTH_FILE}).listen(port,host,
-      ()=>{
-        console.log('FortLedger local app: http://'+host+':'+port);
-        scheduleEncryptedBackups(db);
-      });
+    const app=createApp(db,{authRecord,authFile:DEFAULT_AUTH_FILE,network});
+    const server=tls?https.createServer({cert:tls.cert,key:tls.key,minVersion:'TLSv1.2'},app):app;
+    server.listen(port,host,()=>{
+      console.log('FortLedger '+(tls?'private staff HTTPS':'local app')+': '+
+        (tls?'https://':'http://')+host+':'+port);
+      scheduleEncryptedBackups(db);
+    });
   }
 }
