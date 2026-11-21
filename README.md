@@ -95,3 +95,6 @@ export FORTLEDGER_PRINTER_PORT=9100
 npm start
 ```
 The **LAN Print** button sends text-only ESC/POS to the configured printer. It never creates another bill. An audited row tracks attempts and statuses. **sent_unverified** means bytes reached the socket, not that paper printed; network errors are **uncertain**. Reprinting requires explicit confirmation to reduce duplicate slips. Browser-driver printing remains available. Hardware-specific cut commands and rupee glyphs remain deferred until the exact TM-T82 variant is physically tested. Epson ESC/POS command reference: https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/ .
+
+## Manual restaurant room-charge review
+If the guest is not yet on the checked-in list, choose **Charge to room → Manual room / guest entry**, supply the room identifier and guest name and save the restaurant bill. The bill is stored as **pending review** and is deliberately excluded from every guest folio until an operator verifies and links it to an active checked-in booking using **Link to guest**. Linking does not create another bill and cannot be repeated. The original manually entered details are preserved for audit. This is a safeguard against assigning food charges to the wrong guest.
