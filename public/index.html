@@ -152,8 +152,8 @@
 <section id="restaurant" class="panel">
   <div class="panel-head"><div><h2>New food bill</h2><p>Select an item, add quantities, and settle or charge it to a room.</p></div></div>
   <div class="restaurant-flex">
-    <div><h3>Menu</h3><input id="menu-search" type="search" placeholder="Search menu items" aria-label="Search menu"><div id="menu-items"></div></div>
-    <div><h3>Current bill</h3><div id="cart-items" class="cart-items"></div><div id="cart-total" class="form-preview">₹0.00</div>
+    <div class="pos-menu-panel"><h3>Menu</h3><input id="menu-search" type="search" placeholder="Search all menu items" aria-label="Search menu"><div id="menu-categories" class="pos-categories" role="group" aria-label="Filter menu by category"></div><p id="menu-result-count" class="muted" aria-live="polite"></p><div id="menu-items"></div></div>
+    <div class="pos-bill-panel"><div class="pos-cart-heading"><h3>Current bill <span id="cart-count" class="pos-count" aria-live="polite">0 items</span></h3><button id="clear-restaurant-cart" type="button" class="secondary" disabled>Clear</button></div><div id="cart-items" class="cart-items"></div><div id="cart-total" class="form-preview" aria-live="polite">₹0.00</div>
       <label class="restaurant-field">Payment method<select id="restaurant-method"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option><option value="room">Charge to room</option></select></label>
       <div id="room-charge-choice" hidden>
         <label class="restaurant-field">Checked-in guest or manual entry<select id="restaurant-guest"></select></label>
