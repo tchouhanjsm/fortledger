@@ -45,7 +45,7 @@ export function recordAudit(db,actor,action,entityType,entityId,details={}){
       actor.id,actor.username,actor.role,safe);
 }
 export function auditEvents(db,{entityType,entityId,limit=100}={}){
-  if(!['booking','payment','refund','restaurant_bill','restaurant_settlement','expense'].includes(entityType)||
+  if(!['booking','payment','refund','restaurant_bill','restaurant_settlement','expense','housekeeping'].includes(entityType)||
      !Number.isSafeInteger(entityId)||entityId<1)
     throw new Error('Invalid audit request');
   if(!Number.isSafeInteger(limit)||limit<1||limit>200)throw new Error('Invalid audit limit');
