@@ -12,6 +12,7 @@ import {ensureStaffSchema} from './staff.js';
 import {ensureFinancialAuditSchema} from './financial-audit.js';
 import {ensureExpenseSchema} from './expenses.js';
 import {ensureHousekeepingSchema} from './housekeeping.js';
+import {ensureDailyCloseSchema} from './daily-close.js';
 
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -19,7 +20,7 @@ export function openDatabase(filename = databasePath()) {
   try {
     db.pragma('foreign_keys = ON');
     const current = db.pragma('user_version', {simple:true});
-    if(current > 3)throw new Error('Database schema '+current+' is newer than this FortLedger version (3); update the app before opening it');
+    if(current > 4)throw new Error('Database schema '+current+' is newer than this FortLedger version (4); update the app before opening it');
     if(current < 0)throw new Error('Invalid database schema version');
     // Version 0 includes all legacy pre-versioned FortLedger installations.
     // A single SQLite transaction makes the baseline upgrade all-or-nothing.
@@ -88,6 +89,11 @@ export function openDatabase(filename = databasePath()) {
     if(current<3)db.transaction(()=>{
       ensureHousekeepingSchema(db);
       db.pragma('user_version = 3');
+    })();
+    // Version 4: immutable human-reviewed daily close snapshots.
+    if(current<4)db.transaction(()=>{
+      ensureDailyCloseSchema(db);
+      db.pragma('user_version = 4');
     })();
     // Preserve the established repair for legacy direct room_id records on reopen.
     // This is idempotent DML, not a schema migration.
