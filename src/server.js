@@ -22,6 +22,7 @@ import {transitionBooking,assertBookingEditAllowed} from './booking-transitions.
 import {dailyCollections} from './daily-collections.js';
 import {recordExpense,listExpenses} from './expenses.js';
 import {listHousekeeping,markRoomState} from './housekeeping.js';
+import {createDailyClose,getDailyClose} from './daily-close.js';
 import {paymentMethod,recordAudit,auditEvents,recordHotelPayment} from './financial-audit.js';
 
 export function createApp(db,{authRecord=null,authFile=null}={}) {
@@ -62,6 +63,19 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
   app.patch('/api/housekeeping/:id',(req,res,next)=>{
     try{
       res.json(markRoomState(db,Number(req.params.id),req.body?.status,req.actor,req.body?.note??''));
+    }catch(error){next(error);}
+  });
+  app.get('/api/finance/closing',(req,res,next)=>{
+    try{
+      const entry=getDailyClose(db,req.query.date);
+      if(!entry)return res.status(404).json({error:'No closing recorded for date'});
+      res.json(entry);
+    }catch(error){next(error);}
+  });
+  app.post('/api/finance/closing',(req,res,next)=>{
+    try{
+      const entry=createDailyClose(db,req.body,req.actor);
+      res.status(entry.already_recorded?200:201).json(entry);
     }catch(error){next(error);}
   });
   app.get('/api/finance/expenses',(req,res,next)=>{
