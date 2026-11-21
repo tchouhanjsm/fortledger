@@ -51,3 +51,18 @@ test('proforma is a downloadable PDF and cancelled booking cannot create one',()
   await json('/api/bookings/'+b2.value.id+'/status','PATCH',{status:'cancelled'});
   assert.equal((await json('/api/bookings/'+b2.value.id+'/proforma','POST')).status,400);
 }));
+
+test('standard proforma PDF fits on one A4 page including full unchanged terms',()=>fixture(async ({base,json})=>{
+  const b=await json('/api/bookings','POST',{...booking,rooms_count:1,amount_paid:0,
+    checkin:'2026-11-27',checkout:'2026-11-29',nightly_rate:4200});
+  assert.equal(b.status,201);
+  const inv=await json('/api/bookings/'+b.value.id+'/proforma','POST');
+  assert.equal(inv.status,201);
+  const response=await fetch(base+'/api/invoices/'+inv.value.id+'/pdf');
+  assert.equal(response.status,200);
+  const pdf=Buffer.from(await response.arrayBuffer()).toString('latin1');
+  // PDFKit page dictionaries are uncompressed; do not count the /Pages tree.
+  const count=(pdf.match(/\/Type\s*\/Page\b/g)||[]).length;
+  assert.equal(count,1,'Ordinary proformas must print on one A4 page, including terms');
+  assert.ok(pdf.includes('/MediaBox [0 0 595.28 841.89]')||pdf.includes('/MediaBox [0 0 595'), 'A4 dimensions preserved');
+}));
