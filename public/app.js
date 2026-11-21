@@ -332,7 +332,24 @@ function renderRestaurantHistory(){
     const details=label('div');details.append(label('strong','#'+bill.id+' · '+bill.payment_method.toUpperCase()),label('small',money(bill.total_paise)));
     const print=label('button','Print receipt','secondary');
     print.onclick=()=>window.open('/api/restaurant/bills/'+bill.id+'/receipt','_blank','noopener');
-    row.append(details,print);
+    const lan=label('button','LAN Print','secondary');
+    lan.onclick=async()=>{
+      if(!confirm('Send existing saved receipt #'+bill.id+' to configured Epson LAN printer?'))return;
+      try{
+        const sent=await api('/api/restaurant/bills/'+bill.id+'/print',
+          {method:'POST',body:JSON.stringify({reprint:false})});
+        alert(sent.notice);
+      }catch(error){
+        if(!/Previously attempted/.test(error.message)){alert(error.message);return;}
+        if(!confirm('Printing was previously attempted. Verify whether paper already printed before reprinting. Proceed?'))return;
+        try{
+          const retried=await api('/api/restaurant/bills/'+bill.id+'/print',
+            {method:'POST',body:JSON.stringify({reprint:true})});
+          alert(retried.notice);
+        }catch(next){alert(next.message);}
+      }
+    };
+    row.append(details,print,lan);
     list.append(row);
   }
   if(!restaurantBills.length)list.append(label('p','No restaurant bills yet.','muted'));
