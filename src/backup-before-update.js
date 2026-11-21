@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {databasePath,authPath} from './data-paths.js';
 import {validateBackup} from './restore.js';
 
@@ -23,8 +24,8 @@ export async function backupBeforeUpdate(destinationDir,{source=databasePath(),a
     const detail=validateBackup(target);
     if(fs.existsSync(auth))fs.copyFileSync(auth,path.join(folder,'admin-auth.json'),fs.constants.COPYFILE_EXCL);
     fs.writeFileSync(path.join(folder,'RECOVERY.txt'),
-      'FortLedger pre-update backup. Keep this directory private.\\n'+
-      'Stop the app before restoring. Verify backup using npm run restore -- <backup.sqlite> <target.sqlite> --confirm.\\n');
+      'FortLedger pre-update backup. Keep this directory private.\n'+
+      'Stop the app before restoring. Verify backup using npm run restore -- <backup.sqlite> <target.sqlite> --confirm.\n');
     return {folder,detail};
   }catch(error){
     db?.close();
@@ -32,7 +33,7 @@ export async function backupBeforeUpdate(destinationDir,{source=databasePath(),a
     throw error;
   }
 }
-if(process.argv[1]&&path.resolve(process.argv[1])===path.resolve(new URL(import.meta.url).pathname)){
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const [, ,destination]=process.argv;
   if(!destination){console.error('Usage: node src/backup-before-update.js <absolute backup folder>');process.exitCode=1;}
   else{
