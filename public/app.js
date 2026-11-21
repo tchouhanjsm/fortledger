@@ -543,7 +543,7 @@ async function addPayment(b){
   if(!confirm('Record '+money(Math.round(amount*100))+' via '+method+' for '+b.guest_name+'?'))return;
   try{
     await api('/api/bookings/'+b.id+'/payments',{method:'POST',
-      body:JSON.stringify({amount,method:method.trim().toLowerCase()})});
+      body:JSON.stringify({amount,method:method.trim().toLowerCase(),request_id:crypto.randomUUID()})});
     await load();
   }catch(e){alert(e.message);}
 }
