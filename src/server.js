@@ -456,11 +456,11 @@ function normalizeBooking(input) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
-  const db=openDatabase();
+  // Refuse unsafe network/TLS settings before opening or migrating hotel data.
   const network=localListenerSettings();
   const {host,port}=network;
-  // Validate certificate and matching private key before opening any LAN socket.
   const tls=network.mode==='lan'?readLanTlsCredentials(network):null;
+  const db=openDatabase();
   const authRecord=loadPasswordRecord();
   if(!authRecord){
     console.error('FortLedger requires local admin authentication. Run: npm run setup-auth');
