@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import {authGate,loadPasswordRecord} from './auth.js';
 import {renderRestaurantReceipt} from './restaurant-receipt.js';
 import {scheduleEncryptedBackups} from './encrypted-backups.js';
+import {printSavedBill,getPrintStatus} from './printer.js';
 import { openDatabase, assertAvailability } from './database.js';
 import { bookingTotals, nightsBetween, toPaise } from './finance.js';
 import { createProforma,getInvoice,listInvoices } from './invoices.js';
@@ -39,6 +40,17 @@ export function createApp(db,{authRecord=null}={}) {
   app.get('/api/restaurant/menu',(_req,res)=>res.json(listMenu(db)));
   app.post('/api/restaurant/menu/import',(req,res,next)=>{
     try{res.json(importMenuCsv(db,req.body.csv));}catch(error){next(error);}
+  });
+  app.get('/api/restaurant/bills/:id/print-status',(req,res)=>{
+    res.json({status:getPrintStatus(db,Number(req.params.id))});
+  });
+  app.post('/api/restaurant/bills/:id/print',async(req,res,next)=>{
+    try{
+      const host=process.env.FORTLEDGER_PRINTER_HOST;
+      if(!host)throw new Error('Set FORTLEDGER_PRINTER_HOST before LAN printing');
+      const port=Number(process.env.FORTLEDGER_PRINTER_PORT||9100);
+      res.json(await printSavedBill(db,Number(req.params.id),{host,port},{reprint:req.body?.reprint===true}));
+    }catch(error){next(error);}
   });
   app.get('/api/restaurant/bills/:id/receipt',(req,res,next)=>{
     try{

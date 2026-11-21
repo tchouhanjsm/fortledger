@@ -114,3 +114,8 @@ All five increments completed in this development session were reviewed and merg
 - Uses scrypt-derived AES-256-GCM encryption, random salt and IV, authenticated payload, atomic rename, and retention of most recent 30 snapshots.
 - Added decrypt-to-new-file CLI and integrity validation for recovery without modifying a running database; the existing stop-app restore command remains the only live restoration path.
 - Remaining operational requirement: secure OS key management, verified second-drive storage, test actual device recovery, and monitor backup failures. No background service runs when the application is stopped.
+
+## 2026-11-21 — Epson TM-T82 LAN transport (experimental)
+- Implemented opt-in private IPv4 ESC/POS receipt delivery over TCP, using already-saved restaurant transactions only.
+- Print state and attempt count are persisted; uncertain delivery never silently retries. Reprints require explicit operator confirmation.
+- No physical Epson TM-T82 model/network validation. Successful TCP write does not prove paper output. Model-specific cutters, receipt width and firmware behavior remain release blockers.

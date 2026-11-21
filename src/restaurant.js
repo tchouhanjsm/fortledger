@@ -1,4 +1,5 @@
 import { toPaise } from './finance.js';
+import {ensurePrintSchema} from './printer.js';
 export function ensureRestaurantSchema(db){
   db.exec(`
     CREATE TABLE IF NOT EXISTS menu_items (
@@ -27,6 +28,7 @@ export function ensureRestaurantSchema(db){
     );
     CREATE INDEX IF NOT EXISTS idx_settlements_group ON restaurant_settlements(settlement_group);
   `);
+  ensurePrintSchema(db);
 }
 function parseCsv(csv){
   if(typeof csv!=='string'||csv.length>65000)throw new Error('CSV must be plain text under 65 KB');

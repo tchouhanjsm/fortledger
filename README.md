@@ -86,3 +86,12 @@ npm start
 The application writes AES-256-GCM encrypted SQLite snapshots using scrypt-derived keys and keeps the latest 30 backup files. Choose a **different disk/drive** or an independently synced encrypted folder; merely storing copies on the same disk will not protect against hardware failure. Do not check the passphrase into Git or shell history; set it through secure OS environment configuration. Decrypt onto a new candidate path with `npm run backup:decrypt -- /path/to/file.flbk /path/to/candidate.sqlite`, then stop the application and use the existing `npm run restore` command. Each encrypted file is integrity-authenticated; tampered files and wrong passwords fail decryption. The admin password file is outside the SQLite backup and needs its own secure recovery plan.
 
 **Limitation:** Automated snapshots run only while the Node.js app is active; a stopped computer cannot run them. Full off-device recovery tests and a production scheduling/secret-management setup still need completion.
+
+## Experimental Epson TM-T82 network printing
+For a network-compatible ESC/POS TM-T82 printer, configure the real private IPv4 address and port in your local environment (the following address is an example only):
+```bash
+export FORTLEDGER_PRINTER_HOST=192.168.1.100
+export FORTLEDGER_PRINTER_PORT=9100
+npm start
+```
+The **LAN Print** button sends text-only ESC/POS to the configured printer. It never creates another bill. An audited row tracks attempts and statuses. **sent_unverified** means bytes reached the socket, not that paper printed; network errors are **uncertain**. Reprinting requires explicit confirmation to reduce duplicate slips. Browser-driver printing remains available. Hardware-specific cut commands and rupee glyphs remain deferred until the exact TM-T82 variant is physically tested. Epson ESC/POS command reference: https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/ .
