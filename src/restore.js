@@ -19,7 +19,7 @@ export function validateBackup(filename) {
     for(const name of REQUIRED_TABLES)if(!tables.has(name))throw new Error('Backup missing required table: '+name);
     const count=db.prepare('SELECT count(*) AS n FROM rooms').get().n;
     if(count!==7)throw new Error('Backup must contain the seven-room inventory (found '+count+')');
-    return {rooms:count,bookings:db.prepare('SELECT count(*) AS n FROM bookings').get().n,schema_version:version};
+    return {rooms:count,bookings:db.prepare('SELECT count(*) AS n FROM bookings').get().n};
   }finally{db.close();}
 }
 
