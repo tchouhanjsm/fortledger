@@ -74,7 +74,7 @@ export function streamProformaPdf(snapshot,response,logo=null){
   for(const line of lines){
     const label=line.rooms+' x '+line.description;
     pdf.font('Helvetica').fontSize(8.6);
-    const height=Math.max(20,Math.min(47,pdf.heightOfString(label,{width:252,lineGap:1})+4));
+    const height=Math.max(20,pdf.heightOfString(label,{width:252,lineGap:1})+4);
     // A long custom item list may require a continuation page. Never clip
     // financial rows or silently omit the fixed terms.
     if(y+height>490){
