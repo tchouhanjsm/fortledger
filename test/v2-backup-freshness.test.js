@@ -18,7 +18,7 @@ test('backup freshness is read-only, hides paths/secrets and never claims restor
     assert.equal(missing.needs_attention,true);
     const filename=path.join(root,'fortledger-2027-03-01.flbk');
     fs.writeFileSync(filename,'synthetic unreadable bytes');
-    fs.utimesSync(filename,new Date('2027-02-28T00:00:00Z'),new Date('2027-02-28T00:00:00Z'));
+    fs.utimesSync(filename,new Date('2027-02-27T23:00:00Z'),new Date('2027-02-27T23:00:00Z'));
     const stale=backupFreshness({env,now});
     assert.equal(stale.state,'stale');
     assert.equal(stale.needs_attention,true);
