@@ -8,6 +8,7 @@ import { ensureRestaurantSchema } from './restaurant.js';
 import { ensureRefundSchema } from './payment-ledger.js';
 import {ensureTaxDraftSchema} from './tax-draft.js';
 import {ensureLogoSchema} from './hotel-logo.js';
+import {ensureStaffSchema} from './staff.js';
 
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -56,6 +57,7 @@ export function openDatabase(filename = databasePath()) {
   ensureInvoiceSchema(db);
   ensureTaxDraftSchema(db);
   ensureLogoSchema(db);
+  ensureStaffSchema(db);
   ensureBusinessSettings(db);
   ensureRestaurantSchema(db);
   ensureRefundSchema(db);
