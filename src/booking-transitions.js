@@ -1,6 +1,7 @@
 import {NET_PAYMENTS_SQL} from './payment-ledger.js';
 import {getGuestFolio} from './folio.js';
 import {recordAudit} from './financial-audit.js';
+import {assertRoomsReady,dirtyRoomsAfterCheckout} from './housekeeping.js';
 
 const NEXT={
   reserved:['checked_in','cancelled'],
@@ -25,6 +26,7 @@ export function transitionBooking(db,id,status,{actor,acknowledge_balance=false,
       const assigned=db.prepare('SELECT COUNT(*) AS n FROM booking_room_allocations WHERE booking_id=?').get(id).n;
       if(assigned!==current.rooms_count)
         throw new Error('Assign all '+current.rooms_count+' physical rooms before check-in (currently '+assigned+')');
+      assertRoomsReady(db,id);
     }
     let warnings=[];
     if(status==='checked_out'){
@@ -38,6 +40,7 @@ export function transitionBooking(db,id,status,{actor,acknowledge_balance=false,
     if(status==='cancelled'&&current.paid_paise>0)
       warnings.push('Booking cancelled with a recorded advance; verify refund or credit separately');
     db.prepare('UPDATE bookings SET status=? WHERE id=?').run(status,id);
+    if(status==='checked_out')dirtyRoomsAfterCheckout(db,id,actor);
     recordAudit(db,actor,'booking.status_changed','booking',id,
       {from:current.status,to:status,reason:reason.trim(),acknowledged_balance:status==='checked_out'&&acknowledge_balance===true});
     return {ok:true,from:current.status,to:status,warnings};
