@@ -84,3 +84,9 @@
 /* Document itself must never pan horizontally. The nav and room calendar have
    their own intentional horizontal scrollers, with labels remaining reachable. */
 html,body{max-width:100%;overflow-x:clip}
+
+/* Contain the scrollable itinerary and navigation within their own regions. */
+main,.sidebar{max-width:100%;overflow-x:clip}
+@media(max-width:700px){
+  main,.sidebar{width:100%;min-width:0}
+}
