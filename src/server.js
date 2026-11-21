@@ -23,6 +23,7 @@ import {dailyCollections} from './daily-collections.js';
 import {recordExpense,listExpenses} from './expenses.js';
 import {listHousekeeping,markRoomState} from './housekeeping.js';
 import {createDailyClose,getDailyClose} from './daily-close.js';
+import {roomPerformance} from './room-performance.js';
 import {createMaintenanceIssue,resolveMaintenanceIssue,listMaintenance,blockedRoomIds} from './maintenance.js';
 import {saveGuest,listGuests,guestStays,validateGuestLink} from './guests.js';
 import {paymentMethod,recordAudit,auditEvents,recordHotelPayment} from './financial-audit.js';
@@ -90,6 +91,10 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
     try{
       res.json(markRoomState(db,Number(req.params.id),req.body?.status,req.actor,req.body?.note??''));
     }catch(error){next(error);}
+  });
+  app.get('/api/analytics/rooms',(req,res,next)=>{
+    try{res.json(roomPerformance(db,req.query.start,req.query.end));}
+    catch(error){next(error);}
   });
   app.get('/api/finance/closing',(req,res,next)=>{
     try{
