@@ -20,7 +20,7 @@ import {createStaff,listStaff,updateStaff,updateOwnProfile} from './staff.js';
 import {ROLE_PERMISSIONS} from './access.js';
 import {transitionBooking,assertBookingEditAllowed} from './booking-transitions.js';
 import {dailyCollections} from './daily-collections.js';
-import {paymentMethod,recordAudit,auditEvents} from './financial-audit.js';
+import {paymentMethod,recordAudit,auditEvents,recordHotelPayment} from './financial-audit.js';
 
 export function createApp(db,{authRecord=null}={}) {
   const app = express();
@@ -292,23 +292,11 @@ export function createApp(db,{authRecord=null}={}) {
     }
   });
 
-  app.post('/api/bookings/:id/payments', (req,res,next)=>{
-    try {
-      const id=Number(req.params.id);
-      const booking=db.prepare('SELECT id,status FROM bookings WHERE id=?').get(id);
-      if (!Number.isSafeInteger(id)||!booking) return res.status(404).json({error:'Booking not found'});
-      if(booking.status==='cancelled') throw new Error('Cannot record payments against a cancelled booking');
-      const amount=toPaise(req.body.amount);
-      if (amount<=0) throw new Error('Payment must be greater than zero');
-      const method=paymentMethod(req.body.method,{allowLegacy:true});
-      db.transaction(()=>{
-        const saved=db.prepare('INSERT INTO payments (booking_id,amount_paise,note,method) VALUES (?,?,?,?)')
-          .run(id,amount,String(req.body.note||'').slice(0,200),method);
-        recordAudit(db,req.actor,'payment.recorded','payment',Number(saved.lastInsertRowid),
-          {booking_id:id,amount_paise:amount,method});
-      })();
-      res.status(201).json({ok:true});
-    } catch(e) {next(e);}
+  app.post('/api/bookings/:id/payments',(req,res,next)=>{
+    try{
+      const receipt=recordHotelPayment(db,Number(req.params.id),req.body,req.actor);
+      res.status(receipt.already_recorded?200:201).json({ok:true,...receipt});
+    }catch(error){next(error);}
   });
   app.patch('/api/bookings/:id/status',(req,res,next)=>{
     try{
