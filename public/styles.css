@@ -35,3 +35,18 @@
 @media(max-width:650px){.sidebar nav{display:flex;overflow-x:auto;gap:5px;margin-top:10px;white-space:nowrap;padding-bottom:4px}.sidebar nav a{font-size:12px;flex:0 0 auto;padding:9px 11px}.sidebar nav a:first-letter{font-size:12px}.sidebar .brand div{display:block}.header-actions{width:100%;justify-content:space-between}.header-actions button{padding:10px 12px}}
 
 .menu-import-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.menu-import-actions button{padding:9px 12px}.menu-import #menu-import-message{margin:10px 0;font-weight:600;color:#24523e}.import-preview-table{width:100%;border-collapse:collapse;font-size:12px}.import-preview-table td{border-bottom:1px solid #e4ece4;padding:9px;text-align:left}.menu-import a{color:#24523e;text-decoration:underline}
+
+/* Staff profile and administration */
+.profile-hero{display:flex;align-items:center;gap:20px;padding:20px 22px;border-radius:14px;background:#f5f8f3;border:1px solid #e7eee8;margin-bottom:20px}
+.profile-hero h3{font-family:Georgia,serif;font-size:24px;font-weight:500;margin:0 0 7px;color:#234436}
+.profile-hero p{margin:4px 0}.profile-avatar{width:72px;height:72px;flex:none;border-radius:18px;background:#d6bc89;color:#234436;display:grid;place-items:center;font-family:Georgia,serif;font-size:27px;font-weight:700}
+.profile-form{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.profile-form label,.staff-create label{display:grid;gap:6px;color:#52695c;font-size:12px;font-weight:600}
+.profile-form input,.staff-create input,.staff-create select{padding:11px 12px;border:1px solid #dce2db;border-radius:8px;min-width:0}
+#profile h3{margin-top:28px;font-size:17px;color:#294f3d}
+.profile-permissions{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}
+.permission-pill{padding:7px 10px;border-radius:100px;background:#f0f5f0;color:#345947;font-size:11px}
+.staff-row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid #e8ece7}
+.staff-row strong,.staff-row small{display:block}.staff-row small{font-size:12px;color:#77867c;margin-top:4px}
+.staff-create{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:22px 0}.staff-create button{grid-column:span 2;justify-self:start}
+@media(max-width:650px){.staff-create{grid-template-columns:1fr}.staff-create button{grid-column:span 1}}
