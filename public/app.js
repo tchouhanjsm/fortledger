@@ -98,6 +98,9 @@ function renderBookings(){
   const q=$('#search').value.trim().toLowerCase(),list=$('#booking-list');list.replaceChildren();
   const statusFilter=$('#booking-status-filter')?.value||'all';
   const workFilter=$('#booking-work-filter')?.value||'all';
+  for(const button of document.querySelectorAll('[data-booking-queue]')){
+    button.setAttribute('aria-pressed',String(button.dataset.bookingQueue===workFilter));
+  }
   const today=hotelToday();
   const filtered=bookings.filter(b=>
     (statusFilter==='all'||b.status===statusFilter)&&
@@ -1631,6 +1634,14 @@ $('#booking-form').onchange=event=>{
 $('#search').oninput=renderBookings;
 $('#booking-status-filter').onchange=renderBookings;
 $('#booking-work-filter').onchange=renderBookings;
+for(const button of document.querySelectorAll('[data-booking-queue]')){
+  button.onclick=()=>{
+    $('#booking-work-filter').value=button.dataset.bookingQueue;
+    $('#booking-status-filter').value='all';
+    $('#search').value='';
+    renderBookings();
+  };
+}
 $('#booking-clear-filters').onclick=()=>{
   $('#booking-status-filter').value='all';$('#booking-work-filter').value='all';
   $('#search').value='';renderBookings();
