@@ -76,3 +76,6 @@ See [WINDOWS_SETUP.md](WINDOWS_SETUP.md). Initial Windows installation clones th
 
 ## Staff permissions and profiles
 Staff management milestone introduces owner/manager/frontdesk/cashier roles with server-side permission checks, individual login and staff profile views. The original local owner password remains valid and is not replaced during migration. The owner can create, disable and edit staff accounts; access checks must be exercised against unauthorized API calls as well as UI navigation. Staff audit trails and production security review are next.
+
+## Mac UI review and role-specific landing experience
+The initial FortLedger screen now uses a role-aware Dashboard, not a long booking calendar. Owner/front desk/manager KPIs prioritize arrivals, availability, departures and balances. Cashier KPIs prioritize food bills, revenue, menu and pending unmatched room charges. Empty screens offer next actions. The app remains local/zero recurring subscriptions.
