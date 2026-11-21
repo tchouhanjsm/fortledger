@@ -199,3 +199,10 @@ All five increments completed in this development session were reviewed and merg
 - Pending/uncleared room charges do not count as collected money. Legacy hotel payments with unknown methods remain under `unrecorded` and are flagged for manual review. Refunds are locally recorded events, not proof of bank transfers.
 - Manager/owner-only API and understated dashboard summary; no financial daily-close action, accounting journal, expense module or tax report is claimed.
 - Tests prove India-time boundary, no double-counting of room-charged meals, method breakdown, pending charges and cashier RBAC; no schema migration needed.
+
+## 2026-11-21 — Phase 1D: idempotent hotel payment posting
+- Found repeated POST /api/bookings/:id/payments could create duplicate receipts when a network request was retried.
+- Added nullable `payments.request_id` and a unique partial SQLite index, preserving all existing payment entries without inventing IDs. New UI supplies a random request ID to each confirmed receipt.
+- Repeat request with identical booking/method/amount/note returns the original receipt; mismatched reuse is rejected; audit event is written only on first payment.
+- Existing integrations without request IDs remain compatible for now but do not receive retry protection. Restaurant bill and refund replay handling remain unchanged.
+- Integration tests verify idempotency, historic-null keys, exact balances and absence of duplicate audit events; no production finance approval claimed.
