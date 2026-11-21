@@ -24,7 +24,7 @@ export function paymentMethod(value,{allowLegacy=false}={}){
     if(allowLegacy)return 'unrecorded';
     throw new Error('Choose payment method: cash, UPI, card or bank');
   }
-  if(!METHODS.includes(value)||(value==='unrecorded'&&!allowLegacy))
+  if(!METHODS.includes(value)||value==='unrecorded')
     throw new Error('Choose payment method: cash, UPI, card or bank');
   return value;
 }
