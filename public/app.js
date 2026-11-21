@@ -32,7 +32,7 @@ const dateISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+
 const addDays = (d,days) => { const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+days);return x; };
 const fmtDay = iso => new Date(iso+'T12:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 const statusOptions=['reserved','checked_in','checked_out','cancelled'];
-let rooms=[],bookings=[],invoices=[],businessSettings=null,menu=[],restaurantBills=[],cart=[],editingId=null,weekStart=new Date(),calendarMode='week';
+let rooms=[],bookings=[],invoices=[],businessSettings=null,menu=[],restaurantBills=[],maintenanceIssues=[],cart=[],editingId=null,weekStart=new Date(),calendarMode='week';
 weekStart=addDays(weekStart,-((weekStart.getDay()+6)%7));
 async function api(url,options={}){
   const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});
@@ -152,6 +152,69 @@ function setCalendarMode(mode){
   button.setAttribute('aria-pressed',String(mode==='month'));
   renderCalendar();
 }
+function renderMaintenance(){
+  const workspace=$('#maintenance-workspace');
+  workspace.hidden=!can('maintenance.read');
+  if(!can('maintenance.read'))return;
+  const form=$('#maintenance-form'),select=$('#maintenance-room'),previous=select.value;
+  select.replaceChildren();
+  for(const room of rooms.filter(r=>r.active)){
+    const option=label('option',room.name);option.value=room.id;select.append(option);
+  }
+  if([...select.options].some(x=>x.value===previous))select.value=previous;
+  $('#maintenance-create').hidden=!can('maintenance.write');
+  $('#maintenance-block-choice').hidden=!can('maintenance.manage');
+  const list=$('#maintenance-list');list.replaceChildren();
+  if(!maintenanceIssues.length)list.append(label('p','No unresolved maintenance issues.','muted'));
+  for(const issue of maintenanceIssues){
+    const row=label('div',undefined,'maintenance-row');
+    const info=label('div');
+    info.append(label('strong',issue.room_name+' · '+issue.title));
+    const detail=issue.priority.toUpperCase()+' · '+issue.created_by+
+      (issue.blocks_room?' · OUT OF SERVICE '+issue.start_date+' to '+issue.end_date:' · Monitoring only');
+    info.append(label('small',detail));
+    if(issue.note)info.append(label('small',issue.note));
+    row.append(info);
+    if(can('maintenance.manage')){
+      const resolve=label('button','Resolve / release','secondary');
+      resolve.type='button';
+      resolve.onclick=async()=>{
+        if(!confirm('Confirm this maintenance issue is resolved and release any associated room outage?'))return;
+        const resolution_note=prompt('Resolution note (optional, max 300 characters):');
+        if(resolution_note===null)return;
+        try{
+          await api('/api/maintenance/'+issue.id+'/resolve',{method:'PATCH',
+            body:JSON.stringify({resolution_note})});
+          await load();
+        }catch(error){$('#maintenance-message').textContent=error.message;}
+      };
+      row.append(resolve);
+    }
+    list.append(row);
+  }
+}
+$('#maintenance-block').onchange=()=>{
+  $('#maintenance-dates').hidden=!$('#maintenance-block').checked;
+  const form=$('#maintenance-form');
+  for(const name of ['start_date','end_date'])
+    form.elements.namedItem(name).required=$('#maintenance-block').checked;
+};
+$('#maintenance-form').onsubmit=async event=>{
+  event.preventDefault();
+  const form=event.currentTarget,message=$('#maintenance-message');
+  const data=Object.fromEntries(new FormData(form));
+  data.room_id=Number(data.room_id);
+  data.blocks_room=can('maintenance.manage')&&$('#maintenance-block').checked;
+  if(!data.blocks_room){delete data.start_date;delete data.end_date;}
+  const submit=form.querySelector('[type=submit]');submit.disabled=true;message.textContent='';
+  try{
+    await api('/api/maintenance',{method:'POST',body:JSON.stringify(data)});
+    form.reset();$('#maintenance-dates').hidden=true;
+    message.textContent='Maintenance issue recorded.';
+    await load();
+  }catch(error){message.textContent=error.message;}
+  finally{submit.disabled=false;}
+};
 function renderRooms(){
   const list=$('#room-list');list.replaceChildren();
   for(const room of rooms){
@@ -179,6 +242,7 @@ function renderRooms(){
         await load();
       }catch(error){alert(error.message);state.value=room.housekeeping_status||'ready';}
     };
+    if(room.out_of_service_today)row.append(label('strong','Out of service today','room-outage-label'));
     row.append(name,category,save,state,saveState);
     row.onsubmit=async e=>{e.preventDefault();try{await api('/api/rooms/'+room.id,{method:'PATCH',body:JSON.stringify({name:name.value,category:category.value})});await load();}catch(error){alert(error.message);}};
     list.append(row);
@@ -196,7 +260,9 @@ function updateRoomOptions(selected=[]){
   for(const room of rooms.filter(r=>r.active&&r.category===category)){
     const item=label('label',undefined,'room-choice');
     const checkbox=label('input');checkbox.type='checkbox';checkbox.value=room.id;checkbox.checked=chosen.has(room.id);
-    item.append(checkbox,label('span',room.name));list.append(item);
+    item.append(checkbox,label('span',room.name+(room.out_of_service_today?' · Out of service today':'')));
+    if(room.out_of_service_today&&!checkbox.checked)checkbox.disabled=true;
+    list.append(item);
   }
   if(!list.children.length)list.append(label('p','Set up physical rooms for this category first.','muted'));
 }
@@ -385,13 +451,14 @@ $('#daily-close-form').oninput=()=>{delete $('#daily-close-form').dataset.pendin
 $('#daily-close-form').elements.namedItem('business_date').onchange=renderDailyClose;
 async function load(){
   currentUser=await api('/api/me');
-  [rooms,bookings,invoices,businessSettings,menu,restaurantBills]=await Promise.all([
+  [rooms,bookings,invoices,businessSettings,menu,restaurantBills,maintenanceIssues]=await Promise.all([
     can('rooms.read')?api('/api/rooms'):Promise.resolve([]),
     can('bookings.read')?api('/api/bookings'):can('restaurant.read')?api('/api/restaurant/checked-in'):Promise.resolve([]),
     can('invoices.read')?api('/api/invoices'):Promise.resolve([]),
     can('settings.read')?api('/api/settings/business'):Promise.resolve(null),
     can('restaurant.read')?api('/api/restaurant/menu'):Promise.resolve([]),
-    can('restaurant.read')?api('/api/restaurant/bills'):Promise.resolve([])
+    can('restaurant.read')?api('/api/restaurant/bills'):Promise.resolve([]),
+    can('maintenance.read')?api('/api/maintenance'):Promise.resolve([])
   ]);
   renderMenu();renderCart();renderRestaurantHistory();
   if(businessSettings){
@@ -400,7 +467,7 @@ async function load(){
     }
   }
   if(can('bookings.read')){renderBookings();renderCalendar();}
-  if(can('rooms.read'))renderRooms();
+  if(can('rooms.read')){renderRooms();renderMaintenance();}
   if(can('invoices.read'))renderInvoices();
   if(can('settings.read'))await refreshHotelLogo();
   $('#backup-button').hidden=!can('settings.admin');
