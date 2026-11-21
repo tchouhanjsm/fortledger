@@ -34,10 +34,39 @@ test('preview is non-mutating; importing verified CSV writes once',async()=>{
     const headers={'Content-Type':'application/json'};
     const preview=await fetch(base+'/api/restaurant/menu/preview',{method:'POST',headers,body:JSON.stringify({csv})});
     assert.equal(preview.status,200);
-    assert.equal((await preview.json()).count,1);
+    const checked=await preview.json();
+    assert.equal(checked.count,1);
+    assert.equal(checked.preview.length,1);
+    assert.deepEqual(checked.category_counts,{Beverages:1});
+    assert.deepEqual(checked.tax_rates,[5]);
     assert.equal(listMenu(db).length,0);
     const imported=await fetch(base+'/api/restaurant/menu/import',{method:'POST',headers,body:JSON.stringify({csv})});
     assert.equal(imported.status,200);
     assert.equal(listMenu(db).length,1);
+  }finally{await new Promise(resolve=>server.close(resolve));db.close();}
+});
+
+test('bulk menu review returns every row and detects category/rate coverage without importing',async()=>{
+  const db=openDatabase(':memory:');
+  const server=createApp(db).listen(0,'127.0.0.1');
+  await new Promise(resolve=>server.once('listening',resolve));
+  try{
+    const base='http://127.0.0.1:'+server.address().port;
+    const rows=Array.from({length:142},(_,i)=>
+      'Dish '+String(i+1).padStart(3,'0')+','+(i<80?'Breakfast':'Dinner')+','+(100+i)+','+(i<80?5:12));
+    const csv='name,category,price,tax_rate\n'+rows.join('\n');
+    const response=await fetch(base+'/api/restaurant/menu/preview',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({csv})});
+    assert.equal(response.status,200);
+    const data=await response.json();
+    assert.equal(data.count,142);
+    assert.equal(data.preview.length,142);
+    assert.deepEqual(data.category_counts,{Breakfast:80,Dinner:62});
+    assert.deepEqual(data.tax_rates,[5,12]);
+    assert.equal(listMenu(db).length,0,'Review must not change the ledger');
+    const imported=await fetch(base+'/api/restaurant/menu/import',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({csv})});
+    assert.equal(imported.status,200);
+    assert.equal(listMenu(db).length,142);
   }finally{await new Promise(resolve=>server.close(resolve));db.close();}
 });
