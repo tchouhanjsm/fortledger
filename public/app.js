@@ -253,6 +253,26 @@ function renderDashboard(){
     activity.append(row);
   }
 }
+async function renderCollections(){
+  const panel=$('#home-collections');
+  if(!can('finance.read')){panel.hidden=true;return;}
+  panel.hidden=false;
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
+    timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'
+  }).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+  const today=parts.year+'-'+parts.month+'-'+parts.day;
+  try{
+    const report=await api('/api/finance/daily?date='+today);
+    $('#home-collections-net').textContent=money(report.net_collections_paise);
+    $('#home-collections-note').textContent='Hotel '+money(report.hotel_received_paise)+
+      ' · Restaurant '+money(report.restaurant_received_paise)+
+      ' · Refunds '+money(report.refunds_recorded_paise)+
+      (report.unrecorded_method_paise>0?' · METHOD REVIEW '+money(report.unrecorded_method_paise):'');
+  }catch(error){
+    $('#home-collections-net').textContent='Not available';
+    $('#home-collections-note').textContent=error.message;
+  }
+}
 async function load(){
   currentUser=await api('/api/me');
   [rooms,bookings,invoices,businessSettings,menu,restaurantBills]=await Promise.all([
@@ -282,6 +302,7 @@ async function load(){
   if(settingsSave)settingsSave.disabled=!can('settings.admin');
   await renderProfile();
   renderDashboard();
+  await renderCollections();
   $('#invoice-empty-action').hidden=Boolean(invoices.length)||!can('bookings.read');
   if(!menu.length&&can('restaurant.write'))$('#menu-import-section').open=true;
   applyWorkspaceView();

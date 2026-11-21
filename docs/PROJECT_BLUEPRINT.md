@@ -85,3 +85,6 @@ Additive `payments.method` migration retains historic entries as `unrecorded`. N
 
 ## Phase 1B — Booking transition policy
 Allow reserved→checked-in/cancelled and checked-in→checked-out only. Physical room assignment is mandatory before check-in. A staff member must confirm checkout if a guest still owes accommodation or restaurant money. Proforma-linked bookings are locked against direct modification until a revision workflow is implemented, preventing invoice/booking divergence.
+
+## Phase 1C — Read-only financial reconciliation
+Owner/manager dashboard now includes a collection summary by business day (India timezone), with receipt sources, refunds and unknown legacy payment methods separated. Unsettled room charges remain uncollected. A formal reviewed day-close workflow and expense tracking are future milestones; do not equate collections with earned revenue.

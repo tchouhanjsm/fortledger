@@ -193,3 +193,9 @@ All five increments completed in this development session were reviewed and merg
 - Checkout with an outstanding accommodation/restaurant folio requires explicit operator acknowledgment; the debt remains recorded and is not automatically forgiven. Cancellation with a positive deposit emits an explicit refund/credit follow-up warning.
 - Issued proforma bookings cannot be silently edited until an audited amendment/revision flow is implemented. Payments continue independently and original PDF snapshots remain unchanged.
 - Added staff UI transitions and tests for forbidden reversals, multi-room assignment, acknowledged unpaid departures and immutable issued proformas.
+
+## 2026-11-21 — Phase 1C: daily collections reconciliation (read-only)
+- Added local business-day reconciliation in Asia/Kolkata, explicitly separating hotel payment receipts, direct restaurant receipts, settled room-charge receipts and refund records by payment method.
+- Pending/uncleared room charges do not count as collected money. Legacy hotel payments with unknown methods remain under `unrecorded` and are flagged for manual review. Refunds are locally recorded events, not proof of bank transfers.
+- Manager/owner-only API and understated dashboard summary; no financial daily-close action, accounting journal, expense module or tax report is claimed.
+- Tests prove India-time boundary, no double-counting of room-charged meals, method breakdown, pending charges and cashier RBAC; no schema migration needed.
