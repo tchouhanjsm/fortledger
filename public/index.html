@@ -83,7 +83,16 @@
     <option value="all">All statuses</option><option value="reserved">Reserved</option>
     <option value="checked_in">Checked in</option><option value="checked_out">Checked out</option>
     <option value="cancelled">Cancelled</option>
-  </select><input id="search" type="search" placeholder="Search bookings..." aria-label="Search bookings"></div></div><div class="toolbar"><button id="backup-button" class="secondary" type="button">↓ Download database backup</button></div><div id="booking-list" class="booking-list"><p class="muted">Loading bookings…</p></div></section>
+  </select><label class="sr-only" for="booking-work-filter">Front desk work queue</label>
+  <select id="booking-work-filter" aria-label="Front desk work queue">
+    <option value="all">All bookings</option>
+    <option value="arrivals">Today's arrivals (reserved)</option>
+    <option value="departures">Departures due or overdue (checked in)</option>
+    <option value="unassigned">Awaiting room assignment</option>
+    <option value="outstanding">Booking balance outstanding</option>
+  </select><input id="search" type="search" placeholder="Search bookings..." aria-label="Search bookings">
+  <button id="booking-clear-filters" class="secondary" type="button">Clear filters</button>
+  </div></div><p id="booking-results-count" class="booking-results-count" role="status"></p><div class="toolbar"><button id="backup-button" class="secondary" type="button">↓ Download database backup</button></div><div id="booking-list" class="booking-list"><p class="muted">Loading bookings…</p></div></section>
   <section id="invoices" class="panel"><div class="panel-head"><div><h2>Proforma invoices</h2><p>Immutable PDF snapshots. Create from a booking and download anytime.</p></div></div><div id="invoice-list"><p class="muted">Loading invoices…</p></div><div id="invoice-empty-action" class="empty-action" hidden><p>Invoices begin with a guest reservation. Create or open a booking first, then generate its proforma.</p><a href="#bookings" class="primary">Go to bookings</a></div></section>
   <section id="guests" class="panel">
   <div class="panel-head"><div><h2>Returning guests</h2><p>Reuse contact details and view linked stays. Historic bookings remain unchanged.</p></div>
