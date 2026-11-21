@@ -61,6 +61,17 @@ export function decryptBackupFile(encryptedFile,outputSqlite,passphrase){
     return validateBackup(output);
   }catch(error){fs.rmSync(output,{force:true});throw error;}
 }
+/** Verify an encrypted backup can be authenticated and restored to a valid SQLite
+ * file, without touching the live database or exposing the decrypted candidate. */
+export function verifyEncryptedBackupFile(encryptedFile,passphrase){
+  const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'fortledger-verify-'));
+  try{
+    fs.chmodSync(scratch,0o700);
+    return decryptBackupFile(encryptedFile,path.join(scratch,'verified.sqlite'),passphrase);
+  }finally{
+    fs.rmSync(scratch,{recursive:true,force:true});
+  }
+}
 export function scheduleEncryptedBackups(db,env=process.env,{intervalMs=24*60*60*1000,logger=console}={}){
   const directory=env.FORTLEDGER_BACKUP_DIR;
   const passphrase=env.FORTLEDGER_BACKUP_PASSPHRASE;
