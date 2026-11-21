@@ -109,7 +109,7 @@ test('v5 to v6 upgrade preserves historic reservations, payments and no false gu
     db.pragma('user_version = 5');
     db.close();
     const reopened=openDatabase(file);
-    assert.equal(reopened.pragma('user_version',{simple:true}),6);
+    assert.equal(reopened.pragma('user_version',{simple:true}),7);
     assert.equal(reopened.prepare('SELECT COUNT(*) AS n FROM guest_profiles').get().n,0);
     assert.equal(reopened.prepare('SELECT guest_id FROM bookings WHERE id=?').get(id).guest_id,null);
     assert.equal(reopened.prepare('SELECT SUM(amount_paise) AS n FROM payments').get().n,150000);
