@@ -94,3 +94,6 @@ New hotel payment requests send UUID request IDs to a unique, nullable `payments
 
 ## Phase 2A — SQLite schema versioning
 The application now establishes baseline schema version 1 with `PRAGMA user_version`. Legacy v0 databases transition atomically; supported v1 databases avoid repeated bootstrap mutations; newer database versions are rejected. The offline restore validator checks forward compatibility and FK integrity. Future releases must introduce explicit v2/v3 migration steps, backed by rollback snapshots and tests.
+
+## Phase 3A — Simple expense tracking
+A small date/category/method/amount expense ledger is now available to owner and manager on the dashboard. Separate net cash movement is derived from received collections less recorded outflows. Schema v2 adds the expense table without migrating financial values. This is not a profit-and-loss statement and does not automatically classify GST input tax.
