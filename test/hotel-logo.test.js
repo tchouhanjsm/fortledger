@@ -33,10 +33,8 @@ test('hotel logo assets are local and preserve historic invoice branding',async(
     const tax=await fetch(base+'/api/tax-drafts/'+draft.id+'/pdf');
     assert.equal(tax.status,200);
     assert.equal(Buffer.from(await tax.arrayBuffer()).subarray(0,5).toString(),'%PDF-');
-    const different=Buffer.from(PNG,'base64');
-    // Valid PNG data with a different hash; no need to render the modified asset in this test.
-    different[different.length-5]^=1;
-    const newer=setHotelLogo(db,{mime:'image/png',base64:different.toString('base64')});
+    const SECOND_PNG='iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAIAAABvFaqvAAAAIklEQVR4nGNsMpdjoAZgooopowaNGjRq0KhBowaNGkQRAABpkAEH67OlygAAAABJRU5ErkJggg==';
+    const newer=setHotelLogo(db,{mime:'image/png',base64:SECOND_PNG});
     assert.notEqual(newer.id,logo.id);
     assert.equal(getInvoice(db,issued.id).snapshot.logo_asset_id,logo.id);
     assert.equal(getActiveLogoId(db),newer.id);
