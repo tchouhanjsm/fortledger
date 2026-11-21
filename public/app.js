@@ -230,6 +230,59 @@ $('#tax-draft-form').onsubmit=async event=>{
   }catch(error){message.textContent=error.message;}
   finally{button.disabled=false;}
 };
+async function renderProfile(){
+  if(!currentUser)return;
+  $('#profile-name').textContent=currentUser.display_name;
+  $('#profile-role').textContent=currentUser.role==='frontdesk'?'Front desk':currentUser.role==='cashier'?'Restaurant cashier':
+    currentUser.role==='owner'?'Owner / administrator':'Hotel manager';
+  $('#profile-username').textContent='@'+currentUser.username+' · Local staff account';
+  $('#profile-avatar').textContent=currentUser.display_name.trim().split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()||'').join('');
+  $('#profile-form').elements.namedItem('display_name').value=currentUser.display_name;
+  const perms=$('#profile-permissions');perms.replaceChildren();
+  const labels=currentUser.permissions.includes('*')?['Full owner access']:currentUser.permissions.map(p=>p.replaceAll('.',' · '));
+  for(const perm of labels)perms.append(label('span',perm,'permission-pill'));
+  if(currentUser.role==='owner'){
+    const staff=await api('/api/staff');
+    const list=$('#staff-list');list.replaceChildren();
+    if(!staff.length)list.append(label('p','No staff accounts yet. Add your first staff member below.','muted'));
+    for(const user of staff){
+      const row=label('div',undefined,'staff-row');
+      const detail=label('div');
+      detail.append(label('strong',user.display_name),label('small','@'+user.username+' · '+user.role+' · '+(user.active?'Active':'Disabled')));
+      const toggle=label('button',user.active?'Disable':'Enable','secondary');
+      toggle.onclick=async()=>{
+        if(!confirm((user.active?'Disable':'Enable')+' account for '+user.display_name+'?'))return;
+        try{
+          await api('/api/staff/'+user.id,{method:'PATCH',body:JSON.stringify({active:!user.active})});
+          await renderProfile();
+        }catch(error){$('#staff-message').textContent=error.message;}
+      };
+      row.append(detail,toggle);list.append(row);
+    }
+  }
+}
+$('#profile-form').onsubmit=async event=>{
+  event.preventDefault();
+  const message=$('#profile-message');
+  try{
+    await api('/api/me',{method:'PATCH',body:JSON.stringify({
+      display_name:event.currentTarget.elements.namedItem('display_name').value
+    })});
+    message.textContent='Profile updated.';
+    await load();
+  }catch(error){message.textContent=error.message;}
+};
+$('#staff-create').onsubmit=async event=>{
+  event.preventDefault();
+  const form=event.currentTarget,message=$('#staff-message');
+  const submit=form.querySelector('[type=submit]');submit.disabled=true;message.textContent='';
+  try{
+    await api('/api/staff',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(form)))});
+    form.reset();message.textContent='Staff account created.';
+    await renderProfile();
+  }catch(error){message.textContent=error.message;}
+  finally{submit.disabled=false;}
+};
 let invoiceBookingId=null;
 function makeInvoiceLine(item={description:'',rooms:1,nights:1,rate:0}){
   const row=label('div',undefined,'invoice-line-edit');
