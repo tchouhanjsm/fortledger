@@ -1,0 +1,107 @@
+/* FortLedger Heritage Sky — phase 1: offline-only design foundation.
+   Existing markup, routing, permission checks and financial calculations are unchanged.
+   Tokens are semantic; retain explicit status words rather than relying on color. */
+:root {
+  --hs-sky:#e7effb; --hs-ivory:#faf7f2; --hs-surface:#fffefa;
+  --hs-gold:#b7824f; --hs-ink:#17263e; --hs-muted:#59677a;
+  --hs-sage:#207e6c; --hs-peach:#f5e7db; --hs-border:#e7e4df;
+  --hs-gold-hover:#a36f3f; --hs-focus:#245da8;
+  --hs-danger:#a12837; --hs-warning:#8d531b;
+  --hs-radius:18px; --hs-control-radius:10px;
+  --hs-shadow:0 8px 28px rgba(30,42,65,.055);
+  color:var(--hs-ink);background:var(--hs-ivory);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+body{
+  color:var(--hs-ink);
+  background:radial-gradient(ellipse 65% 35% at 30% 0%,rgba(211,225,250,.62),transparent 75%),
+             radial-gradient(ellipse 55% 35% at 100% 8%,rgba(249,212,181,.35),transparent 80%),
+             var(--hs-ivory);
+}
+main{min-width:0;max-width:1600px;padding:32px clamp(18px,3vw,44px)}
+.sidebar{background:#192b42;color:#f9f7f1;width:246px;padding:25px 15px;border-right:1px solid rgba(255,255,255,.08)}
+.brand{padding:8px 10px 28px}.brandmark{background:var(--hs-gold);color:#192b42}
+.brand small{color:#d5dfeb}
+.sidebar nav{display:grid;gap:5px}
+.sidebar nav a{justify-content:flex-start;gap:10px;color:#e1e9f2;line-height:1.35;padding:12px 14px;border-radius:var(--hs-control-radius);font-size:13px}
+.sidebar nav a:hover{background:rgba(255,255,255,.1);color:white}
+.sidebar nav a.active{background:#36506b;color:white;box-shadow:inset 3px 0 var(--hs-gold)}
+.sidebar-bottom{border-color:#38506a;color:#e1e9f2}
+.sidebar-bottom small{color:#c4d0dc}
+header{margin-bottom:24px;align-items:flex-start}
+h1{font-family:Georgia,serif;font-size:clamp(29px,2.5vw,39px);color:var(--hs-ink);line-height:1.14}
+h1 em{color:#916237}
+.eyebrow{color:#805126}
+header p,.panel p{color:var(--hs-muted);line-height:1.5}
+.primary,.secondary{border-radius:var(--hs-control-radius);transition:background-color .15s,border-color .15s;min-height:42px}
+.primary{background:var(--hs-ink);border-color:var(--hs-ink);color:white}
+.primary:hover{background:#30496a;border-color:#30496a}
+.secondary{background:var(--hs-surface);border-color:#cbd4dd;color:var(--hs-ink)}
+.secondary:hover{background:var(--hs-sky)}
+.stats article,.panel,.home-kpi,.login-card{border:1px solid var(--hs-border);background:var(--hs-surface);border-radius:var(--hs-radius);box-shadow:var(--hs-shadow)}
+.panel{padding:clamp(16px,2vw,25px)}
+.panel h2,dialog h2{color:var(--hs-ink)}
+.stats label,.muted,.booking-row small,.room-row small{color:var(--hs-muted)}
+.stats b,.money,.home-kpi strong,.home-collections strong{font-variant-numeric:tabular-nums}
+.panel input,.panel select,.panel textarea,.form-grid input,.form-grid select,.settings-grid input,.settings-grid textarea{
+  border-radius:var(--hs-control-radius);border-color:#cbd4dd;color:var(--hs-ink);background:var(--hs-surface);
+}
+:where(button,a,input,select,textarea,summary):focus-visible{
+  outline:3px solid var(--hs-focus);outline-offset:3px;box-shadow:none;
+}
+:where(button,a,input,select,textarea):disabled{cursor:not-allowed;opacity:.65}
+a:not(.primary):not(.secondary){text-underline-offset:3px}
+.booking-row,.room-row,.invoice-row,.guest-row,.maintenance-row{border-color:var(--hs-border)}
+.booking-row{min-width:0}
+.booking-row > *{min-width:0}
+.row-actions{gap:6px}
+.row-actions button{min-height:36px}
+.dialog-heading h2{color:var(--hs-ink)}
+dialog{background:var(--hs-surface);color:var(--hs-ink);border-radius:var(--hs-radius)}
+dialog::backdrop{background:rgba(23,38,62,.72)}
+.cal-heading,.month-heading{background:#f0f3f8;color:var(--hs-ink)}
+.cal-booking{background:#dfefe9;color:#145b4f}
+.room-performance,.home-collections,.menu-import,.empty-action{background:#fbfaf7;border-color:var(--hs-border)}
+.home-dashboard .dashboard-welcome{border-radius:var(--hs-radius)}
+.login-page{background:var(--hs-ivory)}
+.login-card h1{color:var(--hs-ink)}
+/* Tablet keeps real text labels: icon-only navigation previously erased meaning. */
+@media(max-width:1100px){
+  .sidebar{width:216px;flex-shrink:0;padding:18px 10px}
+  .sidebar .brand{justify-content:flex-start;padding:8px 5px 25px}
+  .sidebar .brand div{display:block}
+  .sidebar nav a{font-size:12px;justify-content:flex-start;padding:11px 9px;overflow-wrap:anywhere}
+  .sidebar .sidebar-bottom{display:block;font-size:11px}
+  .sidebar nav a:first-letter{font-size:inherit}
+  main{padding:24px 18px}
+}
+/* Mobile displays all authorized destinations in a scrollable, labelled nav.
+   Hidden permission-denied links remain hidden by app.js and [hidden]. */
+@media(max-width:700px){
+  body{display:block}
+  .sidebar{position:relative;top:auto;width:100%;height:auto;display:block;padding:12px 14px}
+  .sidebar .brand{padding:2px 2px 12px}
+  .sidebar .brand div{display:block}
+  .sidebar nav{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding:2px 0 10px}
+  .sidebar nav a{flex:none;font-size:12px;white-space:nowrap;padding:10px 12px;min-height:42px;align-items:center}
+  .sidebar .sidebar-bottom{display:none}
+  main{padding:20px 12px;max-width:none}
+  header{gap:12px}
+  .header-actions{flex-wrap:wrap}
+  .panel{padding:16px 13px}
+  .booking-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+  .booking-row .row-actions{grid-column:1/-1}
+  .booking-row .row-actions button{flex:1 1 auto;min-height:40px}
+  .home-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .form-grid,.settings-grid{grid-template-columns:1fr}
+  .form-grid .wide,.settings-grid .wide{grid-column:1}
+}
+@media(max-width:390px){
+  .home-kpis{grid-template-columns:1fr}
+  .booking-row{grid-template-columns:1fr}
+  .booking-row .row-actions{grid-column:1}
+  .header-actions button{flex:1 1 auto}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
