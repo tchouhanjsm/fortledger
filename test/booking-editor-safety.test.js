@@ -32,7 +32,7 @@ test('form guards preserve unsaved work and prevent dismissal while saving',()=>
   assert.match(js,/if\(bookingSavePending\)\{event\.preventDefault\(\);return;\}/);
   assert.match(js,/if\(bookingSavePending\)return;/);
   assert.match(js,/bookingDraftError\(data,data\.room_ids\.length\)/);
-  assert.match(js,/Check the reservation ledger before submitting again/);
+  assert.match(js,/Retry unchanged details safely with the same request ID/);
 });
 test('checkin and checkout require physical confirmation and existing folio review',()=>{
   const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');

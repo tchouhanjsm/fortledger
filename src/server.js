@@ -27,6 +27,7 @@ import {roomPerformance} from './room-performance.js';
 import {createMaintenanceIssue,resolveMaintenanceIssue,listMaintenance,blockedRoomIds} from './maintenance.js';
 import {saveGuest,listGuests,guestStays,validateGuestLink} from './guests.js';
 import {paymentMethod,recordAudit,auditEvents,recordHotelPayment} from './financial-audit.js';
+import {createBookingSafely} from './booking-create.js';
 
 export function createApp(db,{authRecord=null,authFile=null}={}) {
   const app = express();
@@ -276,32 +277,16 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
   });
 
   app.post('/api/bookings', (req,res,next)=>{
-    try {
-      const b=normalizeBooking(req.body);
-      validateGuestLink(db,b.guest_id);
-      let id;
-      const {room_ids,...sqlBooking}=b;
-      db.transaction(()=>{
-        assertAvailability(db,b);
-        const result=db.prepare(`INSERT INTO bookings
-          (guest_name,company_name,checkin,checkout,rooms_count,room_id,category,meal_plan,nightly_rate_paise,guest_id)
-          VALUES (@guest_name,@company_name,@checkin,@checkout,@rooms_count,@room_id,@category,@meal_plan,@nightly_rate_paise,@guest_id)`).run(sqlBooking);
-        id=Number(result.lastInsertRowid);
-        const allocate=db.prepare('INSERT INTO booking_room_allocations(booking_id,room_id) VALUES(?,?)');
-        for(const roomId of b.room_ids)allocate.run(id,roomId);
-        const initial=toPaise(req.body.amount_paid ?? 0);
-        if(initial>0){
-          const method=paymentMethod(req.body.advance_method,{allowLegacy:true});
-          const receipt=db.prepare('INSERT INTO payments (booking_id,amount_paise,note,method) VALUES (?,?,?,?)')
-            .run(id,initial,'Initial advance',method);
-          recordAudit(db,req.actor,'payment.recorded','payment',Number(receipt.lastInsertRowid),
-            {booking_id:id,amount_paise:initial,method});
-        }
-        recordAudit(db,req.actor,'booking.created','booking',id,
-          {checkin:b.checkin,checkout:b.checkout,rooms_count:b.rooms_count,category:b.category});
-      })();
-      res.status(201).json({id, ...bookingTotals({...b,paid_paise:toPaise(req.body.amount_paid ?? 0)})});
-    } catch(e) {next(e);}
+    try{
+      const booking=normalizeBooking(req.body);
+      const initialPaise=toPaise(req.body.amount_paid??0);
+      const method=initialPaise>0?paymentMethod(req.body.advance_method,{allowLegacy:true}):null;
+      const result=createBookingSafely(db,{
+        booking,initialPaise,method,requestId:req.body.request_id,
+        actor:req.actor,validateGuestLink
+      });
+      res.status(result.already_recorded?200:201).json(result);
+    }catch(error){next(error);}
   });
 
   // Booking updates remain atomic with availability checks; original payment records persist.

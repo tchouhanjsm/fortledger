@@ -15,6 +15,7 @@ import {ensureHousekeepingSchema} from './housekeeping.js';
 import {ensureDailyCloseSchema} from './daily-close.js';
 import {ensureMaintenanceSchema,blockedRoomIds} from './maintenance.js';
 import {ensureGuestSchema} from './guests.js';
+import {ensureBookingCreateSchema} from './booking-create.js';
 
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -22,7 +23,7 @@ export function openDatabase(filename = databasePath()) {
   try {
     db.pragma('foreign_keys = ON');
     const current = db.pragma('user_version', {simple:true});
-    if(current > 6)throw new Error('Database schema '+current+' is newer than this FortLedger version (6); update the app before opening it');
+    if(current > 7)throw new Error('Database schema '+current+' is newer than this FortLedger version (7); update the app before opening it');
     if(current < 0)throw new Error('Invalid database schema version');
     // Version 0 includes all legacy pre-versioned FortLedger installations.
     // A single SQLite transaction makes the baseline upgrade all-or-nothing.
@@ -106,6 +107,11 @@ export function openDatabase(filename = databasePath()) {
     if(current<6)db.transaction(()=>{
       ensureGuestSchema(db);
       db.pragma('user_version = 6');
+    })();
+    // Version 7: immutable request ledger for retry-safe booking creation and initial advance.
+    if(current<7)db.transaction(()=>{
+      ensureBookingCreateSchema(db);
+      db.pragma('user_version = 7');
     })();
     // Preserve the established repair for legacy direct room_id records on reopen.
     // This is idempotent DML, not a schema migration.

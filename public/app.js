@@ -931,6 +931,7 @@ $('#booking-dialog').addEventListener('cancel',event=>{
 function openNew(){
   editingId=null;
   const f=$('#booking-form');f.reset();
+  delete f.dataset.pendingRequestId;
   refreshGuestPicker('');
   $('#dialog-title').textContent='Add a booking';$('#booking-submit').textContent='Save booking';
   $('#initial-advance').disabled=false;$('#initial-advance').closest('label').hidden=false;
@@ -940,6 +941,7 @@ function openNew(){
 function openEdit(b){
   editingId=b.id;
   const form=$('#booking-form');form.reset();
+  delete form.dataset.pendingRequestId;
   refreshGuestPicker(b.guest_id||'');
   ['guest_name','company_name','checkin','checkout','rooms_count','meal_plan','nightly_rate'].forEach(k=>{
     const field=form.elements.namedItem(k);
@@ -1316,8 +1318,17 @@ $('#new-booking').onclick=openNew;
 $('#close-dialog').onclick=closeBookingEditor;
 $('#cancel-dialog').onclick=closeBookingEditor;
 $('#category-select').onchange=()=>{updateRoomOptions();updatePreview();};
-$('#room-assignment-list').onchange=()=>{updatePreview();};
-$('#booking-form').oninput=updatePreview;
+$('#room-assignment-list').onchange=()=>{
+  delete $('#booking-form').dataset.pendingRequestId;
+  updatePreview();
+};
+$('#booking-form').oninput=event=>{
+  if(!editingId&&event.target.name)delete event.currentTarget.dataset.pendingRequestId;
+  updatePreview();
+};
+$('#booking-form').onchange=event=>{
+  if(!editingId&&event.target.name)delete event.currentTarget.dataset.pendingRequestId;
+};
 $('#search').oninput=renderBookings;
 $('#booking-status-filter').onchange=renderBookings;
 $('#booking-work-filter').onchange=renderBookings;
@@ -1343,15 +1354,21 @@ $('#booking-form').onsubmit=async e=>{
   const submit=$('#booking-submit');
   bookingSavePending=true;submit.disabled=true;
   const editing=editingId!==null;
+  if(!editing){
+    const request_id=form.dataset.pendingRequestId||crypto.randomUUID();
+    form.dataset.pendingRequestId=request_id;
+    data.request_id=request_id;
+  }
   try{
     if(editing)await api('/api/bookings/'+editingId,{method:'PATCH',body:JSON.stringify(data)});
     else await api('/api/bookings',{method:'POST',body:JSON.stringify(data)});
+    delete form.dataset.pendingRequestId;
     captureBookingBaseline();
     $('#booking-dialog').close();
   }catch(error){
     setMessage(error.message);
-    if(!editing)setMessage('Booking could not be confirmed: '+error.message+
-      '. Check the reservation ledger before submitting again to avoid a duplicate booking.');
+    if(!editing)setMessage('Booking creation not confirmed: '+error.message+
+      '. Retry unchanged details safely with the same request ID, or review the ledger first.');
     return;
   }finally{
     bookingSavePending=false;submit.disabled=false;
