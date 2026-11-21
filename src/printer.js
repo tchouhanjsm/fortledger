@@ -61,7 +61,17 @@ export async function printSavedBill(db,id,options,{send=sendToPrinter,reprint=f
   if(!bill)throw new Error('Restaurant bill not found');
   db.transaction(()=>{
     const existing=getPrintStatus(db,id);
-    if(existing?.state==='sending')throw new Error('Print is already running');
+    if(existing?.state==='sending'){
+      // Transport usually ends within 4 seconds. An interrupted process can
+      // leave 'sending' forever. Never silently send a duplicate: require a
+      // separate staff-confirmed reprint after a conservative 10-minute age.
+      const age=db.prepare("SELECT (unixepoch('now')-unixepoch(updated_at)) AS seconds FROM restaurant_print_jobs WHERE restaurant_bill_id=?")
+        .get(id)?.seconds;
+      if(!Number.isFinite(age)||age<600)
+        throw new Error('Print is already running or its outcome is still uncertain; inspect printer before retrying');
+      if(!reprint)
+        throw new Error('Previously attempted; interrupted print is unverified. Inspect physical paper before explicit reprint');
+    }
     if(existing&&!reprint)throw new Error('Previously attempted; explicit reprint required');
     db.prepare(`INSERT INTO restaurant_print_jobs(restaurant_bill_id,state,attempts,last_error)
       VALUES(?,'sending',1,'') ON CONFLICT(restaurant_bill_id) DO UPDATE
