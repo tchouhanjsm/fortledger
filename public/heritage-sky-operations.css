@@ -80,3 +80,7 @@
   .booking-filters select{min-width:0;max-width:100%}
   .calendar-controls{max-width:100%;flex-wrap:wrap}
 }
+
+/* Document itself must never pan horizontally. The nav and room calendar have
+   their own intentional horizontal scrollers, with labels remaining reachable. */
+html,body{max-width:100%;overflow-x:clip}
