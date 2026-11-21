@@ -58,8 +58,35 @@ const fmtDay = iso => new Date(iso+'T12:00:00').toLocaleDateString('en-IN',{day:
 const statusOptions=['reserved','checked_in','checked_out','cancelled'];
 let rooms=[],bookings=[],invoices=[],businessSettings=null,menu=[],restaurantBills=[],maintenanceIssues=[],guests=[],cart=[],editingId=null,weekStart=new Date(),calendarMode='week';
 weekStart=addDays(weekStart,-((weekStart.getDay()+6)%7));
+let connectionState='checking';
+function setConnectionStatus(state){
+  connectionState=state;
+  const el=$('#connection-status');
+  if(!el)return;
+  el.dataset.state=state;
+  el.textContent=state==='connected'?'Local server reachable':
+    state==='login'?'Local server reachable — sign-in required':
+    state==='lost'?'Connection lost — check the ledger before retrying a booking or bill':
+    'Checking local server…';
+}
+let serverProbePending=false;
+async function probeServerConnection(){
+  if(serverProbePending)return;
+  if(navigator.onLine===false){setConnectionStatus('lost');return;}
+  serverProbePending=true;
+  try{
+    const response=await fetch('/api/auth/status',{method:'GET',cache:'no-store',credentials:'same-origin'});
+    if(!response.ok)throw new Error('Local status endpoint unavailable');
+    const state=await response.json();
+    setConnectionStatus(state.authenticated===false?'login':'connected');
+  }catch{setConnectionStatus('lost');}
+  finally{serverProbePending=false;}
+}
 async function api(url,options={}){
-  const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});
+  let response;
+  try{response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});}
+  catch(error){setConnectionStatus('lost');throw error;}
+  setConnectionStatus('connected');
   const data=await response.json();
   if(response.status===401&&url!=='/api/auth/status'){window.location.href='/login.html';throw new Error('Login required');}
   if(!response.ok)throw new Error(data.error||'Request failed');
@@ -1629,5 +1656,11 @@ $('#booking-form').onsubmit=async e=>{
   }catch(error){alert('Booking saved, but refreshing failed: '+error.message+
     '. Reload to view the saved reservation.');}
 };
+window.addEventListener('online',()=>{void probeServerConnection();});
+window.addEventListener('offline',()=>setConnectionStatus('lost'));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)void probeServerConnection();});
+// Lightweight read-only connectivity check; never queues or replays financial writes.
+setInterval(()=>{if(!document.hidden)void probeServerConnection();},45000);
 applyWorkspaceView();
+void probeServerConnection();
 load().catch(e=>{$('#booking-list').textContent='Unable to load: '+e.message;});
