@@ -166,3 +166,10 @@ All five increments completed in this development session were reviewed and merg
 - Found strict fixed-order header requirement caused failure on Excel/Numbers exports. Added BOM-insensitive, aliases/reordered columns and extra-column support, with explicit GST tax-rate validation and row-specific errors.
 - Added a nonmutating preview API, sample downloadable template, dedicated inline feedback and confirmed import action.
 - Regression tests cover typical exported headers, atomic rejection of invalid files and preview behavior. No silent guessing of tax rates.
+
+## 2026-11-21 — Staff profiles and role-based API access
+- Added SQLite staff accounts, individual salted scrypt passwords, owner-only staff creation and disabling, and a personal profile view. Existing single-admin password remains the owner's login; owner username defaults to `owner`.
+- Roles: owner, manager, frontdesk, cashier. All production API routes authorize by server-side permission, not only hidden UI. Cashier sees restaurant functions and minimal checked-in guest information, but not bookings ledger, backups, bank settings or hotel invoices.
+- Revoked/deactivated users lose access on the next request; role changes are dynamically applied to existing sessions. Staff password hashes stay in SQLite and are never included in API responses.
+- UI loads only endpoints that the logged-in role can access, with owner-only team management in My Profile. RBAC regression tests cover endpoint denials and revocation.
+- Remaining: audit event log, staff change-password UI and dedicated production security review; existing owner hash file is preserved for upgrades.
