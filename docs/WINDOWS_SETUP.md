@@ -103,3 +103,11 @@ The pre-update backup protects upgrades, but **not a complete hard-drive failure
 - **Legacy data detected:** if the script reports an older `data\\fortledger.sqlite` inside the Git checkout, **stop**. The script refuses to initialize a new empty external database. Preserve the entire old `data\\` directory and contact the developer for a SQLite-consistent migration to `%LOCALAPPDATA%\\FortLedger\\data` (including `admin-auth.json`). Do not drag-copy the live database while FortLedger is open.
 - Looks like the hotel data disappeared: **do not enter new data**. Verify `$env:FORTLEDGER_DATA_DIR`, confirm `%LOCALAPPDATA%\FortLedger\data\fortledger.sqlite` exists, and always start with the launcher script.
 - Password hash was lost: do not overwrite SQLite or repeatedly run `setup-auth` to guess a fix. Restore `admin-auth.json` from a secure backup or follow a reviewed recovery procedure.
+
+### Isolated recovery rehearsal (before live operations)
+After the Mac and Windows development installation starts successfully, run the following **with the same environment settings as FortLedger**:
+```powershell
+$env:FORTLEDGER_DATA_DIR = Join-Path $env:LOCALAPPDATA 'FortLedger\data'
+npm.cmd run recovery:drill
+```
+The command works with an online database by creating a consistent snapshot and restores only to a private temporary path. It compares all table rows and an admin-credential copy without changing the live source. It does **not** substitute for physically restoring an off-device encrypted backup and signing in on the destination Windows machine.
