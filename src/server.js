@@ -18,6 +18,7 @@ import {getGuestFolio,settleRoomBill,settleCombined} from './folio.js';
 import { NET_PAYMENTS_SQL, paymentHistory,recordRefund } from './payment-ledger.js';
 import {createStaff,listStaff,updateStaff,updateOwnProfile} from './staff.js';
 import {ROLE_PERMISSIONS} from './access.js';
+import {transitionBooking,assertBookingEditAllowed} from './booking-transitions.js';
 import {paymentMethod,recordAudit,auditEvents} from './financial-audit.js';
 
 export function createApp(db,{authRecord=null}={}) {
@@ -229,7 +230,7 @@ export function createApp(db,{authRecord=null}={}) {
       if (!Number.isSafeInteger(id)||id<1) throw new Error('Invalid booking ID');
       const previous=db.prepare('SELECT * FROM bookings WHERE id=?').get(id);
       if (!previous) return res.status(404).json({error:'Booking not found'});
-      if (previous.status==='cancelled') throw new Error('Cancelled bookings cannot be edited');
+      assertBookingEditAllowed(db,id,previous);
       const b=normalizeBooking(req.body);
       const {room_ids,...sqlBooking}=b;
       db.transaction(()=>{
@@ -304,25 +305,14 @@ export function createApp(db,{authRecord=null}={}) {
       res.status(201).json({ok:true});
     } catch(e) {next(e);}
   });
-  app.patch('/api/bookings/:id/status', (req,res,next)=>{
-    try {
-      const id=Number(req.params.id);
-      if (!Number.isInteger(id)) throw new Error('Invalid booking');
-      const status=String(req.body.status||'');
-      const current=db.prepare('SELECT status FROM bookings WHERE id=?').get(id);
-      if(!current) return res.status(404).json({error:'Booking not found'});
-      if(current.status==='cancelled'&&status!=='cancelled') throw new Error('Cancelled bookings cannot be reactivated in this version');
-      if (!['reserved','checked_in','checked_out','cancelled'].includes(status)) throw new Error('Invalid status');
-      const update=db.transaction(()=>{
-        const result=db.prepare('UPDATE bookings SET status=? WHERE id=?').run(status,id);
-        if(result.changes&&status!==current.status)
-          recordAudit(db,req.actor,'booking.status_changed','booking',id,
-            {from:current.status,to:status});
-        return result;
-      })();
-      if (!update.changes) return res.status(404).json({error:'Booking not found'});
-      res.json({ok:true});
-    } catch(e) {next(e);}
+  app.patch('/api/bookings/:id/status',(req,res,next)=>{
+    try{
+      const response=transitionBooking(db,Number(req.params.id),req.body?.status,{
+        actor:req.actor,acknowledge_balance:req.body?.acknowledge_balance===true,
+        reason:req.body?.reason??''
+      });
+      res.json(response);
+    }catch(error){next(error);}
   });
   app.use((err,req,res,_next)=>{
     const isConflict=/availability|capacity|already assigned|Not enough/.test(err.message);
