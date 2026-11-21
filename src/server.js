@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {authGate,loadPasswordRecord} from './auth.js';
 import {renderRestaurantReceipt} from './restaurant-receipt.js';
+import {scheduleEncryptedBackups} from './encrypted-backups.js';
 import { openDatabase, assertAvailability } from './database.js';
 import { bookingTotals, nightsBetween, toPaise } from './finance.js';
 import { createProforma,getInvoice,listInvoices } from './invoices.js';
@@ -259,6 +260,9 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
     process.exitCode=1;db.close();
   }else{
     createApp(db,{authRecord}).listen(port,'127.0.0.1',
-      ()=>console.log('FortLedger local app: http://127.0.0.1:'+port));
+      ()=>{
+        console.log('FortLedger local app: http://127.0.0.1:'+port);
+        scheduleEncryptedBackups(db);
+      });
   }
 }

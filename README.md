@@ -75,3 +75,14 @@ Bookings may reserve rooms by category, assign any number of physical rooms up t
 
 ## Refund records (alpha)
 The payment ledger supports **append-only refund records** against a specific original booking payment. Each record includes method, reason, amount, and retry-safe unique request ID; refunded amounts reduce outstanding paid balance across bookings and guest folios. Already-issued proformas remain unchanged; future proformas use the current net-paid balance. FortLedger **does not send money or trigger an external refund**; an operator must complete the actual bank/UPI/card/cash refund separately.
+
+## Automated encrypted backups (alpha)
+Optional local scheduled backup runs at startup and every 24 hours **while the application runs**, provided both environment variables are configured:
+```bash
+export FORTLEDGER_BACKUP_DIR=/absolute/path/to/separate-drive/fortledger-backups
+export FORTLEDGER_BACKUP_PASSPHRASE='choose-a-unique-secret-of-16-or-more-characters'
+npm start
+```
+The application writes AES-256-GCM encrypted SQLite snapshots using scrypt-derived keys and keeps the latest 30 backup files. Choose a **different disk/drive** or an independently synced encrypted folder; merely storing copies on the same disk will not protect against hardware failure. Do not check the passphrase into Git or shell history; set it through secure OS environment configuration. Decrypt onto a new candidate path with `npm run backup:decrypt -- /path/to/file.flbk /path/to/candidate.sqlite`, then stop the application and use the existing `npm run restore` command. Each encrypted file is integrity-authenticated; tampered files and wrong passwords fail decryption. The admin password file is outside the SQLite backup and needs its own secure recovery plan.
+
+**Limitation:** Automated snapshots run only while the Node.js app is active; a stopped computer cannot run them. Full off-device recovery tests and a production scheduling/secret-management setup still need completion.

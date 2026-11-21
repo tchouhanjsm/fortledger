@@ -108,3 +108,9 @@ All five increments completed in this development session were reviewed and merg
 - Booking list, folio, and new proforma issuance use **net payments** (receipts minus recorded refunds); prior issued proformas remain immutable snapshots.
 - A recorded refund is **NOT** a transfer initiated through the bank or payment gateway. Operator must execute and verify the actual refund separately.
 - Tests cover refund bounds, repeated requests, cancelled stays and unchanged historical invoice snapshots.
+
+## 2026-11-21 — Automatic encrypted SQLite backups
+- Added opt-in encrypted SQLite snapshots at application startup and every 24 hours while running, configurable with an absolute external backup path and a separately managed passphrase.
+- Uses scrypt-derived AES-256-GCM encryption, random salt and IV, authenticated payload, atomic rename, and retention of most recent 30 snapshots.
+- Added decrypt-to-new-file CLI and integrity validation for recovery without modifying a running database; the existing stop-app restore command remains the only live restoration path.
+- Remaining operational requirement: secure OS key management, verified second-drive storage, test actual device recovery, and monitor backup failures. No background service runs when the application is stopped.
