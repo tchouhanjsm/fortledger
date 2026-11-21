@@ -1425,9 +1425,43 @@ $('#booking-form').onsubmit=async e=>{
     captureBookingBaseline();
     $('#booking-dialog').close();
   }catch(error){
-    setMessage(error.message);
-    if(!editing)setMessage('Booking creation not confirmed: '+error.message+
-      '. Retry unchanged details safely with the same request ID, or review the ledger first.');
+    if(!editing&&error instanceof TypeError&&data.request_id){
+      // The server may have committed the booking before the network dropped
+      // its response. A read-only UUID lookup is definitive and avoids a
+      // second room hold or a second payment attempt.
+      try{
+        const receipt=await api('/api/bookings/request/'+encodeURIComponent(data.request_id));
+        if(receipt.recorded){
+          delete form.dataset.pendingRequestId;
+          captureBookingBaseline();
+          $('#booking-dialog').close();
+          try{await load();}
+          catch(refreshError){
+            alert('Booking #'+receipt.id+' was saved, but refreshing failed: '+refreshError.message+
+              '. Reload the ledger; do not create another booking.');
+            return;
+          }
+          alert('Booking #'+receipt.id+' was saved successfully. The network response was lost, but the original booking was confirmed.');
+          return;
+        }
+        if(receipt.deleted){
+          setMessage('This booking request was deleted by the owner. Review the ledger before starting a new booking.');
+          return;
+        }
+        setMessage('The server is reachable, but has no booking under this request ID yet. '+
+          'Review the ledger before retrying; unchanged details reuse the same request ID.');
+        return;
+      }catch(lookupError){
+        setMessage('Cannot confirm booking because the local server is unreachable ('+
+          error.message+'). Check that FortLedger is still running, reconnect or reopen '+
+          'http://127.0.0.1:3000, then check the ledger. Retry only unchanged details '+
+          'with this same request ID. Verification: '+lookupError.message);
+        return;
+      }
+    }
+    setMessage(editing?'Booking update was not confirmed: '+error.message:
+      'Booking creation not confirmed: '+error.message+
+      '. Retry unchanged details with the same request ID or review the ledger first.');
     return;
   }finally{
     bookingSavePending=false;submit.disabled=false;
