@@ -3,12 +3,12 @@ import {VIEWS,viewForHash} from './navigation.js';
 const $ = selector => document.querySelector(selector);
 let currentUser=null;
 const can=permission=>Boolean(currentUser&&(currentUser.permissions.includes('*')||currentUser.permissions.includes(permission)));
-const VIEW_ACCESS={bookings:'bookings.read',rooms:'rooms.read',invoices:'invoices.read',restaurant:'restaurant.read','business-settings':'settings.read',profile:'profile.read'};
+const VIEW_ACCESS={dashboard:'profile.read',bookings:'bookings.read',rooms:'rooms.read',invoices:'invoices.read',restaurant:'restaurant.read','business-settings':'settings.read',profile:'profile.read'};
 function applyWorkspaceView(){
   let view=viewForHash(window.location.hash);
   if(currentUser&&!can(VIEW_ACCESS[view]))view=can('bookings.read')?'bookings':can('restaurant.read')?'restaurant':'profile';
   const config=VIEWS[view],shown=new Set(config.sections);
-  for(const id of ['stats','calendar','bookings','rooms','invoices','restaurant','business-settings','roadmap','profile']){
+  for(const id of ['dashboard','stats','calendar','bookings','rooms','invoices','restaurant','business-settings','roadmap','profile']){
     const panel=document.getElementById(id);
     if(panel)panel.hidden=!shown.has(id);
   }
@@ -148,6 +148,79 @@ function updateRoomOptions(selected=[]){
   }
   if(!list.children.length)list.append(label('p','Set up physical rooms for this category first.','muted'));
 }
+function renderDashboard(){
+  if(!currentUser)return;
+  const firstName=currentUser.display_name.split(/\s+/)[0];
+  const hour=new Date().getHours();
+  const greeting=hour<12?'Good morning':hour<17?'Good afternoon':'Good evening';
+  $('#home-welcome').textContent=greeting+', '+firstName;
+  const cashier=currentUser.role==='cashier';
+  $('#home-guidance').textContent=cashier?
+    'Restaurant sales, guest room charges and your next action.':
+    'Keep arrivals, room availability and guest balances under control.';
+  const primary=$('#home-primary');
+  if(can('bookings.write')){
+    primary.textContent='+ New booking';primary.href='#bookings';
+    primary.onclick=event=>{event.preventDefault();window.location.hash='bookings';openNew();};
+  }else if(can('restaurant.write')){
+    primary.textContent='+ New food bill';primary.href='#restaurant';primary.onclick=null;
+  }else{primary.textContent='My profile';primary.href='#profile';primary.onclick=null;}
+  const today=dateISO(new Date());
+  const todaysSales=restaurantBills.filter(b=>{
+    const stamp=String(b.created_at||'').replace(' ','T')+'Z';
+    return Number.isFinite(Date.parse(stamp))&&dateISO(new Date(stamp))===today;
+  });
+  const active=bookings.filter(b=>b.status!=='cancelled');
+  const kpis=can('bookings.read')?[
+    ['Arrivals today',active.filter(b=>b.checkin===today).length,'Scheduled check-ins'],
+    ['Occupied tonight',active.filter(b=>b.checkin<=today&&today<b.checkout).reduce((n,b)=>n+b.rooms_count,0)+' / 7','Physical rooms'],
+    ['Outstanding',money(active.reduce((n,b)=>n+(b.due_paise||0),0)),'Guest booking balances'],
+    ['Departures today',active.filter(b=>b.checkout===today).length,'Scheduled check-outs']
+  ]:[
+    ['Food bills today',todaysSales.length,'Saved locally'],
+    ['Gross today',money(todaysSales.reduce((n,b)=>n+b.total_paise,0)),'Recorded sales'],
+    ['Menu items',menu.length,'Available to sell'],
+    ['Unmatched charges',restaurantBills.filter(b=>b.payment_method==='room'&&b.booking_id===null).length,'Need guest verification']
+  ];
+  const grid=$('#home-kpis');grid.replaceChildren();
+  for(const [name,value,note] of kpis){
+    const card=label('article',undefined,'home-kpi');
+    card.append(label('span',name),label('strong',String(value)),label('small',note));
+    grid.append(card);
+  }
+  const actions=$('#home-actions');actions.replaceChildren();
+  const options=[
+    ['#bookings','Booking calendar','Manage stays and room allocations','bookings.read'],
+    ['#restaurant','Restaurant billing','Record food sales and print receipts','restaurant.read'],
+    ['#invoices','Proforma invoices','Review and download hotel PDFs','invoices.read'],
+    ['#rooms','Room inventory','See your seven accommodation units','rooms.read'],
+    ['#profile','My profile','Account details and staff permissions','profile.read']
+  ];
+  for(const [href,name,detail,permission] of options){
+    if(!can(permission))continue;
+    const link=label('a',undefined,'home-action');link.href=href;
+    const content=label('div');content.append(label('strong',name),label('small',detail));
+    link.append(content,label('span','›'));actions.append(link);
+  }
+  const activity=$('#home-activity');activity.replaceChildren();
+  const events=can('bookings.read')?bookings.slice(0,5).map(b=>({
+    title:b.guest_name,detail:b.checkin+' → '+b.checkout+' · '+b.status
+  })):restaurantBills.slice(0,5).map(b=>({
+    title:'Food bill #'+b.id,detail:money(b.total_paise)+' · '+b.payment_method
+  }));
+  if(!events.length){
+    const empty=label('div',undefined,'home-empty');
+    empty.append(label('strong','Nothing recorded yet'),label('p',
+      can('bookings.write')?'Create your first test reservation to populate this dashboard.':
+      can('restaurant.write')?'Import your menu, then save a test food bill.':'No recent activity available for your role.'));
+    activity.append(empty);
+  }
+  for(const item of events){
+    const row=label('div',undefined,'home-activity');
+    row.append(label('strong',item.title),label('span',item.detail));
+    activity.append(row);
+  }
+}
 async function load(){
   currentUser=await api('/api/me');
   [rooms,bookings,invoices,businessSettings,menu,restaurantBills]=await Promise.all([
@@ -176,6 +249,9 @@ async function load(){
   const settingsSave=$('#business-form').querySelector('[type=submit]');
   if(settingsSave)settingsSave.disabled=!can('settings.admin');
   await renderProfile();
+  renderDashboard();
+  $('#invoice-empty-action').hidden=Boolean(invoices.length)||!can('bookings.read');
+  if(!menu.length&&can('restaurant.write'))$('#menu-import-section').open=true;
   applyWorkspaceView();
 }
 function renderInvoices(){
