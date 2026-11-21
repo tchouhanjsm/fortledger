@@ -163,8 +163,12 @@ export function createApp(db,{authRecord=null}={}) {
       const id=Number(req.params.id);
       if(!Number.isSafeInteger(id)||id<1) throw new Error('Invalid booking ID');
       if(!db.prepare('SELECT 1 FROM bookings WHERE id=?').get(id)) return res.status(404).json({error:'Booking not found'});
-      res.json(paymentHistory(db,id));
+      res.json(paymentHistory(db,id).payments);
     }catch(e){next(e);}
+  });
+  app.get('/api/bookings/:id/refunds',(req,res,next)=>{
+    try{res.json(paymentHistory(db,Number(req.params.id)).refunds);}
+    catch(error){next(error);}
   });
   app.post('/api/bookings/:id/payments/:paymentId/refunds',(req,res,next)=>{
     try{
