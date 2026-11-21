@@ -34,6 +34,8 @@ export function requiredPermission(method,path){
     if(method==='GET')return 'restaurant.read';
     return 'restaurant.write';
   }
+  if(method==='DELETE'&&(/^\/bookings\/\d+$/.test(path)||/^\/guests\/\d+$/.test(path)))
+    return 'entries.delete';
   if(path==='/guests')return method==='GET'?'guests.read':
     method==='POST'?'guests.write':null;
   if(/^\/guests\/\d+\/stays$/.test(path))return method==='GET'?'guests.read':null;

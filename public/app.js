@@ -146,6 +146,24 @@ function renderBookings(){
     moreTitle.setAttribute('aria-label','More actions for booking #'+b.id);
     const moreItems=label('div',undefined,'booking-more-actions');
     moreItems.append(history,refundButton,proforma);
+    if(can('entries.delete')){
+      const remove=label('button','Delete entry','secondary');remove.type='button';
+      remove.setAttribute('aria-label','Delete unused booking #'+b.id);
+      remove.onclick=async()=>{
+        if(!confirm('Permanently delete unused booking #'+b.id+' for '+b.guest_name+
+          '? Only untouched reservations without payments, invoices, stays or restaurant charges can be removed. This cannot be undone.'))return;
+        remove.disabled=true;row.setAttribute('aria-busy','true');
+        try{
+          await api('/api/bookings/'+b.id,{method:'DELETE',body:JSON.stringify({})});
+        }catch(error){
+          alert('Booking was not deleted: '+error.message);
+          remove.disabled=false;row.removeAttribute('aria-busy');return;
+        }
+        try{await load();}
+        catch(error){alert('Booking deleted, but refresh failed: '+error.message+'. Reload to confirm.');}
+      };
+      moreItems.append(remove);
+    }
     more.append(moreTitle,moreItems);
     actions.append(edit,payment,folioButton,more);
     row.append(guest,dates,stage,due,actions);list.append(row);
@@ -305,6 +323,21 @@ function renderGuests(){
         refreshGuestPicker(guest.id);applyGuestSelection();
       };
       actions.append(use);
+    }
+    if(can('entries.delete')){
+      const remove=label('button','Delete profile','secondary');remove.type='button';
+      remove.disabled=guest.stay_count>0;
+      remove.title=guest.stay_count>0?'Guest has linked stays and cannot be deleted':'Delete unused profile';
+      remove.onclick=async()=>{
+        if(!confirm('Permanently delete unused guest profile '+guest.name+'? This cannot be undone.'))return;
+        remove.disabled=true;row.setAttribute('aria-busy','true');
+        try{await api('/api/guests/'+guest.id,{method:'DELETE',body:JSON.stringify({})});}
+        catch(error){alert('Guest profile was not deleted: '+error.message);
+          remove.disabled=false;row.removeAttribute('aria-busy');return;}
+        try{await load();}
+        catch(error){alert('Guest deleted, but refresh failed: '+error.message+'. Reload to confirm.');}
+      };
+      actions.append(remove);
     }
     row.append(info,actions);list.append(row);
   }

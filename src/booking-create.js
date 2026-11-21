@@ -12,6 +12,10 @@ export function ensureBookingCreateSchema(db){
     response_json TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`);
+  db.exec(`CREATE TABLE IF NOT EXISTS deleted_booking_requests(
+    request_id TEXT PRIMARY KEY,
+    deleted_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
 }
 function requestFingerprint(booking,initialPaise,method){
   const normalized={
@@ -33,6 +37,8 @@ export function createBookingSafely(db,{booking,initialPaise,method,requestId,ac
   const fingerprint=requestId?requestFingerprint(booking,initialPaise,method):null;
   return db.transaction(()=>{
     if(requestId){
+      if(db.prepare('SELECT 1 FROM deleted_booking_requests WHERE request_id=?').get(requestId))
+        throw new Error('This booking request was deleted by the owner; use a new booking request to create another reservation');
       const prior=db.prepare('SELECT fingerprint,response_json FROM booking_create_requests WHERE request_id=?')
         .get(requestId);
       if(prior){
