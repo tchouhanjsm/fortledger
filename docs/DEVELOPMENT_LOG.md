@@ -234,3 +234,11 @@ All five increments completed in this development session were reviewed and merg
 - Daily financial dashboard distinguishes received collections from paid expenses and labels the difference *net cash movement*, never profit or GST revenue. Staff cashier and front desk roles cannot view owner/manager expense records.
 - Tests cover preservation across v1→v2 migration, permission denials, exact amounts, actor audit and duplicate prevention.
 - Remaining: expense reversals, receipt attachments, reviewed end-of-day cash close, GST compliance approval and real machine validation.
+
+## 2026-11-21 — Phase 3B: housekeeping linked to physical seven-room inventory
+- Added small `room_housekeeping` table (SQLite schema v3), one record per physical room, seeded `ready` on migration with no booking/payment modifications.
+- Staff role-aware inventory controls mark rooms ready/dirty/cleaning; only authenticated owner/manager/frontdesk can change states. Housekeeping changes are attributed and audited.
+- Checkout automatically marks the assigned rooms dirty inside the booking-status transaction. Check-in requires fully assigned rooms, physically ready rooms and no other checked-in booking still occupying the room.
+- Staff must explicitly confirm room readiness; the software never claims to have inspected or cleaned any room itself.
+- Tests cover checkout turnover, second-arrival blocking, staff clearing the room, RBAC, audit history and v2→v3 migration.
+- Maintenance out-of-service scheduling, cleaning assignments and mobile staff task lists remain future scope.
