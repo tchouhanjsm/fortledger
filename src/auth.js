@@ -48,9 +48,11 @@ export function replacePasswordRecord(filename,newPassword){
     if(fs.existsSync(temp))fs.unlinkSync(temp);
   }
 }
-export function authGate(record,db,{authFile=null}={}){
+export function authGate(record,db,{authFile=null,network=null}={}){
   const sessions=new Map(),failures=new Map();
   const name='fortledger_session';
+  const lan=network?.mode==='lan';
+  const cookieAttributes=(req)=>'; HttpOnly; SameSite=Strict; Path=/'+(lan?'; Secure':'');
   function revokeUserSessions(id){
     for(const [token,item] of sessions)if(item.actor.id===id)sessions.delete(token);
   }
@@ -88,7 +90,7 @@ export function authGate(record,db,{authFile=null}={}){
           .run(JSON.stringify(hashed),actor.id);
       }
       revokeUserSessions(actor.id);
-      res.setHeader('Set-Cookie',name+'=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
+      res.setHeader('Set-Cookie',name+'='+cookieAttributes(req)+'; Max-Age=0');
       res.json({ok:true,reauthenticate:true});
     }catch(error){res.status(400).json({error:error.message});}
   }
@@ -125,8 +127,11 @@ export function authGate(record,db,{authFile=null}={}){
       if(origin){
         let url;
         try{url=new URL(origin);}catch{return res.status(403).json({error:'Invalid origin'});}
-        if(!['127.0.0.1','localhost'].includes(url.hostname)||
-           url.host!==req.headers.host || !['http:','https:'].includes(url.protocol))
+        const goodOrigin=lan?
+          url.protocol==='https:'&&url.host===network.host+':'+network.port&&req.socket.encrypted:
+          ['127.0.0.1','localhost'].includes(url.hostname)&&
+            url.host===req.headers.host&&['http:','https:'].includes(url.protocol);
+        if(!goodOrigin)
           return res.status(403).json({error:'Cross-origin request rejected'});
       }
     }
@@ -150,13 +155,13 @@ export function authGate(record,db,{authFile=null}={}){
     failures.delete(key);
     const token=randomBytes(32).toString('hex');
     sessions.set(token,{expires:now+SESSIONS_MS,actor:{id:actor.id}});
-    res.setHeader('Set-Cookie',name+'='+token+'; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800');
+    res.setHeader('Set-Cookie',name+'='+token+cookieAttributes(req)+'; Max-Age=28800');
     res.json({ok:true,user:actor});
   }
   function logout(req,res){
     const found=session(req);
     if(found)sessions.delete(found.token);
-    res.setHeader('Set-Cookie',name+'=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
+    res.setHeader('Set-Cookie',name+'='+cookieAttributes(req)+'; Max-Age=0');
     res.json({ok:true});
   }
   return {protect,authorize,checkRequest,login,logout,changePassword,revokeUserSessions,status:req=>({
