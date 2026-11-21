@@ -42,14 +42,14 @@ try{
       console.error('Page hierarchy overflow:',JSON.stringify(hierarchy));
       console.error('Horizontal overflow candidates at '+width+'px:',JSON.stringify(offenders));
     }
-    const horizontalPan=await page.evaluate(()=>{
-      window.scrollTo(40,0);
-      const observed=window.scrollX;
-      window.scrollTo(0,0);
-      return observed;
-    });
-    assert.ok(horizontalPan<=2,'Page can pan sideways at '+width+'px: '+horizontalPan+
-      'px (document intrinsic overflow '+overflow+'px)');
+    // Programmatic scrollTo can traverse overflow:hidden even when a user cannot.
+    // Verify a real wheel interaction instead; calendar/nav keep their own scrollbars.
+    await page.mouse.move(1,Math.min(790,850-10));
+    await page.mouse.wheel(120,0);
+    await page.waitForTimeout(100);
+    const horizontalPan=await page.evaluate(()=>window.scrollX);
+    assert.ok(horizontalPan<=2,'Page pans sideways by user input at '+width+'px: '+
+      horizontalPan+'px (document intrinsic overflow '+overflow+'px)');
 
     if(width===390){
       await page.locator('#new-booking').click();
