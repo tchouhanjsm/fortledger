@@ -18,6 +18,7 @@ import {getGuestFolio,settleRoomBill,settleCombined} from './folio.js';
 import { NET_PAYMENTS_SQL, paymentHistory,recordRefund } from './payment-ledger.js';
 import {createStaff,listStaff,updateStaff,updateOwnProfile} from './staff.js';
 import {ROLE_PERMISSIONS} from './access.js';
+import {paymentMethod,recordAudit,auditEvents} from './financial-audit.js';
 
 export function createApp(db,{authRecord=null}={}) {
   const app = express();
@@ -47,14 +48,18 @@ export function createApp(db,{authRecord=null}={}) {
   app.use(express.static(publicDir));
 
   const listRooms = db.prepare('SELECT * FROM rooms ORDER BY id');
+  app.get('/api/audit/:entity/:id',(req,res,next)=>{
+    try{res.json(auditEvents(db,{entityType:req.params.entity,entityId:Number(req.params.id)}));}
+    catch(error){next(error);}
+  });
   app.get('/api/bookings/:id/folio',(req,res,next)=>{
     try{res.json(getGuestFolio(db,Number(req.params.id)));}catch(error){next(error);}
   });
   app.post('/api/bookings/:id/folio/settle-combined',(req,res,next)=>{
-    try{res.status(201).json(settleCombined(db,Number(req.params.id),req.body.method));}catch(error){next(error);}
+    try{res.status(201).json(settleCombined(db,Number(req.params.id),req.body.method,req.actor));}catch(error){next(error);}
   });
   app.post('/api/bookings/:id/folio/room-bills/:billId/settle',(req,res,next)=>{
-    try{res.status(201).json(settleRoomBill(db,Number(req.params.id),Number(req.params.billId),req.body.method));}catch(error){next(error);}
+    try{res.status(201).json(settleRoomBill(db,Number(req.params.id),Number(req.params.billId),req.body.method,req.actor));}catch(error){next(error);}
   });
   app.get('/api/restaurant/checked-in',(_req,res)=>{
     res.json(db.prepare("SELECT id,guest_name,category,status FROM bookings WHERE status='checked_in' ORDER BY guest_name").all());
@@ -203,7 +208,15 @@ export function createApp(db,{authRecord=null}={}) {
         const allocate=db.prepare('INSERT INTO booking_room_allocations(booking_id,room_id) VALUES(?,?)');
         for(const roomId of b.room_ids)allocate.run(id,roomId);
         const initial=toPaise(req.body.amount_paid ?? 0);
-        if (initial>0) db.prepare('INSERT INTO payments (booking_id,amount_paise,note) VALUES (?,?,?)').run(id,initial,'Initial advance');
+        if(initial>0){
+          const method=paymentMethod(req.body.advance_method,{allowLegacy:true});
+          const receipt=db.prepare('INSERT INTO payments (booking_id,amount_paise,note,method) VALUES (?,?,?,?)')
+            .run(id,initial,'Initial advance',method);
+          recordAudit(db,req.actor,'payment.recorded','payment',Number(receipt.lastInsertRowid),
+            {booking_id:id,amount_paise:initial,method});
+        }
+        recordAudit(db,req.actor,'booking.created','booking',id,
+          {checkin:b.checkin,checkout:b.checkout,rooms_count:b.rooms_count,category:b.category});
       })();
       res.status(201).json({id, ...bookingTotals({...b,paid_paise:toPaise(req.body.amount_paid ?? 0)})});
     } catch(e) {next(e);}
@@ -227,6 +240,11 @@ export function createApp(db,{authRecord=null}={}) {
         db.prepare(`UPDATE bookings SET guest_name=@guest_name,company_name=@company_name,checkin=@checkin,
           checkout=@checkout,rooms_count=@rooms_count,room_id=@room_id,category=@category,
           meal_plan=@meal_plan,nightly_rate_paise=@nightly_rate_paise WHERE id=@id`).run({...sqlBooking,id});
+        recordAudit(db,req.actor,'booking.updated','booking',id,
+          {previous:{checkin:previous.checkin,checkout:previous.checkout,rooms_count:previous.rooms_count,
+            nightly_rate_paise:previous.nightly_rate_paise},
+           next:{checkin:b.checkin,checkout:b.checkout,rooms_count:b.rooms_count,
+            nightly_rate_paise:b.nightly_rate_paise}});
       })();
       res.json({ok:true,id});
     }catch(e){next(e);}
@@ -245,7 +263,7 @@ export function createApp(db,{authRecord=null}={}) {
   });
   app.post('/api/bookings/:id/payments/:paymentId/refunds',(req,res,next)=>{
     try{
-      const refund=recordRefund(db,Number(req.params.id),Number(req.params.paymentId),req.body);
+      const refund=recordRefund(db,Number(req.params.id),Number(req.params.paymentId),req.body,req.actor);
       res.status(refund.already_recorded?200:201).json(refund);
     }catch(error){next(error);}
   });
@@ -276,7 +294,13 @@ export function createApp(db,{authRecord=null}={}) {
       if(booking.status==='cancelled') throw new Error('Cannot record payments against a cancelled booking');
       const amount=toPaise(req.body.amount);
       if (amount<=0) throw new Error('Payment must be greater than zero');
-      db.prepare('INSERT INTO payments (booking_id,amount_paise,note) VALUES (?,?,?)').run(id,amount,String(req.body.note||'').slice(0,200));
+      const method=paymentMethod(req.body.method,{allowLegacy:true});
+      db.transaction(()=>{
+        const saved=db.prepare('INSERT INTO payments (booking_id,amount_paise,note,method) VALUES (?,?,?,?)')
+          .run(id,amount,String(req.body.note||'').slice(0,200),method);
+        recordAudit(db,req.actor,'payment.recorded','payment',Number(saved.lastInsertRowid),
+          {booking_id:id,amount_paise:amount,method});
+      })();
       res.status(201).json({ok:true});
     } catch(e) {next(e);}
   });
@@ -290,6 +314,8 @@ export function createApp(db,{authRecord=null}={}) {
       if(current.status==='cancelled'&&status!=='cancelled') throw new Error('Cancelled bookings cannot be reactivated in this version');
       if (!['reserved','checked_in','checked_out','cancelled'].includes(status)) throw new Error('Invalid status');
       const update=db.prepare('UPDATE bookings SET status=? WHERE id=?').run(status,id);
+      if(status!==current.status)recordAudit(db,req.actor,'booking.status_changed','booking',id,
+        {from:current.status,to:status});
       if (!update.changes) return res.status(404).json({error:'Booking not found'});
       res.json({ok:true});
     } catch(e) {next(e);}
