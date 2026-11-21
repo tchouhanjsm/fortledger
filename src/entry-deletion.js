@@ -11,12 +11,28 @@ export function deleteUnusedBooking(db,id,actor){
     if(booking.status!=='reserved')throw new Error('Only untouched reserved bookings can be deleted. Use the audited cancellation workflow otherwise.');
     for(const [table,where] of [
       ['payments','booking_id=?'],['payment_refunds','payment_id IN (SELECT id FROM payments WHERE booking_id=?)'],
-      ['invoices','booking_id=?'],['tax_invoice_drafts','booking_id=?'],
-      ['restaurant_bills','booking_id=?'],['restaurant_settlements','booking_id=?']
+      ['invoices','booking_id=?'],['restaurant_bills','booking_id=?']
     ]){
       const exists=db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table);
       if(exists&&db.prepare('SELECT 1 FROM '+table+' WHERE '+where+' LIMIT 1').get(id))
         throw new Error('Booking has recorded financial or restaurant history and cannot be deleted. Cancel it instead.');
+    }
+    // Reject any other live references rather than cascading unknown future
+    // financial records. The ledger is intentionally never cascaded.
+    const allowed=new Set(['booking_room_allocations','booking_create_requests']);
+    const tables=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all();
+    for(const {name} of tables){
+      if(allowed.has(name))continue;
+      const foreign=db.pragma('foreign_key_list("'+name.replaceAll('"','""')+'")')
+        .filter(f=>f.table==='bookings');
+      if(foreign.length){
+        const columns=foreign.map(f=>f.from);
+        for(const col of columns){
+          if(db.prepare('SELECT 1 FROM "'+name.replaceAll('"','""')+'" WHERE "'+
+            col.replaceAll('"','""')+'"=? LIMIT 1').get(id))
+            throw new Error('Booking has linked operational history and cannot be deleted. Cancel it instead.');
+        }
+      }
     }
     // A used idempotency UUID must not recreate a booking on a delayed retry.
     const requests=db.prepare('SELECT request_id FROM booking_create_requests WHERE booking_id=?').all(id);
