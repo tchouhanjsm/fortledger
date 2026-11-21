@@ -148,3 +148,8 @@ All five increments completed in this development session were reviewed and merg
 - Replaced the stacked multi-module landing experience with five hash-addressable operational views. Booking KPIs, calendar, and reservation ledger stay together; restaurant, invoices, inventory, and settings each have their own focused workspace.
 - Active navigation and page heading now reflect the selected module. Mobile navigation stays visible and horizontally scrollable instead of disappearing below 650 px.
 - Added pure navigation mapping tests to prevent inaccessible routes; no new frontend framework or subscription required.
+
+## 2026-11-21 — Financial precision hardening
+- Replaced float multiply-and-round monetary input conversion with an exact decimal-string-to-integer-paise parser using BigInt internally.
+- Amounts with more than two decimal places, scientific notation, negatives, nonnumeric values, NaN/Infinity and values exceeding safe integer paise are explicitly rejected instead of silently rounded.
+- Added unit tests for INR 4,500.50, one-paisa precision, zero, invalid inputs and unsafe bounds. Existing GST-inclusive and refund calculations still use integer paise.

@@ -16,3 +16,14 @@ test('overpayment is credit, not negative due',()=>{
   assert.equal(t.due_paise,0);assert.equal(t.credit_paise,5000);
 });
 test('negative rates are rejected',()=>assert.throws(()=>toPaise(-100)));
+
+test('money parser is exact for paise and rejects silent rounding',()=>{
+  assert.equal(toPaise('4500.50'),450050);
+  assert.equal(toPaise('0.01'),1);
+  assert.equal(toPaise('00012.30'),1230);
+  assert.equal(toPaise(4500.5),450050);
+  for(const amount of ['1.005','0.001','1e3','-1','',null,undefined,NaN,Infinity,{},'abc']){
+    assert.throws(()=>toPaise(amount),/non-negative|decimal/);
+  }
+  assert.throws(()=>toPaise('999999999999999999999.00'),/safe financial range/);
+});
