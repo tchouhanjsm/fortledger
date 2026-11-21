@@ -37,3 +37,8 @@
 #payment-message:not(:empty){padding:11px 13px;border-radius:10px;background:#f7eee2;color:#74451e;font-size:12px;line-height:1.5}
 #booking-payment-dialog .dialog-actions{flex-wrap:wrap;margin-top:22px}
 @media(max-width:480px){#booking-payment-dialog .form-grid{grid-template-columns:1fr}}
+
+.booking-filters #booking-clear-filters{min-height:42px;white-space:nowrap;padding:9px 12px}
+.booking-results-count{font-size:12px;color:var(--hs-muted);margin:-8px 0 14px;font-variant-numeric:tabular-nums}
+.booking-filters select{max-width:min(100%,290px)}
+@media(max-width:750px){.booking-filters select{max-width:100%;flex:1 1 180px}}

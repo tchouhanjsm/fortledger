@@ -1,5 +1,6 @@
 import {occupiedRoomCount,monthGrid} from './calendar-utils.js';
 import {VIEWS,viewForHash} from './navigation.js';
+import {matchesWorkQueue} from './booking-work-queue.js';
 const $ = selector => document.querySelector(selector);
 let currentUser=null;
 const can=permission=>Boolean(currentUser&&(currentUser.permissions.includes('*')||currentUser.permissions.includes(permission)));
@@ -45,11 +46,19 @@ function setMessage(message){const node=$('#form-error');node.textContent=messag
 function renderBookings(){
   const q=$('#search').value.trim().toLowerCase(),list=$('#booking-list');list.replaceChildren();
   const statusFilter=$('#booking-status-filter')?.value||'all';
+  const workFilter=$('#booking-work-filter')?.value||'all';
+  const today=hotelToday();
   const filtered=bookings.filter(b=>
     (statusFilter==='all'||b.status===statusFilter)&&
+    matchesWorkQueue(b,workFilter,today)&&
     [String(b.id),b.guest_name,b.company_name,b.category,b.assigned_room||'']
       .some(v=>String(v||'').toLowerCase().includes(q)));
-  if(!filtered.length)list.append(label('p','No matching bookings. Create your first reservation.','muted'));
+  const count=$('#booking-results-count');
+  count.textContent=filtered.length+' of '+bookings.length+' bookings shown'+
+    (workFilter!=='all'?' · hotel date '+today:'');
+  if(!filtered.length)list.append(label('p',
+    bookings.length?'No bookings match these filters. Clear filters to view the ledger.':
+      'No bookings yet. Create your first reservation.','muted'));
   for(const b of filtered){
     const row=label('div',undefined,'booking-row');
     const guest=label('div');guest.append(label('strong',b.guest_name),label('small',[b.company_name,b.category,b.assigned_room].filter(Boolean).join(' · ')));
@@ -1280,6 +1289,11 @@ $('#room-assignment-list').onchange=()=>{updatePreview();};
 $('#booking-form').oninput=updatePreview;
 $('#search').oninput=renderBookings;
 $('#booking-status-filter').onchange=renderBookings;
+$('#booking-work-filter').onchange=renderBookings;
+$('#booking-clear-filters').onclick=()=>{
+  $('#booking-status-filter').value='all';$('#booking-work-filter').value='all';
+  $('#search').value='';renderBookings();
+};
 $('#calendar-mode').onclick=()=>setCalendarMode(calendarMode==='week'?'month':'week');
 $('#week-prev').onclick=()=>{weekStart=calendarMode==='month'?new Date(weekStart.getFullYear(),weekStart.getMonth()-1,1):addDays(weekStart,-7);renderCalendar();};
 $('#week-next').onclick=()=>{weekStart=calendarMode==='month'?new Date(weekStart.getFullYear(),weekStart.getMonth()+1,1):addDays(weekStart,7);renderCalendar();};
