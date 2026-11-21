@@ -53,7 +53,6 @@ export function streamProformaPdf(snapshot,response,logo=null){
   section(pdf,'BILL TO',151);
   safeLine(pdf,snapshot.bill_to||snapshot.company_name||snapshot.guest_name,LEFT,167,245,{size:12,bold:true,maxHeight:31});
   if(snapshot.bill_to_address)safeLine(pdf,snapshot.bill_to_address,LEFT,192,245,{size:8,maxHeight:30,color:MUTED});
-  section(pdf,'STAY DETAILS',151);
   // Explicit position on the right, avoiding the left bill-to block.
   pdf.rect(322,147,230,78).fill(PALE);
   pdf.fillColor(INK).font('Helvetica-Bold').fontSize(8).text('STAY DETAILS',335,159);
