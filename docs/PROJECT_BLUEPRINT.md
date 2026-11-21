@@ -88,3 +88,6 @@ Allow reserved→checked-in/cancelled and checked-in→checked-out only. Physica
 
 ## Phase 1C — Read-only financial reconciliation
 Owner/manager dashboard now includes a collection summary by business day (India timezone), with receipt sources, refunds and unknown legacy payment methods separated. Unsettled room charges remain uncollected. A formal reviewed day-close workflow and expense tracking are future milestones; do not equate collections with earned revenue.
+
+## Phase 1D — Duplicate payment retry protection
+New hotel payment requests send UUID request IDs to a unique, nullable `payments.request_id` field. A retry with the same request ID and same fields returns the first payment without booking a second receipt. Legacy callers without request IDs are supported but do not gain replay protection until upgraded.
