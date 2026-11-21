@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FortLedger | Garh Jaisal</title><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/heritage-sky.css"></head>
+<title>FortLedger | Garh Jaisal</title><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/heritage-sky.css"><link rel="stylesheet" href="/heritage-sky-operations.css"></head>
 <body>
 <aside class="sidebar">
   <div class="brand"><span class="brandmark">F</span><div><strong>FortLedger</strong><small>GARH JAISAL · OPERATIONS</small></div></div>
@@ -17,6 +17,12 @@
     <a class="primary" id="home-primary" href="#bookings">New booking</a>
   </div>
   <div id="home-kpis" class="home-kpis"></div>
+  <section id="today-room-board" class="today-room-board" aria-labelledby="today-room-title" hidden>
+    <div class="panel-head"><div><h3 id="today-room-title">Seven-room overview</h3>
+      <p>Physical check-in, housekeeping readiness and maintenance are separate states.</p></div>
+      <a href="#rooms" class="secondary">Manage rooms</a></div>
+    <div id="today-room-cards" class="today-room-cards"></div>
+  </section>
   <section id="home-room-performance" class="room-performance" hidden>
     <div class="panel-head"><div><h3>Room performance</h3><p>Booked room-nights for the selected stay dates. GST-inclusive rates; not earned or taxable revenue.</p></div>
       <form id="room-performance-form" class="room-period"><label>From<input type="date" name="start" required></label>
@@ -72,7 +78,12 @@
 </section>
 <section class="stats" id="stats"><article><label>Physical rooms</label><b>7</b><span>Initial inventory</span></article><article><label>Reservations</label><b id="stat-bookings">—</b><span>Saved locally</span></article><article><label>Outstanding</label><b id="stat-due">—</b><span>All active bookings</span></article></section>
   <section class="panel" id="calendar"><div class="panel-head"><div><h2>Room calendar</h2><p>Week-by-room or month-by-occupancy. Checkout day is available for another arrival.</p></div><div class="calendar-controls"><button id="calendar-mode" class="secondary" aria-pressed="false">Month view</button><button id="week-prev" class="secondary" aria-label="Previous week">‹</button><span id="week-label"></span><button id="week-next" class="secondary" aria-label="Next week">›</button><button id="week-today" class="secondary">Today</button></div></div><div class="calendar-scroll" id="calendar-week"><div id="calendar-grid"></div></div><div id="calendar-month" class="month-grid" hidden></div><div id="unassigned-calendar" class="unassigned"></div></section>
-  <section id="bookings" class="panel"><div class="panel-head"><div><h2>Reservation ledger</h2><p>Search guests, companies and room categories.</p></div><input id="search" type="search" placeholder="Search bookings..." aria-label="Search bookings"></div><div class="toolbar"><button id="backup-button" class="secondary" type="button">↓ Download database backup</button></div><div id="booking-list" class="booking-list"><p class="muted">Loading bookings…</p></div></section>
+  <section id="bookings" class="panel"><div class="panel-head"><div><h2>Reservation ledger</h2><p>Search guests, companies and room categories.</p></div><div class="booking-filters"><label class="sr-only" for="booking-status-filter">Filter booking status</label>
+  <select id="booking-status-filter" aria-label="Filter booking status">
+    <option value="all">All statuses</option><option value="reserved">Reserved</option>
+    <option value="checked_in">Checked in</option><option value="checked_out">Checked out</option>
+    <option value="cancelled">Cancelled</option>
+  </select><input id="search" type="search" placeholder="Search bookings..." aria-label="Search bookings"></div></div><div class="toolbar"><button id="backup-button" class="secondary" type="button">↓ Download database backup</button></div><div id="booking-list" class="booking-list"><p class="muted">Loading bookings…</p></div></section>
   <section id="invoices" class="panel"><div class="panel-head"><div><h2>Proforma invoices</h2><p>Immutable PDF snapshots. Create from a booking and download anytime.</p></div></div><div id="invoice-list"><p class="muted">Loading invoices…</p></div><div id="invoice-empty-action" class="empty-action" hidden><p>Invoices begin with a guest reservation. Create or open a booking first, then generate its proforma.</p><a href="#bookings" class="primary">Go to bookings</a></div></section>
   <section id="guests" class="panel">
   <div class="panel-head"><div><h2>Returning guests</h2><p>Reuse contact details and view linked stays. Historic bookings remain unchanged.</p></div>
