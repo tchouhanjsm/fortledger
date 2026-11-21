@@ -145,7 +145,7 @@ try{
       await page.locator('#menu-search').fill('no-such-dish');
       assert.equal(await page.locator('#menu-result-count').textContent(),'0 of 1 items');
       await page.locator('#menu-search').fill('');
-      await page.locator('#menu-items').getByRole('button',{name:'+ Add'}).first().click();
+      await page.locator('#menu-items').getByRole('button',{name:'Add Masala Chai to bill'}).first().click();
       const sum=await page.locator('#cart-total').textContent();
       assert.match(sum,/80\.00/);
       assert.equal(await page.locator('#cart-count').textContent(),'1 item');
