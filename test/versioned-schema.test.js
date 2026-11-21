@@ -141,3 +141,18 @@ test('v5 to v6 creates guest directory without changing existing hotel records',
   assert.equal(db.prepare('SELECT SUM(amount_paise) AS n FROM payments').get().n,150000);
   db.close();
 }));
+
+test('existing v6 hotel preserves records when booking retry ledger migrates to v7',()=>tempDb(file=>{
+  let db=openDatabase(file);
+  const booking=Number(db.prepare(`INSERT INTO bookings(guest_name,checkin,checkout,rooms_count,category,nightly_rate_paise)
+    VALUES('Existing hotel guest','2027-01-10','2027-01-12',1,'Unassigned',300000)`).run().lastInsertRowid);
+  db.prepare("INSERT INTO payments(booking_id,amount_paise,method) VALUES(?,75000,'upi')").run(booking);
+  db.exec('DROP TABLE booking_create_requests');
+  db.pragma('user_version = 6');db.close();
+  db=openDatabase(file);
+  assert.equal(db.pragma('user_version',{simple:true}),7);
+  assert.equal(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='table' AND name='booking_create_requests'").get().n,1);
+  assert.equal(db.prepare('SELECT sum(amount_paise) AS n FROM payments').get().n,75000);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM bookings').get().n,1);
+  db.close();
+}));
