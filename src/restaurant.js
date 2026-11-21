@@ -28,6 +28,10 @@ export function ensureRestaurantSchema(db){
     );
     CREATE INDEX IF NOT EXISTS idx_settlements_group ON restaurant_settlements(settlement_group);
   `);
+  const columns=new Set(db.pragma('table_info(restaurant_bills)').map(c=>c.name));
+  if(!columns.has('manual_room'))db.exec("ALTER TABLE restaurant_bills ADD COLUMN manual_room TEXT NOT NULL DEFAULT ''");
+  if(!columns.has('manual_guest'))db.exec("ALTER TABLE restaurant_bills ADD COLUMN manual_guest TEXT NOT NULL DEFAULT ''");
+  if(!columns.has('linked_at'))db.exec('ALTER TABLE restaurant_bills ADD COLUMN linked_at TEXT');
   ensurePrintSchema(db);
 }
 function parseCsv(csv){
@@ -82,11 +86,20 @@ export function createRestaurantBill(db,input){
   if(!input||!Array.isArray(input.items)||input.items.length===0||input.items.length>50)throw new Error('Add 1–50 menu lines');
   const payment_method=String(input.payment_method||'');
   if(!['cash','upi','card','room'].includes(payment_method))throw new Error('Select a valid payment method');
-  const booking_id=payment_method==='room'?Number(input.booking_id):null;
+  const hasManual=payment_method==='room'&&
+    (input.booking_id===null||input.booking_id===undefined||input.booking_id==='');
+  const booking_id=payment_method==='room'&&!hasManual?Number(input.booking_id):null;
+  const manual_room=hasManual?String(input.manual_room||'').trim():'';
+  const manual_guest=hasManual?String(input.manual_guest||'').trim():'';
   if(payment_method==='room'){
-    if(!Number.isSafeInteger(booking_id)||booking_id<1)throw new Error('Choose an in-house guest booking');
-    const booking=db.prepare('SELECT status FROM bookings WHERE id=?').get(booking_id);
-    if(!booking||booking.status!=='checked_in')throw new Error('Room charge requires a checked-in guest');
+    if(hasManual){
+      if(!manual_room||manual_room.length>80||!manual_guest||manual_guest.length>150)
+        throw new Error('Manual room charges require room identifier and guest name');
+    }else{
+      if(!Number.isSafeInteger(booking_id)||booking_id<1)throw new Error('Choose a checked-in guest');
+      const booking=db.prepare('SELECT status FROM bookings WHERE id=?').get(booking_id);
+      if(!booking||booking.status!=='checked_in')throw new Error('Room charge requires a checked-in guest');
+    }
   }
   return db.transaction(()=>{
     const get=db.prepare('SELECT * FROM menu_items WHERE id=? AND active=1');
@@ -103,8 +116,25 @@ export function createRestaurantBill(db,input){
     const total_paise=items.reduce((n,x)=>n+x.total_paise,0);
     const tax_paise=items.reduce((n,x)=>n+x.tax_paise,0);
     if(!Number.isSafeInteger(total_paise)||total_paise>1e11)throw new Error('Restaurant bill exceeds allowed amount');
-    const result=db.prepare(`INSERT INTO restaurant_bills(payment_method,booking_id,items_snapshot,total_paise,tax_paise)
-      VALUES(?,?,?,?,?)`).run(payment_method,booking_id,JSON.stringify(items),total_paise,tax_paise);
-    return {id:Number(result.lastInsertRowid),payment_method,booking_id,items,total_paise,tax_paise};
+    const result=db.prepare(`INSERT INTO restaurant_bills(payment_method,booking_id,items_snapshot,total_paise,tax_paise,manual_room,manual_guest)
+      VALUES(?,?,?,?,?,?,?)`).run(payment_method,booking_id,JSON.stringify(items),total_paise,tax_paise,manual_room,manual_guest);
+    return {id:Number(result.lastInsertRowid),payment_method,booking_id,manual_room,manual_guest,items,total_paise,tax_paise};
+  })();
+}
+
+/** Explicit linking is the only route from a manual pending charge to a guest folio. */
+export function linkManualRoomCharge(db,billId,bookingId){
+  if(!Number.isSafeInteger(billId)||billId<1||!Number.isSafeInteger(bookingId)||bookingId<1)
+    throw new Error('Invalid charge or booking ID');
+  return db.transaction(()=>{
+    const bill=db.prepare('SELECT id,payment_method,booking_id,manual_room,manual_guest FROM restaurant_bills WHERE id=?').get(billId);
+    if(!bill||bill.payment_method!=='room')throw new Error('Pending room charge not found');
+    if(bill.booking_id!==null)throw new Error('Room charge is already linked');
+    const guest=db.prepare("SELECT id,guest_name,status FROM bookings WHERE id=?").get(bookingId);
+    if(!guest||guest.status!=='checked_in')throw new Error('Choose an active checked-in booking');
+    // Operator confirms match; automatic name/room matching is intentionally prohibited.
+    db.prepare("UPDATE restaurant_bills SET booking_id=?,linked_at=datetime('now') WHERE id=? AND booking_id IS NULL")
+      .run(bookingId,billId);
+    return {id:billId,booking_id:bookingId,guest_name:guest.guest_name,linked:true};
   })();
 }

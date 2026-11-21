@@ -11,7 +11,8 @@ export function renderRestaurantReceipt(db,billId){
   const items=JSON.parse(bill.items_snapshot);
   const lines=items.map(item=>`<tr><td>${esc(item.name)}<small>${esc(item.quantity)} × ₹${money(item.unit_price_paise)}</small></td><td class="amount">₹${money(item.total_paise)}</td></tr>`).join('');
   const status=bill.payment_method==='room'?
-    (bill.settlement_method?'Room charge · settled via '+bill.settlement_method:'Room charge · awaiting settlement'):
+    (bill.booking_id===null?'Manual room charge · pending review':
+      bill.settlement_method?'Room charge · settled via '+bill.settlement_method:'Room charge · awaiting settlement'):
     'Paid via '+bill.payment_method;
   return `<!doctype html><html lang="en"><head><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1"><title>Food receipt #${bill.id}</title>
