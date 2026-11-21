@@ -313,9 +313,13 @@ export function createApp(db,{authRecord=null}={}) {
       if(!current) return res.status(404).json({error:'Booking not found'});
       if(current.status==='cancelled'&&status!=='cancelled') throw new Error('Cancelled bookings cannot be reactivated in this version');
       if (!['reserved','checked_in','checked_out','cancelled'].includes(status)) throw new Error('Invalid status');
-      const update=db.prepare('UPDATE bookings SET status=? WHERE id=?').run(status,id);
-      if(status!==current.status)recordAudit(db,req.actor,'booking.status_changed','booking',id,
-        {from:current.status,to:status});
+      const update=db.transaction(()=>{
+        const result=db.prepare('UPDATE bookings SET status=? WHERE id=?').run(status,id);
+        if(result.changes&&status!==current.status)
+          recordAudit(db,req.actor,'booking.status_changed','booking',id,
+            {from:current.status,to:status});
+        return result;
+      })();
       if (!update.changes) return res.status(404).json({error:'Booking not found'});
       res.json({ok:true});
     } catch(e) {next(e);}
