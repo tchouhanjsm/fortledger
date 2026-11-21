@@ -10,8 +10,14 @@ export async function backupBeforeUpdate(destinationDir,{source=databasePath(),a
   source=path.resolve(source);
   destinationDir=path.resolve(destinationDir);
   if(!fs.existsSync(source))throw new Error('FortLedger database not found. Never update an uninitialized installation blindly.');
-  if(destinationDir===path.dirname(source))throw new Error('Pre-update backups must be outside the active data folder');
+  // Reject data-directory descendants as well as symlink aliases. A backup
+  // nested in the live data folder is lost alongside the database on disk failure.
+  const liveDataDir=fs.realpathSync(path.dirname(source));
   fs.mkdirSync(destinationDir,{recursive:true,mode:0o700});
+  const actualDestination=fs.realpathSync(destinationDir);
+  const relative=path.relative(liveDataDir,actualDestination);
+  if(relative===''||(!relative.startsWith('..'+path.sep)&&relative!=='..'&&!path.isAbsolute(relative)))
+    throw new Error('Pre-update backups must be outside the active data folder');
   const stamp=new Date().toISOString().replace(/[:.]/g,'-');
   const folder=path.join(destinationDir,'update-'+stamp+'-'+process.pid);
   fs.mkdirSync(folder,{mode:0o700});
