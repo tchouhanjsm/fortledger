@@ -107,3 +107,20 @@ main,.sidebar{max-width:100%;overflow-x:clip}
 .booking-quick-queues button{min-height:44px;flex:0 0 auto;padding:9px 13px;border-radius:999px;white-space:nowrap}
 .booking-quick-queues button[aria-pressed="true"]{background:#294e40;color:white;border-color:#294e40}
 .booking-quick-queues button:focus-visible{outline:3px solid var(--hs-focus);outline-offset:2px}
+
+/* A deliberate refresh, never an automatic repeat of a financial mutation. */
+#refresh-workspace{min-height:43px;white-space:nowrap}
+#refresh-workspace:disabled{opacity:.65;cursor:wait}
+#refresh-message{font-size:11px;line-height:1.5;margin:5px 0 0;color:var(--hs-muted);max-width:56ch}
+#restaurant .pos-history-head{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:20px 0 10px}
+#restaurant .pos-history-head h3{margin:0 0 5px}
+#restaurant .pos-history-head p{margin:0;font-size:12px}
+#restaurant .pos-history-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#restaurant #restaurant-history-search{min-height:44px;padding:9px 12px;min-width:180px;border:1px solid #cbd4dd;border-radius:8px}
+#restaurant #restaurant-history-more{min-height:44px}
+#restaurant #restaurant-history-count{font-size:12px;margin:4px 0 12px}
+#restaurant #restaurant-message a{font-weight:700;color:#194b3a;text-decoration:underline}
+@media(max-width:700px){
+  #restaurant .pos-history-tools{width:100%}
+  #restaurant #restaurant-history-search{flex:1 1 160px;min-width:0}
+}
