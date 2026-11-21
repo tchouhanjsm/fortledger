@@ -81,14 +81,17 @@ export function streamTaxDraftPdf(s,res,logo=null){
   txt(pdf,reasons,LEFT+11,y+29,WIDTH-22,{size:7.2,color:RED,height:Math.min(100,reasonsHeight+5)});
   y+=Math.min(130,reasonsHeight+39)+16;
   const terms=s.terms||'';
-  pdf.font('Helvetica').fontSize(7.6);
+  let termFontSize=7.6;
+  pdf.font('Helvetica').fontSize(termFontSize);
   let termsHeight=pdf.heightOfString(terms,{width:WIDTH,lineGap:1});
   if(y+termsHeight+25>782){
-    pdf.fontSize(7);termsHeight=pdf.heightOfString(terms,{width:WIDTH,lineGap:1});
+    termFontSize=7;
+    pdf.fontSize(termFontSize);
+    termsHeight=pdf.heightOfString(terms,{width:WIDTH,lineGap:1});
   }
   if(y+termsHeight+25>782){pdf.addPage();pageHeader(pdf,s.proforma_number);y=105;}
   txt(pdf,'TERMS & CONDITIONS',LEFT,y,WIDTH,{size:8.7,bold:true,height:18});
-  pdf.fillColor(MUTED).font('Helvetica').fontSize(7.6)
+  pdf.fillColor(MUTED).font('Helvetica').fontSize(termFontSize)
     .text(terms,LEFT,y+21,{width:WIDTH,lineGap:1});
   line(pdf,792);
   txt(pdf,'DRAFT ONLY   |   ACCOUNTANT REVIEW AND AUTHORISED SIGNATURE REQUIRED',LEFT,801,WIDTH,
