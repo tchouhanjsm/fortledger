@@ -124,3 +124,6 @@ The original single-administrator sign-in is now the **owner** account (username
 
 ## Role-aware operations dashboard
 The initial screen now shows **Dashboard**: personalized greeting, role-appropriate KPIs, quick actions and recent activity. Booking staff see arrivals, departures, occupied rooms and outstanding stays; restaurant cashiers see saved food sales, menu inventory and unmatched room charges. Everything is derived from existing local records; no analytics cloud subscription. Empty invoices link directly to bookings, and first-time restaurant users see the menu import panel expanded. My Profile continues to provide staff account management and permissions.
+
+## Automated isolated recovery rehearsal
+Run `npm run recovery:drill` with the same `FORTLEDGER_DATA_DIR` / `FORTLEDGER_DB` and `FORTLEDGER_AUTH_FILE` settings as your installation. The command creates a consistent SQLite snapshot using SQLite's backup API, restores it to a private **temporary folder**, compares the contents of every table, copies and verifies the administrator credential file and cleans up all temporary files. It never replaces the live database and outputs no guest names or account numbers. **This does not verify an external-drive backup or a real Windows-machine disaster recovery.** Those remain mandatory manual release checks.
