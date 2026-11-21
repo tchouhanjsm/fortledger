@@ -90,3 +90,14 @@ main,.sidebar{max-width:100%;overflow-x:clip}
 @media(max-width:700px){
   main,.sidebar{width:100%;min-width:0}
 }
+
+/* V2 daily priority cards: read-only exception links, no hidden financial writes. */
+.today-attention{padding:18px;margin:0 0 22px;background:var(--hs-surface);border:1px solid var(--hs-border);border-radius:14px}
+.today-attention h3{font-size:18px;margin:0 0 5px}
+.today-attention p{font-size:12px;color:var(--hs-muted);margin:0}
+.today-attention-items{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin-top:12px}
+.today-attention-action{display:flex;align-items:center;text-align:left;gap:11px;min-height:59px;padding:12px;border:1px solid #d7e2de;border-radius:11px;background:#f9fbf8;color:var(--hs-ink);cursor:pointer}
+.today-attention-action strong{font-variant-numeric:tabular-nums;font-size:22px;min-width:24px;color:#9b5d20}
+.today-attention-action span{font-size:12px;font-weight:650;line-height:1.45}
+.today-attention-action:focus-visible{outline:3px solid var(--hs-focus);outline-offset:2px}
+@media(max-width:700px){.today-attention{padding:14px}.today-attention-items{grid-template-columns:1fr}}
