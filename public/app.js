@@ -3,12 +3,12 @@ import {VIEWS,viewForHash} from './navigation.js';
 const $ = selector => document.querySelector(selector);
 let currentUser=null;
 const can=permission=>Boolean(currentUser&&(currentUser.permissions.includes('*')||currentUser.permissions.includes(permission)));
-const VIEW_ACCESS={dashboard:'profile.read',bookings:'bookings.read',rooms:'rooms.read',invoices:'invoices.read',restaurant:'restaurant.read','business-settings':'settings.read',profile:'profile.read'};
+const VIEW_ACCESS={dashboard:'profile.read',bookings:'bookings.read',rooms:'rooms.read',guests:'guests.read',invoices:'invoices.read',restaurant:'restaurant.read','business-settings':'settings.read',profile:'profile.read'};
 function applyWorkspaceView(){
   let view=viewForHash(window.location.hash);
   if(currentUser&&!can(VIEW_ACCESS[view]))view=can('bookings.read')?'bookings':can('restaurant.read')?'restaurant':'profile';
   const config=VIEWS[view],shown=new Set(config.sections);
-  for(const id of ['dashboard','stats','calendar','bookings','rooms','invoices','restaurant','business-settings','roadmap','profile']){
+  for(const id of ['dashboard','stats','calendar','bookings','guests','rooms','invoices','restaurant','business-settings','roadmap','profile']){
     const panel=document.getElementById(id);
     if(panel)panel.hidden=!shown.has(id);
   }
@@ -32,7 +32,7 @@ const dateISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+
 const addDays = (d,days) => { const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+days);return x; };
 const fmtDay = iso => new Date(iso+'T12:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 const statusOptions=['reserved','checked_in','checked_out','cancelled'];
-let rooms=[],bookings=[],invoices=[],businessSettings=null,menu=[],restaurantBills=[],maintenanceIssues=[],cart=[],editingId=null,weekStart=new Date(),calendarMode='week';
+let rooms=[],bookings=[],invoices=[],businessSettings=null,menu=[],restaurantBills=[],maintenanceIssues=[],guests=[],cart=[],editingId=null,weekStart=new Date(),calendarMode='week';
 weekStart=addDays(weekStart,-((weekStart.getDay()+6)%7));
 async function api(url,options={}){
   const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});
@@ -215,6 +215,84 @@ $('#maintenance-form').onsubmit=async event=>{
   }catch(error){message.textContent=error.message;}
   finally{submit.disabled=false;}
 };
+function refreshGuestPicker(selectedId=null){
+  const dropdown=$('#booking-guest-profile'),selected=selectedId===null?dropdown.value:String(selectedId);
+  dropdown.replaceChildren();
+  const none=label('option','No linked guest profile');none.value='';dropdown.append(none);
+  for(const guest of guests){
+    const option=label('option',guest.name+(guest.phone?' · '+guest.phone:''));option.value=guest.id;
+    dropdown.append(option);
+  }
+  if([...dropdown.options].some(option=>option.value===selected))dropdown.value=selected;
+}
+function renderGuests(){
+  const list=$('#guest-list'),q=$('#guest-search').value.toLowerCase().trim();
+  list.replaceChildren();
+  const entries=guests.filter(g=>[g.name,g.phone,g.email,g.company_name]
+    .some(value=>String(value||'').toLowerCase().includes(q)));
+  if(!entries.length){list.append(label('p','No matching guest profiles. Add one above; old bookings are never auto-merged.','muted'));return;}
+  for(const guest of entries){
+    const row=label('div',undefined,'guest-row'),info=label('div');
+    info.append(label('strong',guest.name),label('small',
+      [guest.phone,guest.email,guest.company_name,guest.stay_count+' linked stay(s)'].filter(Boolean).join(' · ')));
+    const actions=label('div',undefined,'guest-actions');
+    const history=label('button','Stay history','secondary');history.type='button';
+    history.onclick=()=>showGuestStays(guest.id);
+    actions.append(history);
+    if(can('guests.write')){
+      const edit=label('button','Edit','secondary');edit.type='button';
+      edit.onclick=()=>{
+        const form=$('#guest-form');
+        for(const key of ['id','name','phone','email','company_name','preferences'])
+          form.elements.namedItem(key).value=guest[key]??'';
+        $('#guest-create').open=true;form.elements.namedItem('name').focus();
+      };
+      actions.append(edit);
+      const use=label('button','New booking','secondary');use.type='button';
+      use.onclick=()=>{
+        window.location.hash='bookings';openNew();
+        refreshGuestPicker(guest.id);applyGuestSelection();
+      };
+      actions.append(use);
+    }
+    row.append(info,actions);list.append(row);
+  }
+}
+async function showGuestStays(id){
+  const container=$('#guest-stays');container.hidden=false;container.replaceChildren();
+  try{
+    const {guest,stays}=await api('/api/guests/'+id+'/stays');
+    container.append(label('h3',guest.name+' · linked stays'));
+    if(!stays.length)container.append(label('p','No bookings linked yet. Existing historical reservations are unchanged.','muted'));
+    for(const stay of stays){
+      const row=label('div',undefined,'home-activity');
+      row.append(label('strong',stay.checkin+' → '+stay.checkout),
+        label('span',stay.rooms_count+' room(s) · '+stay.status+' · '+stay.category));
+      container.append(row);
+    }
+  }catch(error){container.append(label('p',error.message,'muted'));}
+}
+function applyGuestSelection(){
+  const selected=guests.find(g=>String(g.id)===$('#booking-guest-profile').value);
+  if(!selected)return;
+  $('#booking-form').elements.namedItem('guest_name').value=selected.name;
+  $('#booking-form').elements.namedItem('company_name').value=selected.company_name||'';
+}
+$('#booking-guest-profile').onchange=applyGuestSelection;
+$('#guest-search').oninput=renderGuests;
+$('#guest-reset').onclick=()=>{$('#guest-form').reset();$('#guest-create').open=false;$('#guest-message').textContent='';};
+$('#guest-form').onsubmit=async event=>{
+  event.preventDefault();
+  const form=event.currentTarget,message=$('#guest-message');
+  const data=Object.fromEntries(new FormData(form)),id=data.id;
+  delete data.id;
+  const button=form.querySelector('[type=submit]');button.disabled=true;message.textContent='';
+  try{
+    await api(id?'/api/guests/'+id:'/api/guests',{method:id?'PATCH':'POST',body:JSON.stringify(data)});
+    form.reset();$('#guest-create').open=false;await load();
+  }catch(error){message.textContent=error.message;}
+  finally{button.disabled=false;}
+};
 function renderRooms(){
   const list=$('#room-list');list.replaceChildren();
   for(const room of rooms){
@@ -312,6 +390,7 @@ function renderDashboard(){
     ['#restaurant','Restaurant billing','Record food sales and print receipts','restaurant.read'],
     ['#invoices','Proforma invoices','Review and download hotel PDFs','invoices.read'],
     ['#rooms','Room inventory','See your seven accommodation units','rooms.read'],
+    ['#guests','Returning guests','Profiles and linked stay history','guests.read'],
     ['#profile','My profile','Account details and staff permissions','profile.read']
   ];
   for(const [href,name,detail,permission] of options){
@@ -451,14 +530,15 @@ $('#daily-close-form').oninput=()=>{delete $('#daily-close-form').dataset.pendin
 $('#daily-close-form').elements.namedItem('business_date').onchange=renderDailyClose;
 async function load(){
   currentUser=await api('/api/me');
-  [rooms,bookings,invoices,businessSettings,menu,restaurantBills,maintenanceIssues]=await Promise.all([
+  [rooms,bookings,invoices,businessSettings,menu,restaurantBills,maintenanceIssues,guests]=await Promise.all([
     can('rooms.read')?api('/api/rooms'):Promise.resolve([]),
     can('bookings.read')?api('/api/bookings'):can('restaurant.read')?api('/api/restaurant/checked-in'):Promise.resolve([]),
     can('invoices.read')?api('/api/invoices'):Promise.resolve([]),
     can('settings.read')?api('/api/settings/business'):Promise.resolve(null),
     can('restaurant.read')?api('/api/restaurant/menu'):Promise.resolve([]),
     can('restaurant.read')?api('/api/restaurant/bills'):Promise.resolve([]),
-    can('maintenance.read')?api('/api/maintenance'):Promise.resolve([])
+    can('maintenance.read')?api('/api/maintenance'):Promise.resolve([]),
+    can('guests.read')?api('/api/guests'):Promise.resolve([])
   ]);
   renderMenu();renderCart();renderRestaurantHistory();
   if(businessSettings){
@@ -468,6 +548,7 @@ async function load(){
   }
   if(can('bookings.read')){renderBookings();renderCalendar();}
   if(can('rooms.read')){renderRooms();renderMaintenance();}
+  if(can('guests.read')){renderGuests();refreshGuestPicker();}
   if(can('invoices.read'))renderInvoices();
   if(can('settings.read'))await refreshHotelLogo();
   $('#backup-button').hidden=!can('settings.admin');
@@ -475,6 +556,7 @@ async function load(){
   $('#import-menu').hidden=!can('restaurant.write');
   $('#preview-menu').hidden=!can('restaurant.write');
   $('#staff-admin').hidden=currentUser.role!=='owner';
+  $('#guest-create').hidden=!can('guests.write');
   const settingsSave=$('#business-form').querySelector('[type=submit]');
   if(settingsSave)settingsSave.disabled=!can('settings.admin');
   await renderProfile();
@@ -697,6 +779,7 @@ $('#invoice-form').onsubmit=async event=>{
 function openNew(){
   editingId=null;
   const f=$('#booking-form');f.reset();
+  refreshGuestPicker('');
   $('#dialog-title').textContent='Add a booking';$('#booking-submit').textContent='Save booking';
   $('#initial-advance').disabled=false;$('#initial-advance').closest('label').hidden=false;
   $('#advance-method').disabled=false;$('#advance-method').closest('label').hidden=false;
@@ -705,6 +788,7 @@ function openNew(){
 function openEdit(b){
   editingId=b.id;
   const form=$('#booking-form');form.reset();
+  refreshGuestPicker(b.guest_id||'');
   ['guest_name','company_name','checkin','checkout','rooms_count','meal_plan','nightly_rate'].forEach(k=>{
     const field=form.elements.namedItem(k);
     field.value=k==='nightly_rate'?(b.nightly_rate_paise/100):b[k];
