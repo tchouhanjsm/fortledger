@@ -451,6 +451,7 @@ function openNew(){
   const f=$('#booking-form');f.reset();
   $('#dialog-title').textContent='Add a booking';$('#booking-submit').textContent='Save booking';
   $('#initial-advance').disabled=false;$('#initial-advance').closest('label').hidden=false;
+  $('#advance-method').disabled=false;$('#advance-method').closest('label').hidden=false;
   setMessage('');updateRoomOptions();updatePreview();$('#booking-dialog').showModal();
 }
 function openEdit(b){
@@ -463,6 +464,7 @@ function openEdit(b){
   $('#category-select').value=b.category;updateRoomOptions(b.room_ids||[]);
   $('#dialog-title').textContent='Edit booking';$('#booking-submit').textContent='Save changes';
   $('#initial-advance').disabled=true;$('#initial-advance').closest('label').hidden=true;
+  $('#advance-method').disabled=true;$('#advance-method').closest('label').hidden=true;
   setMessage('');updatePreview();$('#booking-dialog').showModal();
 }
 function updatePreview(){
@@ -480,9 +482,17 @@ async function addPayment(b){
   if(response===null)return;
   const amount=Number(response);
   if(!Number.isFinite(amount)||amount<=0){alert('Enter a valid positive payment amount.');return;}
-  if(!confirm('Record an additional payment of ₹'+amount.toFixed(2)+' for '+b.guest_name+'?'))return;
-  try{await api('/api/bookings/'+b.id+'/payments',{method:'POST',body:JSON.stringify({amount})});await load();}
-  catch(e){alert(e.message);}
+  const method=prompt('Payment method: cash, upi, card, bank');
+  if(method===null)return;
+  if(!['cash','upi','card','bank'].includes(method.trim().toLowerCase())){
+    alert('Choose cash, UPI, card or bank. No payment was saved.');return;
+  }
+  if(!confirm('Record '+money(Math.round(amount*100))+' via '+method+' for '+b.guest_name+'?'))return;
+  try{
+    await api('/api/bookings/'+b.id+'/payments',{method:'POST',
+      body:JSON.stringify({amount,method:method.trim().toLowerCase()})});
+    await load();
+  }catch(e){alert(e.message);}
 }
 async function showPayments(b){
   try{
@@ -490,7 +500,7 @@ async function showPayments(b){
       api('/api/bookings/'+b.id+'/payments'),
       api('/api/bookings/'+b.id+'/refunds')
     ]);
-    const payments=rows.length?rows.map(x=>'Payment #'+x.id+' · '+x.created_at+' · '+money(x.amount_paise)+
+    const payments=rows.length?rows.map(x=>'Payment #'+x.id+' · '+x.created_at+' · '+money(x.amount_paise)+' · '+(x.method==='unrecorded'?'METHOD NEEDS REVIEW':x.method||'METHOD NEEDS REVIEW')+
       (x.refunded_paise?' · Refunded '+money(x.refunded_paise):'')+
       (x.note?' · '+x.note:'')).join('\\n'):'No payments recorded.';
     const events=refunds.length?'\\n\\nREFUNDS (operator-recorded)\\n'+refunds.map(r=>
@@ -793,6 +803,9 @@ $('#booking-form').onsubmit=async e=>{
   e.preventDefault();
   const form=e.currentTarget, data=Object.fromEntries(new FormData(form));
   data.room_ids=[...document.querySelectorAll('#room-assignment-list input:checked')].map(x=>Number(x.value));
+  if(!editingId&&Number(data.amount_paid)>0&&!['cash','upi','card','bank'].includes(data.advance_method)){
+    setMessage('Choose the advance payment method before saving.');return;
+  }
   const submit=$('#booking-submit');submit.disabled=true;
   try{
     if(editingId)await api('/api/bookings/'+editingId,{method:'PATCH',body:JSON.stringify(data)});

@@ -9,6 +9,7 @@ import { ensureRefundSchema } from './payment-ledger.js';
 import {ensureTaxDraftSchema} from './tax-draft.js';
 import {ensureLogoSchema} from './hotel-logo.js';
 import {ensureStaffSchema} from './staff.js';
+import {ensureFinancialAuditSchema} from './financial-audit.js';
 
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -61,6 +62,7 @@ export function openDatabase(filename = databasePath()) {
   ensureBusinessSettings(db);
   ensureRestaurantSchema(db);
   ensureRefundSchema(db);
+  ensureFinancialAuditSchema(db);
   if (db.prepare('SELECT count(*) AS count FROM rooms').get().count === 0) {
     const add = db.prepare('INSERT INTO rooms (name) VALUES (?)');
     db.transaction(() => { for (let i = 1; i <= 7; i++) add.run('Room ' + i); })();

@@ -1,4 +1,5 @@
 import { toPaise } from './finance.js';
+import {recordAudit} from './financial-audit.js';
 
 /**
  * Refunds are locally recorded events; the operator must separately execute
@@ -29,7 +30,7 @@ export function paymentHistory(db,bookingId){
   const booking=db.prepare('SELECT id FROM bookings WHERE id=?').get(bookingId);
   if(!booking)throw new Error('Booking not found');
   const payments=db.prepare(`
-    SELECT p.id,p.amount_paise,p.note,p.created_at,
+    SELECT p.id,p.amount_paise,p.method,p.note,p.created_at,
       COALESCE((SELECT SUM(r.amount_paise) FROM payment_refunds r WHERE r.payment_id=p.id),0) AS refunded_paise
     FROM payments p WHERE p.booking_id=? ORDER BY p.id
   `).all(bookingId);
@@ -37,7 +38,7 @@ export function paymentHistory(db,bookingId){
     FROM payment_refunds WHERE booking_id=? ORDER BY id`).all(bookingId);
   return {payments,refunds,net_paid_paise:payments.reduce((sum,p)=>sum+p.amount_paise-p.refunded_paise,0)};
 }
-export function recordRefund(db,bookingId,paymentId,input){
+export function recordRefund(db,bookingId,paymentId,input,actor=null){
   if(!input||typeof input!=='object'||Array.isArray(input))throw new Error('Invalid refund details');
   if(!Number.isSafeInteger(bookingId)||bookingId<1||
      !Number.isSafeInteger(paymentId)||paymentId<1)throw new Error('Invalid payment ID');
@@ -67,6 +68,8 @@ export function recordRefund(db,bookingId,paymentId,input){
     const result=db.prepare(`INSERT INTO payment_refunds
       (booking_id,payment_id,amount_paise,method,reason,request_id)
       VALUES(?,?,?,?,?,?)`).run(bookingId,paymentId,amount,method,reason,requestId);
+    if(actor)recordAudit(db,actor,'refund.recorded','refund',Number(result.lastInsertRowid),
+      {booking_id:bookingId,payment_id:paymentId,amount_paise:amount,method,reason});
     return {id:Number(result.lastInsertRowid),booking_id:bookingId,payment_id:paymentId,
       amount_paise:amount,method,reason,request_id:requestId,already_recorded:false};
   })();

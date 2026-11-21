@@ -79,3 +79,6 @@ Staff management milestone introduces owner/manager/frontdesk/cashier roles with
 
 ## Mac UI review and role-specific landing experience
 The initial FortLedger screen now uses a role-aware Dashboard, not a long booking calendar. Owner/front desk/manager KPIs prioritize arrivals, availability, departures and balances. Cashier KPIs prioritize food bills, revenue, menu and pending unmatched room charges. Empty screens offer next actions. The app remains local/zero recurring subscriptions.
+
+## Phase 1A — Financial integrity, payment methods and attributed events
+Additive `payments.method` migration retains historic entries as `unrecorded`. New UI captures explicit payment methods. `operation_audit` records actor-attributed financial/booking actions without rewriting old payments. The current audit system is not yet tamper-evident, and complete day-end reconciliation remains in subsequent milestones.

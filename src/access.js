@@ -2,7 +2,7 @@ export const ROLE_PERMISSIONS={
   owner:['*'],
   manager:['bookings.read','bookings.write','payments.write','refunds.write','rooms.read','rooms.write',
     'invoices.read','invoices.write','restaurant.read','restaurant.write','folio.read','folio.write',
-    'settings.read','profile.read','profile.write'],
+    'settings.read','audit.read','profile.read','profile.write'],
   frontdesk:['bookings.read','bookings.write','payments.write','rooms.read',
     'invoices.read','invoices.write','restaurant.read','folio.read','folio.write',
     'profile.read','profile.write'],
@@ -16,6 +16,7 @@ export function requiredPermission(method,path){
   if(path==='/health')return 'profile.read';
   if(path==='/me')return method==='GET'?'profile.read':'profile.write';
   if(path.startsWith('/staff'))return 'staff.admin';
+  if(path.startsWith('/audit/'))return method==='GET'?'audit.read':null;
   if(path==='/backup')return 'settings.admin';
   if(path.startsWith('/settings/')){
     if(method==='GET')return 'settings.read';
