@@ -213,9 +213,10 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
   });
   app.get('/api/health', (_req,res)=>res.json({ ok:true }));
   app.get('/api/rooms',(_req,res)=>{
-    const day=new Intl.DateTimeFormat('en-CA',{
+    const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
       timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'
-    }).format(new Date());
+    }).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+    const day=parts.year+'-'+parts.month+'-'+parts.day;
     const blocked=blockedRoomIds(db,day);
     res.json(listRooms.all().map(room=>({...room,out_of_service_today:blocked.has(room.id)})));
   });
