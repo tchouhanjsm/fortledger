@@ -17,6 +17,11 @@
     <a class="primary" id="home-primary" href="#bookings">New booking</a>
   </div>
   <div id="home-kpis" class="home-kpis"></div>
+  <section id="today-attention" class="today-attention" aria-labelledby="today-attention-heading" hidden>
+    <div class="panel-head"><div><h3 id="today-attention-heading">Needs attention</h3>
+      <p>Review existing records; nothing here changes a booking, payment or room state automatically.</p></div></div>
+    <div id="today-attention-items" class="today-attention-items"></div>
+  </section>
   <section id="today-room-board" class="today-room-board" aria-labelledby="today-room-title" hidden>
     <div class="panel-head"><div><h3 id="today-room-title">Seven-room overview</h3>
       <p>Physical check-in, housekeeping readiness and maintenance are separate states.</p></div>
@@ -124,7 +129,14 @@
   <div id="guest-list" class="guest-list"></div>
   <div id="guest-stays" class="guest-stays" hidden></div>
 </section>
-<section id="rooms" class="panel"><div class="panel-head"><div><h2>Room inventory</h2><p>Rename the seven placeholders and assign their real accommodation categories before booking.</p></div></div><div id="room-list"></div>
+<section id="rooms" class="panel"><div class="panel-head"><div><h2>Room readiness & inventory</h2><p>Housekeeping, occupancy and maintenance are separate. Only confirm Ready after physical inspection.</p></div></div>
+  <div id="room-readiness-controls" class="room-readiness-controls" role="group" aria-label="Filter room readiness">
+    <button type="button" class="secondary" data-room-filter="all" aria-pressed="true">All rooms</button>
+    <button type="button" class="secondary" data-room-filter="attention" aria-pressed="false">Needs attention</button>
+    <button type="button" class="secondary" data-room-filter="ready" aria-pressed="false">Housekeeping ready</button>
+  </div>
+  <p id="room-readiness-count" role="status" class="muted"></p>
+  <div id="room-list"></div>
   <div id="maintenance-workspace" class="maintenance-workspace" hidden>
     <div class="panel-head"><div><h3>Maintenance & room outages</h3>
       <p>Report an issue without changing availability. Only the owner or manager can block/release rooms.</p></div></div>
