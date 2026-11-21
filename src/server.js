@@ -28,6 +28,7 @@ import {createMaintenanceIssue,resolveMaintenanceIssue,listMaintenance,blockedRo
 import {saveGuest,listGuests,guestStays,validateGuestLink} from './guests.js';
 import {paymentMethod,recordAudit,auditEvents,recordHotelPayment} from './financial-audit.js';
 import {createBookingSafely} from './booking-create.js';
+import {deleteUnusedBooking,deleteUnusedGuest} from './entry-deletion.js';
 
 export function createApp(db,{authRecord=null,authFile=null}={}) {
   const app = express();
@@ -74,6 +75,10 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
   });
   app.patch('/api/guests/:id',(req,res,next)=>{
     try{res.json(saveGuest(db,req.body,req.actor,Number(req.params.id)));}catch(error){next(error);}
+  });
+  app.delete('/api/guests/:id',(req,res,next)=>{
+    try{res.json(deleteUnusedGuest(db,Number(req.params.id),req.actor));}
+    catch(error){next(error);}
   });
   app.get('/api/maintenance',(req,res,next)=>{
     try{res.json(listMaintenance(db,{status:req.query.status||'open'}));}
@@ -287,6 +292,11 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
       });
       res.status(result.already_recorded?200:201).json(result);
     }catch(error){next(error);}
+  });
+
+  app.delete('/api/bookings/:id',(req,res,next)=>{
+    try{res.json(deleteUnusedBooking(db,Number(req.params.id),req.actor));}
+    catch(error){next(error);}
   });
 
   // Booking updates remain atomic with availability checks; original payment records persist.
