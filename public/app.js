@@ -333,9 +333,9 @@ function renderRooms(){
         alert(error.message);state.value=originalState;updateStateButton();
       }
     };
-    const today=dateISO(new Date());
+    const today=hotelToday();
     const isCheckedIn=bookings.some(b=>b.status==='checked_in' &&
-      (b.room_ids||[]).includes(room.id) && b.checkin<=today && today<b.checkout);
+      (b.room_ids||[]).includes(room.id) && b.checkin<=today);
     const operational=label('div',undefined,'room-operational-context');
     operational.append(label('strong',isCheckedIn?'Guest checked in':'No confirmed in-house guest'));
     operational.append(stateSummary);
@@ -364,6 +364,13 @@ function updateRoomOptions(selected=[]){
   }
   if(!list.children.length)list.append(label('p','Set up physical rooms for this category first.','muted'));
 }
+/* Asia/Kolkata is the business date even when the browser machine uses another zone. */
+function hotelToday(){
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
+    timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'
+  }).formatToParts(new Date()).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
+  return parts.year+'-'+parts.month+'-'+parts.day;
+}
 /* Read-only seven-room situational awareness; statuses are intentionally independent.
    Reserved does not mean physically occupied and vacant does not mean guest-ready. */
 function renderTodayRoomBoard(today){
@@ -374,7 +381,7 @@ function renderTodayRoomBoard(today){
   const list=$('#today-room-cards');list.replaceChildren();
   for(const room of rooms.filter(r=>r.active)){
     const current=bookings.find(b=>b.status==='checked_in' &&
-      (b.room_ids||[]).includes(room.id) && b.checkin<=today && today<b.checkout);
+      (b.room_ids||[]).includes(room.id) && b.checkin<=today);
     const reserved=bookings.find(b=>b.status==='reserved' &&
       (b.room_ids||[]).includes(room.id) && b.checkin<=today && today<b.checkout);
     const readiness=room.housekeeping_status==='dirty'?'Needs cleaning':
@@ -411,7 +418,7 @@ function renderDashboard(){
   }else if(can('restaurant.write')){
     primary.textContent='+ New food bill';primary.href='#restaurant';primary.onclick=null;
   }else{primary.textContent='My profile';primary.href='#profile';primary.onclick=null;}
-  const today=dateISO(new Date());
+  const today=hotelToday();
   const todaysSales=restaurantBills.filter(b=>{
     const stamp=String(b.created_at||'').replace(' ','T')+'Z';
     return Number.isFinite(Date.parse(stamp))&&dateISO(new Date(stamp))===today;
