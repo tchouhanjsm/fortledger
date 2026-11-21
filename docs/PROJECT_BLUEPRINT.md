@@ -82,3 +82,6 @@ The initial FortLedger screen now uses a role-aware Dashboard, not a long bookin
 
 ## Phase 1A — Financial integrity, payment methods and attributed events
 Additive `payments.method` migration retains historic entries as `unrecorded`. New UI captures explicit payment methods. `operation_audit` records actor-attributed financial/booking actions without rewriting old payments. The current audit system is not yet tamper-evident, and complete day-end reconciliation remains in subsequent milestones.
+
+## Phase 1B — Booking transition policy
+Allow reserved→checked-in/cancelled and checked-in→checked-out only. Physical room assignment is mandatory before check-in. A staff member must confirm checkout if a guest still owes accommodation or restaurant money. Proforma-linked bookings are locked against direct modification until a revision workflow is implemented, preventing invoice/booking divergence.
