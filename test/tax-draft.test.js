@@ -64,7 +64,10 @@ test('authenticated application can download tax draft PDF; no issued-tax endpoi
     const pdf=await fetch(base+'/api/tax-drafts/'+draft.id+'/pdf');
     assert.equal(pdf.status,200);
     assert.match(pdf.headers.get('content-type'),/application\/pdf/);
-    assert.equal(new TextDecoder().decode((await pdf.arrayBuffer()).slice(0,5)),'%PDF-');
+    const bytes=Buffer.from(await pdf.arrayBuffer());
+    assert.equal(new TextDecoder().decode(bytes.subarray(0,5)),'%PDF-');
+    const pages=(bytes.toString('latin1').match(/\\/Type\\s*\\/Page\\b/g)||[]).length;
+    assert.equal(pages,1,'Ordinary tax review drafts must fit on one A4 page with terms');
     assert.equal((await fetch(base+'/api/tax-invoices',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,404);
   }finally{await new Promise(resolve=>server.close(resolve));db.close();}
 });
