@@ -100,3 +100,6 @@ A small date/category/method/amount expense ledger is now available to owner and
 
 ## Phase 3B — Room housekeeping
 Room inventory now stores physical housekeeping state with a v3 additive migration. Checkout marks rooms dirty, but only a staff member can mark a room ready. Check-in is denied for unready or still-occupied rooms. No automatic maintenance blackout or physical cleaning verification is claimed.
+
+## Phase 3C — End-of-day cash review
+Owner/manager can perform a manually confirmed closing with opening float and physically counted cash, preserving a dated immutable ledger snapshot. The app detects when later transactions make that snapshot stale and flags it for review. SQLite schema v4; full statutory accounting and discrepancy correction workflows remain out of scope.

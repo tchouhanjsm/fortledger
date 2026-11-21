@@ -242,3 +242,11 @@ All five increments completed in this development session were reviewed and merg
 - Staff must explicitly confirm room readiness; the software never claims to have inspected or cleaned any room itself.
 - Tests cover checkout turnover, second-arrival blocking, staff clearing the room, RBAC, audit history and v2→v3 migration.
 - Maintenance out-of-service scheduling, cleaning assignments and mobile staff task lists remain future scope.
+
+## 2026-11-21 — Phase 3C: human-confirmed daily cash close
+- Added SQLite migration v4: immutable `daily_closes` records with business date, snapshot hash, opening float, expected cash, actual counted cash, discrepancy, staff identity and unique request ID. No changes to previous bookings, payments, invoices or expenses.
+- Staff explicitly counts cash and acknowledges variances/unknown legacy payment methods. Closing snapshots are idempotent and cannot be silently edited or replaced.
+- On retrieval, FortLedger recalculates the underlying business-date totals and flags any close as stale after subsequent financial ledger changes. This requires human reconciliation; the software does not approve bank balances or silently adjust them.
+- Manager and owner only; cashier/front desk are blocked. Dashboard has a small closing review form and existing-status display.
+- Regression tests include discrepancy acknowledgement, zero/unknown methods, duplicate closing requests, stale detection, RBAC and v3→v4 preserving old payments.
+- **Remaining:** reviewed reversal/amendment workflow, documented safe correction procedure, physical Windows cash reconciliation and formal accounting sign-off.

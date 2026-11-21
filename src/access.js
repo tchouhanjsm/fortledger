@@ -18,6 +18,8 @@ export function requiredPermission(method,path){
   if(path==='/me/password')return method==='POST'?'profile.write':null;
   if(path.startsWith('/staff'))return 'staff.admin';
   if(path.startsWith('/audit/'))return method==='GET'?'audit.read':null;
+  if(path==='/finance/closing')return method==='GET'?'finance.read':
+    method==='POST'?'finance.write':null;
   if(path==='/finance/expenses')return method==='GET'?'finance.read':
     method==='POST'?'finance.write':null;
   if(path.startsWith('/finance/'))return method==='GET'?'finance.read':null;
