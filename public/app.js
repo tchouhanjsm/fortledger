@@ -1284,15 +1284,31 @@ $('#preview-menu').onclick=async()=>{
     const csv=await readMenuCsv();
     const result=await api('/api/restaurant/menu/preview',{method:'POST',body:JSON.stringify({csv})});
     validatedMenuCsv=csv;
-    message.textContent=result.count+' item(s) validated. Check the rates and import when ready.';
+    const rates=(result.tax_rates||[]).map(rate=>rate+'%').join(', ');
+    message.textContent=result.count+' items validated across '+
+      Object.keys(result.category_counts||{}).length+' categories. CSV rates: '+rates+
+      '. Confirm GST applicability and ALL prices before import. Import adds/updates matching items; it does not remove older menu items.';
+    const container=label('div',undefined,'import-preview-scroll');
+    container.setAttribute('role','region');
+    container.setAttribute('aria-label','Complete validated menu preview');
+    container.tabIndex=0;
     const table=label('table',undefined,'import-preview-table');
+    const head=label('thead');
+    const headerRow=label('tr');
+    for(const title of ['Item','Category','Price (tax inclusive)','GST rate']){
+      const th=label('th',title);
+      th.scope='col';headerRow.append(th);
+    }
+    head.append(headerRow);table.append(head);
+    const body=label('tbody');
     for(const item of result.preview){
       const row=label('tr');
       row.append(label('td',item.name),label('td',item.category),
         label('td',money(item.price_paise)),label('td',item.tax_rate+'%'));
-      table.append(row);
+      body.append(row);
     }
-    list.append(table);
+    table.append(body);container.append(table);
+    list.append(container);
     $('#import-menu').disabled=false;
   }catch(error){message.textContent='Import check failed: '+error.message;}
 };
