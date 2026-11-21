@@ -67,3 +67,6 @@ See [COMPLIANCE_REVIEW.md](COMPLIANCE_REVIEW.md) for verified government referen
 
 ## Work log and handoff
 See [development log](DEVELOPMENT_LOG.md) for the latest implemented items, verification evidence, blockers and next actions. A new chat should read this blueprint, the development log, then inspect the GitHub repository and open PRs before continuing. The blueprint is intent; **only source code/tests establish what is implemented**.
+
+## Operational diagnostics
+Use `npm run doctor` to check local authentication, SQLite integrity, physical inventory, unmatched room charges, print transport uncertainty, backup freshness and tax issuance blockers without exposing guest details. It does not substitute for external production validation.
