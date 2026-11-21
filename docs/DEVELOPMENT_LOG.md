@@ -161,3 +161,8 @@ All five increments completed in this development session were reviewed and merg
 - `src/backup-before-update.js` uses SQLite's consistent backup API and verifies the snapshot **before** Git changes, with a private copy of the local password hash for emergency recovery.
 - Update stops if the live app is running on its default port, tracked code has modifications, the Git remote is unexpected, or a verified backup is unavailable. Never runs `git reset --hard` and never deletes business data.
 - CI now tests the full suite on Windows and Linux (Node.js 22). Windows packaging as an MSI / background service is future scope.
+
+## 2026-11-21 — Restaurant menu CSV root-cause fix
+- Found strict fixed-order header requirement caused failure on Excel/Numbers exports. Added BOM-insensitive, aliases/reordered columns and extra-column support, with explicit GST tax-rate validation and row-specific errors.
+- Added a nonmutating preview API, sample downloadable template, dedicated inline feedback and confirmed import action.
+- Regression tests cover typical exported headers, atomic rejection of invalid files and preview behavior. No silent guessing of tax rates.

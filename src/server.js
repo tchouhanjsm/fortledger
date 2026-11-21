@@ -13,7 +13,7 @@ import { bookingTotals, nightsBetween, toPaise } from './finance.js';
 import { createProforma,getInvoice,listInvoices } from './invoices.js';
 import { streamProformaPdf } from './invoice-pdf.js';
 import { getBusinessSettings,updateBusinessSettings } from './business-settings.js';
-import {importMenuCsv,listMenu,createRestaurantBill,listRestaurantBills,linkManualRoomCharge} from './restaurant.js';
+import {importMenuCsv,parseMenuCsv,listMenu,createRestaurantBill,listRestaurantBills,linkManualRoomCharge} from './restaurant.js';
 import {getGuestFolio,settleRoomBill,settleCombined} from './folio.js';
 import { NET_PAYMENTS_SQL, paymentHistory,recordRefund } from './payment-ledger.js';
 
@@ -42,6 +42,12 @@ export function createApp(db,{authRecord=null}={}) {
     try{res.status(201).json(settleRoomBill(db,Number(req.params.id),Number(req.params.billId),req.body.method));}catch(error){next(error);}
   });
   app.get('/api/restaurant/menu',(_req,res)=>res.json(listMenu(db)));
+  app.post('/api/restaurant/menu/preview',(req,res,next)=>{
+    try{
+      const items=parseMenuCsv(req.body?.csv);
+      res.json({count:items.length,preview:items.slice(0,5)});
+    }catch(error){next(error);}
+  });
   app.post('/api/restaurant/menu/import',(req,res,next)=>{
     try{res.json(importMenuCsv(db,req.body.csv));}catch(error){next(error);}
   });

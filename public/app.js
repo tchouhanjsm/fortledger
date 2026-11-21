@@ -474,15 +474,51 @@ $('#save-restaurant-bill').onclick=async()=>{
   catch(e){message.textContent=e.message;}
   finally{button.disabled=false;}
 };
-$('#import-menu').onclick=async()=>{
-  const file=$('#menu-csv').files[0],message=$('#restaurant-message');
-  if(!file){message.textContent='Choose a CSV file.';return;}
-  if(file.size>65000){message.textContent='CSV must be under 65 KB.';return;}
-  try{const csv=await file.text();const outcome=await api('/api/restaurant/menu/import',{method:'POST',body:JSON.stringify({csv})});
-    message.textContent='Imported '+outcome.imported+' menu items.';await load();}
-  catch(e){message.textContent=e.message;}
+let validatedMenuCsv=null;
+async function readMenuCsv(){
+  const file=$('#menu-csv').files[0];
+  if(!file)throw new Error('Choose a CSV file first.');
+  if(file.size>65000)throw new Error('CSV must be smaller than 65 KB.');
+  return file.text();
+}
+$('#menu-csv').onchange=()=>{
+  validatedMenuCsv=null;
+  $('#import-menu').disabled=true;
+  $('#menu-import-message').textContent='';
+  $('#menu-import-preview').replaceChildren();
 };
-
+$('#preview-menu').onclick=async()=>{
+  const message=$('#menu-import-message'),list=$('#menu-import-preview');
+  message.textContent='';list.replaceChildren();validatedMenuCsv=null;$('#import-menu').disabled=true;
+  try{
+    const csv=await readMenuCsv();
+    const result=await api('/api/restaurant/menu/preview',{method:'POST',body:JSON.stringify({csv})});
+    validatedMenuCsv=csv;
+    message.textContent=result.count+' item(s) validated. Check the rates and import when ready.';
+    const table=label('table',undefined,'import-preview-table');
+    for(const item of result.preview){
+      const row=label('tr');
+      row.append(label('td',item.name),label('td',item.category),
+        label('td',money(item.price_paise)),label('td',item.tax_rate+'%'));
+      table.append(row);
+    }
+    list.append(table);
+    $('#import-menu').disabled=false;
+  }catch(error){message.textContent='Import check failed: '+error.message;}
+};
+$('#import-menu').onclick=async()=>{
+  const message=$('#menu-import-message');
+  if(!validatedMenuCsv){message.textContent='Check the CSV file before importing.';return;}
+  const button=$('#import-menu');button.disabled=true;
+  try{
+    const result=await api('/api/restaurant/menu/import',{
+      method:'POST',body:JSON.stringify({csv:validatedMenuCsv})
+    });
+    validatedMenuCsv=null;
+    message.textContent='Imported '+result.imported+' menu items successfully. You can now search and add them to a bill.';
+    await load();
+  }catch(error){message.textContent='Import failed: '+error.message;button.disabled=false;}
+};
 
 let activeFolioBooking=null;
 async function showFolio(booking){

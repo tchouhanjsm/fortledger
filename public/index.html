@@ -33,8 +33,12 @@
       <button type="button" class="primary" id="save-restaurant-bill">Save restaurant bill</button>
     </div>
   </div>
-  <details class="menu-import"><summary>Import menu from CSV</summary><p class="muted">Columns: name,category,price,tax_rate. Prices include configured tax.</p>
-    <input type="file" id="menu-csv" accept=".csv,text/csv"><button type="button" id="import-menu" class="secondary">Import menu</button>
+  <details class="menu-import" id="menu-import-section"><summary>Import menu from CSV</summary>
+    <p class="muted">Choose a CSV exported from Excel or Numbers. We recognise Item Name, Category, Price and GST/Tax Rate columns in any order. Prices must include tax.</p>
+    <p><a href="/menu-template.csv" download>Download a sample CSV template</a></p>
+    <div class="menu-import-actions"><input type="file" id="menu-csv" accept=".csv,text/csv"><button type="button" id="preview-menu" class="secondary">Check file</button><button type="button" id="import-menu" class="primary" disabled>Import verified menu</button></div>
+    <p id="menu-import-message" role="status" aria-live="polite"></p>
+    <div id="menu-import-preview"></div>
   </details>
   <h3>Saved restaurant bills</h3><div id="restaurant-history"></div>
 </section>
