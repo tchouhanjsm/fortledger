@@ -25,7 +25,12 @@ export function macPreflight({env=process.env,platform=process.platform,nodeVers
     'Existing authentication file found':'No administrator credential file at the effective path; do not reset an existing installation');
   try{
     const listener=localListenerSettings(env);
-    check('Local listener','pass','Loopback only, configured port '+listener.port);
+    if(listener.mode==='lan'){
+      check('Local listener','warn','Private HTTPS staff-LAN configured at '+listener.host+':'+listener.port+
+        '; physical firewall, certificate trust and guest-network isolation are not verified');
+      check('LAN TLS files',fs.existsSync(listener.certPath)&&fs.existsSync(listener.keyPath)?'warn':'fail',
+        'Certificate/key presence only; validate with startup and actual staff device TLS before use');
+    }else check('Local listener','pass','Loopback only, configured port '+listener.port);
   }catch(error){check('Local listener','fail',error.message);}
   const backupDir=env.FORTLEDGER_BACKUP_DIR;
   if(backupDir){
