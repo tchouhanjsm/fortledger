@@ -52,7 +52,7 @@ test('cannot silently displace assigned or unassigned future guests with outage'
   assert.equal(reserved.status,201);
   const attempt=await api('/api/maintenance','POST',{
     room_id:1,title:'Air con',blocks_room:true,start_date:'2026-12-02',end_date:'2026-12-04'});
-  assert.equal(attempt.status,400);
+  assert.equal(attempt.status,409);
   assert.match(attempt.data.error,/Existing room assignment conflicts/);
   assert.equal((await api('/api/maintenance')).data.length,0);
   const reportOnly=await api('/api/maintenance','POST',{room_id:1,title:'Air con intermittent',
@@ -64,7 +64,7 @@ test('cannot silently displace assigned or unassigned future guests with outage'
   assert.equal(full.status,201);
   const blocked=await api('/api/maintenance','POST',{room_id:2,title:'Painting',
     blocks_room:true,start_date:'2026-12-04',end_date:'2026-12-05'});
-  assert.equal(blocked.status,400);
+  assert.equal(blocked.status,409);
   assert.match(blocked.data.error,/category reservations exceed capacity/);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM maintenance_issues WHERE blocks_room=1").get().n,0);
 }));
