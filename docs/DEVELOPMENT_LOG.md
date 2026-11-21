@@ -119,3 +119,9 @@ All five increments completed in this development session were reviewed and merg
 - Implemented opt-in private IPv4 ESC/POS receipt delivery over TCP, using already-saved restaurant transactions only.
 - Print state and attempt count are persisted; uncertain delivery never silently retries. Reprints require explicit operator confirmation.
 - No physical Epson TM-T82 model/network validation. Successful TCP write does not prove paper output. Model-specific cutters, receipt width and firmware behavior remain release blockers.
+
+## 2026-11-21 — Manual room-charge review and restaurant UI regression
+- Fixed missing Restaurant Billing section in main HTML despite existing restaurant JavaScript/API; added test that checks all required restaurant UI IDs are present.
+- Manual food charges save original room identifier and guest name without assigning a booking, explicitly pending operator review.
+- Reviewer can link an unmatched charge once to a currently checked-in booking, at which point it becomes visible in the correct guest folio without creating a duplicate restaurant bill.
+- Original manual fields remain stored, linking is transactional and rejected on repeated attempts. No automatic fuzzy matching of guest names is allowed.
