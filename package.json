@@ -14,11 +14,15 @@
     "setup-auth": "node src/setup-auth.js",
     "backup:decrypt": "node src/decrypt-backup.js",
     "doctor": "node src/doctor.js",
-    "recovery:drill": "node src/recovery-drill.js"
+    "recovery:drill": "node src/recovery-drill.js",
+    "test:browser": "node browser-tests/smoke.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
     "express": "^4.21.2",
     "pdfkit": "^0.17.1"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
   }
 }
