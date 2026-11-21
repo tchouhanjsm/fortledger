@@ -136,9 +136,52 @@ function renderInvoices(){
     const name=label('div');name.append(label('strong',inv.number),label('small',inv.snapshot.guest_name+' · '+inv.snapshot.issued_on));
     const sum=label('strong',money(inv.snapshot.total_paise));
     const link=label('a','Download PDF','secondary');link.href='/api/invoices/'+inv.id+'/pdf';link.setAttribute('download','');
-    row.append(name,sum,link);list.append(row);
+    const taxDraft=label('button','Tax draft','secondary');taxDraft.onclick=()=>openTaxDraft(inv);
+    row.append(name,sum,link,taxDraft);list.append(row);
   }
 }
+let activeTaxProforma=null;
+function openTaxDraft(invoice){
+  activeTaxProforma=invoice;
+  const form=$('#tax-draft-form');form.reset();
+  form.elements.namedItem('recipient_address').value=invoice.snapshot.bill_to_address||'';
+  const list=$('#tax-draft-sac-list');list.replaceChildren();
+  const lines=invoice.snapshot.lines?.length?invoice.snapshot.lines:[{
+    description:invoice.snapshot.category+' - '+invoice.snapshot.meal_plan+' basis'
+  }];
+  for(const line of lines){
+    const row=label('label',undefined,'tax-sac-row');
+    row.append(label('span',line.description));
+    const select=label('select');select.name='sac_codes';
+    for(const [value,title] of [['996311','Hotel room accommodation (996311)'],['996312','Campsite accommodation (996312)']]){
+      const option=label('option',title);option.value=value;select.append(option);
+    }
+    row.append(select);list.append(row);
+  }
+  $('#tax-draft-message').textContent='';
+  $('#tax-draft-dialog').showModal();
+}
+$('#close-tax-draft').onclick=()=>$('#tax-draft-dialog').close();
+$('#cancel-tax-draft').onclick=()=>$('#tax-draft-dialog').close();
+$('#tax-draft-form').onsubmit=async event=>{
+  event.preventDefault();
+  const form=event.currentTarget,button=form.querySelector('[type=submit]'),message=$('#tax-draft-message');
+  button.disabled=true;message.textContent='';
+  try{
+    const input={
+      recipient_address:form.elements.namedItem('recipient_address').value,
+      recipient_gstin:form.elements.namedItem('recipient_gstin').value,
+      signatory_name:form.elements.namedItem('signatory_name').value,
+      sac_codes:[...document.querySelectorAll('#tax-draft-sac-list select')].map(x=>x.value)
+    };
+    const draft=await api('/api/invoices/'+activeTaxProforma.id+'/tax-draft',
+      {method:'POST',body:JSON.stringify(input)});
+    $('#tax-draft-dialog').close();
+    window.location.href='/api/tax-drafts/'+draft.id+'/pdf';
+    alert('DRAFT ONLY. The document is not legally issued. Remaining blockers: '+draft.snapshot.readiness.blockers.join('; '));
+  }catch(error){message.textContent=error.message;}
+  finally{button.disabled=false;}
+};
 let invoiceBookingId=null;
 function makeInvoiceLine(item={description:'',rooms:1,nights:1,rate:0}){
   const row=label('div',undefined,'invoice-line-edit');
