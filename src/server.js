@@ -21,6 +21,7 @@ import {ROLE_PERMISSIONS} from './access.js';
 import {transitionBooking,assertBookingEditAllowed} from './booking-transitions.js';
 import {dailyCollections} from './daily-collections.js';
 import {recordExpense,listExpenses} from './expenses.js';
+import {listHousekeeping,markRoomState} from './housekeeping.js';
 import {paymentMethod,recordAudit,auditEvents,recordHotelPayment} from './financial-audit.js';
 
 export function createApp(db,{authRecord=null,authFile=null}={}) {
@@ -55,7 +56,14 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
   const publicDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public');
   app.use(express.static(publicDir));
 
-  const listRooms = db.prepare('SELECT * FROM rooms ORDER BY id');
+  const listRooms = db.prepare(`SELECT r.*,h.status AS housekeeping_status
+    FROM rooms r LEFT JOIN room_housekeeping h ON h.room_id=r.id ORDER BY r.id`);
+  app.get('/api/housekeeping',(_req,res)=>res.json(listHousekeeping(db)));
+  app.patch('/api/housekeeping/:id',(req,res,next)=>{
+    try{
+      res.json(markRoomState(db,Number(req.params.id),req.body?.status,req.actor,req.body?.note??''));
+    }catch(error){next(error);}
+  });
   app.get('/api/finance/expenses',(req,res,next)=>{
     try{res.json(listExpenses(db,req.query.date));}catch(error){next(error);}
   });

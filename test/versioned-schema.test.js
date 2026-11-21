@@ -20,14 +20,14 @@ test('legacy version-zero database upgrades once without losing hotel records',(
   db.pragma('user_version = 0'); // simulate pre-versioned, already populated installation
   db.close();
   db=openDatabase(file);
-  assert.equal(db.pragma('user_version',{simple:true}),2);
+  assert.equal(db.pragma('user_version',{simple:true}),3);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM rooms').get().n,7);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM bookings').get().n,1);
   assert.equal(db.prepare('SELECT amount_paise FROM payments').get().amount_paise,150000);
   assert.equal(db.prepare('SELECT method FROM payments').get().method,'unrecorded');
   db.close();
   db=openDatabase(file);
-  assert.equal(db.pragma('user_version',{simple:true}),2);
+  assert.equal(db.pragma('user_version',{simple:true}),3);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM bookings').get().n,1);
   db.close();
   assert.equal(validateBackup(file).rooms,7);
@@ -67,9 +67,26 @@ test('existing v1 ledger upgrades to v2 expenses without erasing historical invo
   db.pragma('user_version = 1');
   db.close();
   db=openDatabase(file);
-  assert.equal(db.pragma('user_version',{simple:true}),2);
+  assert.equal(db.pragma('user_version',{simple:true}),3);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM bookings').get().n,1);
   assert.equal(db.prepare('SELECT SUM(amount_paise) AS n FROM payments').get().n,150000);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name='expenses'").get().n,1);
+  db.close();
+}));
+
+test('existing v2 database receives only room housekeeping rows on upgrade to v3',()=>tempDb(file=>{
+  let db=openDatabase(file);
+  const id=Number(db.prepare(`INSERT INTO bookings(guest_name,checkin,checkout,rooms_count,category,nightly_rate_paise)
+    VALUES('Synthetic','2026-12-01','2026-12-02',1,'Unassigned',450000)`).run().lastInsertRowid);
+  db.prepare("INSERT INTO payments(booking_id,amount_paise,method) VALUES(?,150000,'upi')").run(id);
+  db.exec('DROP TABLE room_housekeeping');
+  db.pragma('user_version = 2');
+  db.close();
+  db=openDatabase(file);
+  assert.equal(db.pragma('user_version',{simple:true}),3);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM room_housekeeping').get().n,7);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM room_housekeeping WHERE status='ready'").get().n,7);
+  assert.equal(db.prepare('SELECT SUM(amount_paise) AS n FROM payments').get().n,150000);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM bookings').get().n,1);
   db.close();
 }));
