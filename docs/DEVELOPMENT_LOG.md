@@ -265,3 +265,11 @@ All five increments completed in this development session were reviewed and merg
 - Reusing a guest profile is a conscious staff selection. Profile changes do not mutate booking contractual names, rates, issued invoice snapshots or financial entries.
 - Added validation of contact fields and optional preference notes; no scanned IDs, passport documents or marketing campaign services.
 - Integration regression tests cover privacy/RBAC, search, explicit linking/unlinking, historic-value preservation and v5→v6 migration. Physical user acceptance still pending.
+
+## 2026-11-21 — Phase 4B: truthful room-night business analytics
+- Existing home already showed arrivals/departures and booking outstanding, but not period occupancy/ADR/RevPAR. Added read-only owner/manager report for selectable hotel-night date ranges, up to 366 nights.
+- Booking occupancy = noncancelled booked room-nights / active available room-nights. Gross ADR = GST-inclusive booked room value / booked room-nights. Gross RevPAR = GST-inclusive booked room value / active available room-nights. Future bookings remain *reservations*, not observed guest stays.
+- Maintenance discounts one physical blocked room only once per night; checkout date is excluded. Unlike cash receipt reporting, this attributes quoted accommodation value to booked stay nights; tax-exclusive recognized revenue is NOT derived or claimed.
+- Existing maintenance ledger holds open blocks, not a complete immutable historical inventory-time series: historical outage denominators must be interpreted cautiously.
+- Backend access is owner/manager only. New tests cover two-room multi-night overlaps, cancelled stays, maintenance overlap, invalid dates, overcommitment detection and role denial.
+- No schema migration; no third-party analytics subscription.
