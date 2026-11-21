@@ -2,6 +2,7 @@ import {occupiedRoomCount,monthGrid} from './calendar-utils.js';
 import {VIEWS,viewForHash} from './navigation.js';
 import {matchesWorkQueue} from './booking-work-queue.js';
 import {bookingDraftError} from './booking-editor-guards.js';
+import {todayAttention} from './today-attention.js';
 const $ = selector => document.querySelector(selector);
 let currentUser=null;
 const can=permission=>Boolean(currentUser&&(currentUser.permissions.includes('*')||currentUser.permissions.includes(permission)));
@@ -426,10 +427,31 @@ $('#guest-form').onsubmit=async event=>{
   }catch(error){message.textContent=error.message;}
   finally{button.disabled=false;}
 };
+let roomReadinessFilter='all';
+function needsRoomAttention(room){
+  return room.housekeeping_status==='dirty'||room.housekeeping_status==='cleaning'||Boolean(room.out_of_service_today);
+}
+function setRoomReadinessFilter(value){
+  if(!['all','attention','ready'].includes(value))return;
+  roomReadinessFilter=value;
+  renderRooms();
+}
+for(const button of document.querySelectorAll('[data-room-filter]')){
+  button.onclick=()=>setRoomReadinessFilter(button.dataset.roomFilter);
+}
 function renderRooms(){
   const list=$('#room-list');list.replaceChildren();
-  for(const room of rooms){
+  for(const button of document.querySelectorAll('[data-room-filter]')){
+    button.setAttribute('aria-pressed',String(button.dataset.roomFilter===roomReadinessFilter));
+  }
+  const visible=rooms.filter(room=>roomReadinessFilter==='all'||
+    (roomReadinessFilter==='attention'?needsRoomAttention(room):
+      room.housekeeping_status==='ready'&&!room.out_of_service_today));
+  $('#room-readiness-count').textContent=visible.length+' of '+rooms.length+' physical rooms shown';
+  if(!visible.length)list.append(label('p','No rooms match this readiness filter.','muted'));
+  for(const room of visible){
     const row=label('form',undefined,'room-row');
+    row.id='room-record-'+room.id;
     const name=label('input');name.value=room.name;name.maxLength=80;name.setAttribute('aria-label','Room name');
     const category=label('input');category.value=room.category;category.maxLength=80;category.setAttribute('aria-label','Room category');
     const save=label('button','Save room','secondary');save.type='submit';
@@ -530,6 +552,52 @@ function renderTodayRoomBoard(today){
   }
   if(!list.children.length)list.append(label('p','No active room records. Check inventory setup.','muted'));
 }
+function openFilteredBookingQueue(filter){
+  $('#booking-work-filter').value=filter;
+  $('#booking-status-filter').value='all';
+  $('#search').value='';
+  renderBookings();
+  window.location.hash='bookings';
+  document.getElementById('bookings')?.scrollIntoView({block:'start'});
+}
+function openRoomAttention(){
+  roomReadinessFilter='attention';
+  renderRooms();
+  window.location.hash='rooms';
+  document.getElementById('rooms')?.scrollIntoView({block:'start'});
+}
+function renderTodayAttention(today){
+  const panel=$('#today-attention'),items=$('#today-attention-items');
+  items.replaceChildren();
+  const count=todayAttention({bookings:can('bookings.read')?bookings:[],
+    rooms:can('rooms.read')?rooms:[],
+    maintenanceIssues:can('maintenance.read')?maintenanceIssues:[],
+    restaurantBills:can('restaurant.read')?restaurantBills:[],today});
+  const tasks=[
+    ['arrivals',count.arrivals,'Arrivals to check in','bookings.read',()=>openFilteredBookingQueue('arrivals')],
+    ['departures',count.departures,'Departures due or overdue','bookings.read',()=>openFilteredBookingQueue('departures')],
+    ['unassigned',count.unassigned,'Reservations awaiting room assignment','bookings.read',()=>openFilteredBookingQueue('unassigned')],
+    ['rooms',count.rooms,'Rooms needing cleaning or out of service','rooms.read',openRoomAttention],
+    ['urgentMaintenance',count.urgentMaintenance,'Urgent unresolved maintenance','maintenance.read',()=>{
+      window.location.hash='rooms';
+      document.getElementById('maintenance-workspace')?.scrollIntoView({block:'start'});
+    }],
+    ['unmatched',count.unmatched,'Restaurant room charges awaiting guest verification','restaurant.read',()=>{
+      window.location.hash='restaurant';
+      document.getElementById('restaurant-history')?.scrollIntoView({block:'start'});
+    }]
+  ];
+  const shown=tasks.filter(([,n,,permission])=>n>0&&can(permission));
+  panel.hidden=shown.length===0;
+  for(const [,n,title,,action] of shown){
+    const button=label('button',undefined,'today-attention-action secondary');
+    button.type='button';
+    button.append(label('strong',String(n)),label('span',title));
+    button.setAttribute('aria-label',n+' '+title+'. Open existing records.');
+    button.onclick=action;
+    items.append(button);
+  }
+}
 function renderDashboard(){
   if(!currentUser)return;
   const firstName=currentUser.display_name.split(/\s+/)[0];
@@ -571,6 +639,7 @@ function renderDashboard(){
     grid.append(card);
   }
   renderTodayRoomBoard(today);
+  renderTodayAttention(today);
   const actions=$('#home-actions');actions.replaceChildren();
   const options=[
     ['#bookings','Booking calendar','Manage stays and room allocations','bookings.read'],
