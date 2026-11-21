@@ -36,7 +36,9 @@ export function sendToPrinter(payload,{host,port=9100,timeoutMs=4000}={}){
     socket.setTimeout(timeoutMs,()=>done(new Error('Printer timed out; printing status unknown')));
     socket.on('error',done);
     socket.on('connect',()=>socket.end(payload));
-    socket.on('finish',()=>done());
+    // Wait for the TCP peer to close after our FIN before completing; destroying at
+    // writable 'finish' can discard outbound bytes still being transmitted.
+    socket.on('close',hadError=>{if(!completed)done(hadError?new Error('Printer connection closed with error'):undefined);});
   });
 }
 export function ensurePrintSchema(db){
