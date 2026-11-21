@@ -86,7 +86,7 @@ export function parseMenuCsv(csv){
     const cleanedPrice=rawPrice.replace(/^[₹Rs.\s]+/i,'').replace(/,/g,'').trim();
     let price_paise;
     try{price_paise=toPaise(cleanedPrice);}
-    catch{throw new Error('Line '+(i+2)+': invalid inclusive price "'+rawPrice+'". Use rupees with at most 2 decimal places.');}
+    catch{throw new Error('Line '+(i+2)+': invalid inclusive price "'+rawPrice+'". Enter a non-negative amount in rupees with at most 2 decimal places.');}
     return {name,category,price_paise,tax_rate};
   });
   const keys=new Set();
