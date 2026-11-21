@@ -19,6 +19,7 @@ import { NET_PAYMENTS_SQL, paymentHistory,recordRefund } from './payment-ledger.
 import {createStaff,listStaff,updateStaff,updateOwnProfile} from './staff.js';
 import {ROLE_PERMISSIONS} from './access.js';
 import {transitionBooking,assertBookingEditAllowed} from './booking-transitions.js';
+import {dailyCollections} from './daily-collections.js';
 import {paymentMethod,recordAudit,auditEvents} from './financial-audit.js';
 
 export function createApp(db,{authRecord=null}={}) {
@@ -49,6 +50,10 @@ export function createApp(db,{authRecord=null}={}) {
   app.use(express.static(publicDir));
 
   const listRooms = db.prepare('SELECT * FROM rooms ORDER BY id');
+  app.get('/api/finance/daily',(req,res,next)=>{
+    try{res.json(dailyCollections(db,req.query.date));}
+    catch(error){next(error);}
+  });
   app.get('/api/audit/:entity/:id',(req,res,next)=>{
     try{res.json(auditEvents(db,{entityType:req.params.entity,entityId:Number(req.params.id)}));}
     catch(error){next(error);}
