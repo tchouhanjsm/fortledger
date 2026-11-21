@@ -14,6 +14,7 @@ import {ensureExpenseSchema} from './expenses.js';
 import {ensureHousekeepingSchema} from './housekeeping.js';
 import {ensureDailyCloseSchema} from './daily-close.js';
 import {ensureMaintenanceSchema,blockedRoomIds} from './maintenance.js';
+import {ensureGuestSchema} from './guests.js';
 
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -21,7 +22,7 @@ export function openDatabase(filename = databasePath()) {
   try {
     db.pragma('foreign_keys = ON');
     const current = db.pragma('user_version', {simple:true});
-    if(current > 5)throw new Error('Database schema '+current+' is newer than this FortLedger version (5); update the app before opening it');
+    if(current > 6)throw new Error('Database schema '+current+' is newer than this FortLedger version (6); update the app before opening it');
     if(current < 0)throw new Error('Invalid database schema version');
     // Version 0 includes all legacy pre-versioned FortLedger installations.
     // A single SQLite transaction makes the baseline upgrade all-or-nothing.
@@ -100,6 +101,11 @@ export function openDatabase(filename = databasePath()) {
     if(current<5)db.transaction(()=>{
       ensureMaintenanceSchema(db);
       db.pragma('user_version = 5');
+    })();
+    // Version 6: guest CRM and nullable explicit booking links; no historic auto-link.
+    if(current<6)db.transaction(()=>{
+      ensureGuestSchema(db);
+      db.pragma('user_version = 6');
     })();
     // Preserve the established repair for legacy direct room_id records on reopen.
     // This is idempotent DML, not a schema migration.

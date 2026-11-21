@@ -94,3 +94,16 @@
 .maintenance-row button{flex-shrink:0}
 .room-outage-label{color:#98532e;font-size:11px;font-weight:700}
 @media(max-width:650px){.maintenance-dates{grid-column:span 1;grid-template-columns:1fr}.maintenance-row{align-items:flex-start;flex-direction:column}}
+
+/* Guest CRM: familiar low-click layout, no unnecessary CRM dashboard. */
+.guest-create{border:1px solid #e3eae1;border-radius:12px;padding:15px;margin:12px 0 18px}
+.guest-create summary{cursor:pointer;color:#285b43;font-size:13px;font-weight:650}
+.guest-create .staff-create{margin-top:15px}
+.guest-row{border-bottom:1px solid #edf0e9;padding:15px 0;display:flex;justify-content:space-between;align-items:center;gap:18px}
+.guest-row strong,.guest-row small{display:block}
+.guest-row strong{font-size:14px;color:#264c38}
+.guest-row small{margin-top:6px;color:#728477;font-size:11px;line-height:1.5}
+.guest-actions{display:flex;gap:7px;flex-wrap:wrap}
+.guest-stays{border:1px solid #e3eae1;border-radius:12px;padding:17px;margin-top:18px}
+.guest-stays h3{font-size:16px;margin:0 0 8px}
+@media(max-width:680px){.guest-row{align-items:flex-start;flex-direction:column}.guest-actions{width:100%}}

@@ -1,6 +1,7 @@
 export const VIEWS={
   dashboard:{title:'Operations dashboard',subtitle:'Your most important work, in one place.',sections:['dashboard']},
   bookings:{title:'Bookings & guest stays',subtitle:'Calendar, arrivals, advances and balances.',sections:['stats','calendar','bookings']},
+  guests:{title:'Guest directory',subtitle:'Returning guests and their explicitly linked stays.',sections:['guests']},
   rooms:{title:'Room inventory',subtitle:'Seven physical rooms and their accommodation categories.',sections:['rooms']},
   invoices:{title:'Hotel invoices',subtitle:'Prepare proformas, PDF downloads and reviewed GST drafts.',sections:['invoices']},
   restaurant:{title:'Restaurant billing',subtitle:'Menu, food bills, receipts and room charges.',sections:['restaurant']},

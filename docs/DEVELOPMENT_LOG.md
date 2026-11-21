@@ -258,3 +258,10 @@ All five increments completed in this development session were reviewed and merg
 - Check-in revalidates the assigned room against maintenance windows. The Room Inventory UI surfaces issues, planned outage dates and a manager-only resolve/release action.
 - Regression tests cover seven-room capacity, assigned and unassigned reservations, date boundaries, role permissions, audit attribution, and v4→v5 migration preserving financial records.
 - Physical maintenance verification, alternate-room rebooking, and full production sign-off still require staff and device testing.
+
+## 2026-11-21 — Phase 4A: minimal returning-guest CRM
+- Added SQLite schema v6: guest_profiles plus nullable bookings.guest_id and lookup indexes. Existing guest booking names, invoices, payments, restaurant records and room assignments remain untouched and no historical records are automatically linked.
+- Owner/manager/front desk can create/update searchable profiles, review explicitly linked stays and prefill a new reservation. Search only returns authorized staff data; cashier cannot access profiles or contact fields.
+- Reusing a guest profile is a conscious staff selection. Profile changes do not mutate booking contractual names, rates, issued invoice snapshots or financial entries.
+- Added validation of contact fields and optional preference notes; no scanned IDs, passport documents or marketing campaign services.
+- Integration regression tests cover privacy/RBAC, search, explicit linking/unlinking, historic-value preservation and v5→v6 migration. Physical user acceptance still pending.

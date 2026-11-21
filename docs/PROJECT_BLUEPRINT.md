@@ -106,3 +106,6 @@ Owner/manager can perform a manually confirmed closing with opening float and ph
 
 ## Phase 3D — Maintenance management and inventory protection
 SQLite v5 adds a lightweight maintenance issue register and optional date-scoped room outages. Report an issue without blocking a room; only owner/manager may block or release room availability. Proposed outages are refused if they would invalidate any existing named-room allocation or category-held reservation. New reservations and check-ins must respect outages. This remains a seven-room local-first workflow; no external task system.
+
+## Phase 4A — Returning-guest directory
+Add a lightweight local guest profile with optional contact/company/preference fields. Booking reference `guest_id` is nullable: staff must consciously choose a returning guest; never infer identity or merge prior bookings based on display name. Front desk and manager may read/write CRM; cashier cannot. A profile update never rewrites contractually agreed booking terms or immutable invoice snapshots.

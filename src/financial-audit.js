@@ -35,7 +35,7 @@ export function paymentMethod(value,{allowLegacy=false}={}){
 export function recordAudit(db,actor,action,entityType,entityId,details={}){
   if(!actor||!Number.isSafeInteger(entityId)||entityId<1)
     throw new Error('Invalid audit event');
-  if(!/^[a-z][a-z_.]{2,60}$/.test(action)||!['booking','payment','refund','restaurant_bill','restaurant_settlement','expense','housekeeping','daily_close','maintenance'].includes(entityType))
+  if(!/^[a-z][a-z_.]{2,60}$/.test(action)||!['booking','payment','refund','restaurant_bill','restaurant_settlement','expense','housekeeping','daily_close','maintenance','guest'].includes(entityType))
     throw new Error('Invalid audit category');
   const safe=JSON.stringify(details);
   if(safe.length>4000)throw new Error('Audit detail exceeds allowed size');
@@ -45,7 +45,7 @@ export function recordAudit(db,actor,action,entityType,entityId,details={}){
       actor.id,actor.username,actor.role,safe);
 }
 export function auditEvents(db,{entityType,entityId,limit=100}={}){
-  if(!['booking','payment','refund','restaurant_bill','restaurant_settlement','expense','housekeeping','maintenance'].includes(entityType)||
+  if(!['booking','payment','refund','restaurant_bill','restaurant_settlement','expense','housekeeping','maintenance','guest'].includes(entityType)||
      !Number.isSafeInteger(entityId)||entityId<1)
     throw new Error('Invalid audit request');
   if(!Number.isSafeInteger(limit)||limit<1||limit>200)throw new Error('Invalid audit limit');

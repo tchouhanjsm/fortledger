@@ -5,7 +5,7 @@
 <body>
 <aside class="sidebar">
   <div class="brand"><span class="brandmark">F</span><div><strong>FortLedger</strong><small>GARH JAISAL · OPERATIONS</small></div></div>
-  <nav aria-label="Primary"><a href="#dashboard">◈ &nbsp; Dashboard</a><a href="#bookings">▦ &nbsp; Booking Calendar</a><a href="#rooms">▤ &nbsp; Room Inventory</a><a href="#invoices">▧ &nbsp; Invoices</a><a href="#business-settings">⚙ &nbsp; Hotel Settings</a><a href="#restaurant">☕ &nbsp; Restaurant</a><a href="#profile">◉ &nbsp; My Profile</a></nav>
+  <nav aria-label="Primary"><a href="#dashboard">◈ &nbsp; Dashboard</a><a href="#bookings">▦ &nbsp; Booking Calendar</a><a href="#rooms">▤ &nbsp; Room Inventory</a><a href="#guests">♙ &nbsp; Guests</a><a href="#invoices">▧ &nbsp; Invoices</a><a href="#business-settings">⚙ &nbsp; Hotel Settings</a><a href="#restaurant">☕ &nbsp; Restaurant</a><a href="#profile">◉ &nbsp; My Profile</a></nav>
   <div class="sidebar-bottom"><span class="status-dot"></span> Local-first workspace <small>Local alpha · Modules in development</small></div>
 </aside>
 <main>
@@ -66,7 +66,26 @@
   <section class="panel" id="calendar"><div class="panel-head"><div><h2>Room calendar</h2><p>Week-by-room or month-by-occupancy. Checkout day is available for another arrival.</p></div><div class="calendar-controls"><button id="calendar-mode" class="secondary" aria-pressed="false">Month view</button><button id="week-prev" class="secondary" aria-label="Previous week">‹</button><span id="week-label"></span><button id="week-next" class="secondary" aria-label="Next week">›</button><button id="week-today" class="secondary">Today</button></div></div><div class="calendar-scroll" id="calendar-week"><div id="calendar-grid"></div></div><div id="calendar-month" class="month-grid" hidden></div><div id="unassigned-calendar" class="unassigned"></div></section>
   <section id="bookings" class="panel"><div class="panel-head"><div><h2>Reservation ledger</h2><p>Search guests, companies and room categories.</p></div><input id="search" type="search" placeholder="Search bookings..." aria-label="Search bookings"></div><div class="toolbar"><button id="backup-button" class="secondary" type="button">↓ Download database backup</button></div><div id="booking-list" class="booking-list"><p class="muted">Loading bookings…</p></div></section>
   <section id="invoices" class="panel"><div class="panel-head"><div><h2>Proforma invoices</h2><p>Immutable PDF snapshots. Create from a booking and download anytime.</p></div></div><div id="invoice-list"><p class="muted">Loading invoices…</p></div><div id="invoice-empty-action" class="empty-action" hidden><p>Invoices begin with a guest reservation. Create or open a booking first, then generate its proforma.</p><a href="#bookings" class="primary">Go to bookings</a></div></section>
-  <section id="rooms" class="panel"><div class="panel-head"><div><h2>Room inventory</h2><p>Rename the seven placeholders and assign their real accommodation categories before booking.</p></div></div><div id="room-list"></div>
+  <section id="guests" class="panel">
+  <div class="panel-head"><div><h2>Returning guests</h2><p>Reuse contact details and view linked stays. Historic bookings remain unchanged.</p></div>
+    <input id="guest-search" type="search" placeholder="Search name, phone or company" aria-label="Search guest profiles"></div>
+  <details id="guest-create" class="guest-create"><summary>+ Add guest profile</summary>
+    <form id="guest-form" class="staff-create">
+      <input type="hidden" name="id" value="">
+      <label>Guest name<input name="name" maxlength="150" required></label>
+      <label>Phone (optional)<input name="phone" type="tel" maxlength="30"></label>
+      <label>Email (optional)<input name="email" type="email" maxlength="180"></label>
+      <label>Company (optional)<input name="company_name" maxlength="150"></label>
+      <label>Stay preferences (optional, avoid identity documents)<textarea name="preferences" maxlength="500" rows="2"></textarea></label>
+      <div><button type="submit" class="primary">Save guest profile</button>
+        <button type="button" id="guest-reset" class="secondary">Clear form</button></div>
+    </form>
+    <p id="guest-message" role="status"></p>
+  </details>
+  <div id="guest-list" class="guest-list"></div>
+  <div id="guest-stays" class="guest-stays" hidden></div>
+</section>
+<section id="rooms" class="panel"><div class="panel-head"><div><h2>Room inventory</h2><p>Rename the seven placeholders and assign their real accommodation categories before booking.</p></div></div><div id="room-list"></div>
   <div id="maintenance-workspace" class="maintenance-workspace" hidden>
     <div class="panel-head"><div><h3>Maintenance & room outages</h3>
       <p>Report an issue without changing availability. Only the owner or manager can block/release rooms.</p></div></div>
@@ -172,7 +191,7 @@
 </section>
   <section id="roadmap" class="footnote">See the <a href="https://github.com/tchouhanjsm/fortledger/blob/main/docs/PROJECT_BLUEPRINT.md">project blueprint</a> and <a href="https://github.com/tchouhanjsm/fortledger/blob/main/docs/DEVELOPMENT_LOG.md">development log</a> for release blockers.</section>
 </main>
-<dialog id="booking-dialog"><form id="booking-form"><div class="dialog-heading"><div><span class="eyebrow">NEW RESERVATION</span><h2 id="dialog-title">Add a booking</h2></div><button type="button" id="close-dialog" class="icon-btn" aria-label="Close">×</button></div><div class="form-grid"><label class="wide">Guest / group name<input name="guest_name" required maxlength="150" placeholder="e.g. Awaita"></label><label class="wide">Company name (optional)<input name="company_name" maxlength="150"></label><label>Check-in<input type="date" name="checkin" required></label><label>Check-out<input type="date" name="checkout" required></label><label>Rooms booked<input type="number" name="rooms_count" min="1" max="7" value="1" required></label><label>Meal plan<select name="meal_plan"><option>CP</option><option>CPAI</option><option>MAP</option><option>MAPI</option><option>EP</option><option>AP</option></select></label><label>Category<select name="category" id="category-select" required></select></label><label class="wide">Physical rooms (optional; assign some or all)<div id="room-assignment-list" class="room-choices"></div></label><label>Rate per room/night (₹, GST inclusive)<input type="number" name="nightly_rate" min="0" step="0.01" required placeholder="4500"></label><label>Advance received (₹)<input id="initial-advance" type="number" name="amount_paid" min="0" step="0.01" value="0"></label><label>Advance payment method<select id="advance-method" name="advance_method">
+<dialog id="booking-dialog"><form id="booking-form"><div class="dialog-heading"><div><span class="eyebrow">NEW RESERVATION</span><h2 id="dialog-title">Add a booking</h2></div><button type="button" id="close-dialog" class="icon-btn" aria-label="Close">×</button></div><div class="form-grid"><label class="wide">Returning guest (optional)<select id="booking-guest-profile" name="guest_id"><option value="">No linked guest profile</option></select></label><label class="wide">Guest / group name<input name="guest_name" required maxlength="150" placeholder="e.g. Awaita"></label><label class="wide">Company name (optional)<input name="company_name" maxlength="150"></label><label>Check-in<input type="date" name="checkin" required></label><label>Check-out<input type="date" name="checkout" required></label><label>Rooms booked<input type="number" name="rooms_count" min="1" max="7" value="1" required></label><label>Meal plan<select name="meal_plan"><option>CP</option><option>CPAI</option><option>MAP</option><option>MAPI</option><option>EP</option><option>AP</option></select></label><label>Category<select name="category" id="category-select" required></select></label><label class="wide">Physical rooms (optional; assign some or all)<div id="room-assignment-list" class="room-choices"></div></label><label>Rate per room/night (₹, GST inclusive)<input type="number" name="nightly_rate" min="0" step="0.01" required placeholder="4500"></label><label>Advance received (₹)<input id="initial-advance" type="number" name="amount_paid" min="0" step="0.01" value="0"></label><label>Advance payment method<select id="advance-method" name="advance_method">
   <option value="">Select if advance received</option>
   <option value="cash">Cash</option><option value="upi">UPI</option>
   <option value="card">Card</option><option value="bank">Bank transfer</option>
