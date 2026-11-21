@@ -125,3 +125,10 @@ All five increments completed in this development session were reviewed and merg
 - Manual food charges save original room identifier and guest name without assigning a booking, explicitly pending operator review.
 - Reviewer can link an unmatched charge once to a currently checked-in booking, at which point it becomes visible in the correct guest folio without creating a duplicate restaurant bill.
 - Original manual fields remain stored, linking is transactional and rejected on repeated attempts. No automatic fuzzy matching of guest names is allowed.
+
+## 2026-11-21 — GST tax draft and issuance gate
+- Added a per-proforma draft preparation module (distinct from legally issued invoices), recipient details and per-accommodation-line SAC review.
+- Generates a prominently watermarked PDF that separates illustrative 2.5% CGST + 2.5% SGST, shows supplier and buyer details, and lists compliance blockers.
+- Enforces that SAC codes are explicitly selected (996311 hotel/guest-house, 996312 campsite) and flags accommodation units outside the supported 5% value band.
+- **Statutory invoice issuance remains disabled**; drafts do not consume final tax invoice numbers, do not represent a signed invoice, and can be revised without changing original proformas.
+- Source: official CBIC Rule 46, PIB September 2025 clarification, and GST Council SAC classification. A professional signoff and issuer credentials remain required.
