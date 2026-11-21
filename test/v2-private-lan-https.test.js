@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {openDatabase} from '../src/database.js';
 import {createApp} from '../src/server.js';
-import {createPasswordRecord} from '../src/auth.js';
+import {createPasswordRecord,authGate} from '../src/auth.js';
 import {isPrivateLanIp,localListenerSettings,requireConfiguredHost,readLanTlsCredentials} from '../src/network-policy.js';
 
 const lan=()=>localListenerSettings({
@@ -55,4 +55,35 @@ test('LAN guard refuses unauthenticated application startup and HTTP downgrade',
     assert.equal(response.status,421);
     assert.match((await response.json()).error,/HTTPS/);
   }finally{await new Promise(resolve=>server.close(resolve));db.close();}
+});
+
+test('LAN authentication issues Secure cookies and enforces exact HTTPS Origin',()=>{
+  const db=openDatabase(':memory:');
+  const record=createPasswordRecord('strong-lan-test-owner-password');
+  const gate=authGate(record,db,{network:lan()});
+  const response=()=>({
+    headers:{},code:200,
+    setHeader(key,value){this.headers[key.toLowerCase()]=value;},
+    status(code){this.code=code;return this;},
+    json(value){this.body=value;return this;}
+  });
+  try{
+    const login=response();
+    gate.login({ip:'192.168.21.40',socket:{encrypted:true},
+      body:{username:'owner',password:'strong-lan-test-owner-password'}},login);
+    assert.equal(login.code,200);
+    assert.match(login.headers['set-cookie'],/; Secure(?:;|$)/);
+    assert.match(login.headers['set-cookie'],/SameSite=Strict/);
+    const check=(origin,encrypted=true)=>{
+      const res=response();let passed=false;
+      gate.checkRequest({method:'POST',headers:{host:'192.168.21.12:3000',origin},
+        socket:{encrypted},is:()=>true},res,()=>{passed=true;});
+      return {res,passed};
+    };
+    assert.equal(check('https://192.168.21.12:3000').passed,true);
+    assert.equal(check('http://192.168.21.12:3000').res.code,403);
+    assert.equal(check('https://192.168.21.13:3000').res.code,403);
+    assert.equal(check('https://192.168.21.12:3000',false).res.code,403);
+    assert.equal(check('https://192.168.21.12:3000.evil.test').res.code,403);
+  }finally{db.close();}
 });
