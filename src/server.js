@@ -148,7 +148,11 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
   app.post('/api/restaurant/menu/preview',(req,res,next)=>{
     try{
       const items=parseMenuCsv(req.body?.csv);
-      res.json({count:items.length,preview:items.slice(0,5)});
+      const categoryCounts=Object.fromEntries([...new Set(items.map(item=>item.category))]
+        .sort((a,b)=>a.localeCompare(b)).map(category=>[category,
+          items.filter(item=>item.category===category).length]));
+      const taxRates=[...new Set(items.map(item=>item.tax_rate))].sort((a,b)=>a-b);
+      res.json({count:items.length,preview:items,category_counts:categoryCounts,tax_rates:taxRates});
     }catch(error){next(error);}
   });
   app.post('/api/restaurant/menu/import',(req,res,next)=>{
