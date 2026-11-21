@@ -99,3 +99,28 @@ test('request ledger survives close/reopen and preserves original totals even if
     });
   }finally{if(db?.open)db.close();fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('read-only request lookup confirms exact saved booking and does not replay payments',async()=>{
+  const db=openDatabase(':memory:');
+  try{await withApp(db,async({post})=>{
+    const request_id=randomUUID();
+    const first=await post({...booking,request_id});
+    assert.equal(first.status,201);
+    const server=createApp(db).listen(0,'127.0.0.1');
+    await new Promise(resolve=>server.once('listening',resolve));
+    try{
+      const base='http://127.0.0.1:'+server.address().port;
+      const fetchLookup=id=>fetch(base+'/api/bookings/request/'+id).then(async response=>({status:response.status,body:await response.json()}));
+      const confirmed=await fetchLookup(request_id);
+      assert.equal(confirmed.status,200);
+      assert.deepEqual(confirmed.body,{recorded:true,id:first.data.id});
+      const unknown=await fetchLookup(randomUUID());
+      assert.deepEqual(unknown.body,{recorded:false,deleted:false});
+      const invalid=await fetchLookup('short');
+      assert.equal(invalid.status,400);
+      assert.equal(db.prepare('SELECT count(*) AS n FROM bookings').get().n,1);
+      assert.equal(db.prepare('SELECT count(*) AS n FROM payments').get().n,1);
+      assert.equal(db.prepare('SELECT count(*) AS n FROM operation_audit').get().n,2);
+    }finally{await new Promise(resolve=>server.close(resolve));}
+  });}finally{db.close();}
+});
