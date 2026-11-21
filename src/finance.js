@@ -8,7 +8,7 @@ export function toPaise(rupees) {
     throw new Error('Amount must be a non-negative number with up to 2 decimal places');
   }
   const value = String(rupees).trim();
-  if (!/^\\d+(?:\\.\\d{1,2})?$/.test(value)) {
+  if (!/^\d+(?:\.\d{1,2})?$/.test(value)) {
     throw new Error('Amount must be a non-negative number with up to 2 decimal places');
   }
   const [whole, decimals = ''] = value.split('.');
