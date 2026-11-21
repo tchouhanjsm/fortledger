@@ -1,5 +1,26 @@
 import {occupiedRoomCount,monthGrid} from './calendar-utils.js';
+import {VIEWS,viewForHash} from './navigation.js';
 const $ = selector => document.querySelector(selector);
+function applyWorkspaceView(){
+  const view=viewForHash(window.location.hash);
+  const config=VIEWS[view],shown=new Set(config.sections);
+  for(const id of ['stats','calendar','bookings','rooms','invoices','restaurant','business-settings','roadmap']){
+    const panel=document.getElementById(id);
+    if(panel)panel.hidden=!shown.has(id);
+  }
+  $('#workspace-title').textContent=config.title;
+  $('#workspace-subtitle').textContent=config.subtitle;
+  $('#new-booking').hidden=view!=='bookings';
+  for(const nav of document.querySelectorAll('.sidebar nav a')){
+    const active=viewForHash(nav.getAttribute('href'))===view;
+    nav.classList.toggle('active',active);
+    if(active)nav.setAttribute('aria-current','page');
+    else nav.removeAttribute('aria-current');
+  }
+  window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',applyWorkspaceView);
+
 const money = paise => new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(paise/100);
 const label = (tag,text,klass) => {const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(klass)e.className=klass;return e;};
 const dateISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -571,4 +592,5 @@ $('#booking-form').onsubmit=async e=>{
   }catch(error){setMessage(error.message);}
   finally{submit.disabled=false;}
 };
+applyWorkspaceView();
 load().catch(e=>{$('#booking-list').textContent='Unable to load: '+e.message;});
