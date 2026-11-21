@@ -164,7 +164,9 @@ async function load(){
       const field=$('#business-form').elements.namedItem(key);if(field)field.value=value;
     }
   }
-  renderBookings();renderRooms();renderCalendar();renderInvoices();
+  if(can('bookings.read')){renderBookings();renderCalendar();}
+  if(can('rooms.read'))renderRooms();
+  if(can('invoices.read'))renderInvoices();
   if(can('settings.read'))await refreshHotelLogo();
   $('#backup-button').hidden=!can('settings.admin');
   $('#save-restaurant-bill').hidden=!can('restaurant.write');
@@ -249,6 +251,21 @@ async function renderProfile(){
       const row=label('div',undefined,'staff-row');
       const detail=label('div');
       detail.append(label('strong',user.display_name),label('small','@'+user.username+' · '+user.role+' · '+(user.active?'Active':'Disabled')));
+      const roleSelect=label('select');
+      roleSelect.setAttribute('aria-label','Role for '+user.display_name);
+      for(const [value,title] of [['manager','Manager'],['frontdesk','Front desk'],['cashier','Cashier']]){
+        const opt=label('option',title);opt.value=value;roleSelect.append(opt);
+      }
+      roleSelect.value=user.role;
+      roleSelect.onchange=async()=>{
+        if(!confirm('Change role for '+user.display_name+' to '+roleSelect.value+'?')){
+          roleSelect.value=user.role;return;
+        }
+        try{
+          await api('/api/staff/'+user.id,{method:'PATCH',body:JSON.stringify({role:roleSelect.value})});
+          await renderProfile();
+        }catch(error){roleSelect.value=user.role;$('#staff-message').textContent=error.message;}
+      };
       const toggle=label('button',user.active?'Disable':'Enable','secondary');
       toggle.onclick=async()=>{
         if(!confirm((user.active?'Disable':'Enable')+' account for '+user.display_name+'?'))return;
@@ -257,7 +274,7 @@ async function renderProfile(){
           await renderProfile();
         }catch(error){$('#staff-message').textContent=error.message;}
       };
-      row.append(detail,toggle);list.append(row);
+      row.append(detail,roleSelect,toggle);list.append(row);
     }
   }
 }
@@ -444,7 +461,8 @@ function renderMenu(){
     const row=label('div',undefined,'menu-item');
     const details=label('div');details.append(label('strong',item.name),label('small',item.category+' · '+money(item.price_paise)));
     const add=label('button','+ Add','secondary');add.onclick=()=>{const existing=cart.find(x=>x.menu_item_id===item.id);if(existing)existing.quantity++;else cart.push({menu_item_id:item.id,quantity:1});renderCart();};
-    row.append(details,add);list.append(row);
+    if(can('restaurant.write'))row.append(details,add);else row.append(details);
+    list.append(row);
   }
   if(!list.children.length)list.append(label('p','No menu items found. Import a CSV to start.','muted'));
   const guest=$('#restaurant-guest'),old=guest.value;guest.replaceChildren();
