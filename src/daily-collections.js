@@ -29,9 +29,11 @@ export function dailyCollections(db,date){
       SELECT method,SUM(amount_paise) amount_paise,COUNT(*) count
       FROM payment_refunds WHERE ${LOCAL_DATE}=? GROUP BY method`,date)
   };
+  const expenseRows=db.prepare(`SELECT method,SUM(amount_paise) amount_paise,COUNT(*) count
+    FROM expenses WHERE business_date=? GROUP BY method`).all(date);
   const by_method={};
   for(const method of METHODS)by_method[method]={
-    hotel_paise:0,restaurant_paise:0,refund_paise:0,net_collected_paise:0,unverified_receipts:method==='unrecorded'
+    hotel_paise:0,restaurant_paise:0,refund_paise:0,expense_paise:0,net_collected_paise:0,unverified_receipts:method==='unrecorded'
   };
   const knownSources=['hotel_payments','restaurant_direct','restaurant_settlements','recorded_refunds'];
   for(const source of knownSources){
@@ -42,6 +44,10 @@ export function dailyCollections(db,date){
       if(source==='restaurant_direct'||source==='restaurant_settlements')method.restaurant_paise+=row.amount_paise;
       if(source==='recorded_refunds')method.refund_paise+=row.amount_paise;
     }
+  }
+  for(const row of expenseRows){
+    if(!(row.method in by_method))throw new Error('Unknown expense method needs review');
+    by_method[row.method].expense_paise+=row.amount_paise;
   }
   for(const totals of Object.values(by_method))
     totals.net_collected_paise=totals.hotel_paise+totals.restaurant_paise-totals.refund_paise;
@@ -58,6 +64,8 @@ export function dailyCollections(db,date){
     restaurant_received_paise:sum('restaurant_paise'),
     refunds_recorded_paise:sum('refund_paise'),
     net_collections_paise:sum('net_collected_paise'),
+    expenses_paid_paise:sum('expense_paise'),
+    net_cash_movement_paise:sum('net_collected_paise')-sum('expense_paise'),
     unrecorded_method_paise:by_method.unrecorded.hotel_paise,
     current_unmatched_room_charges:unmatched,
     current_unpaid_room_charges:unpaid,
@@ -65,7 +73,8 @@ export function dailyCollections(db,date){
       'Cash/UPI/card/bank values are operator-recorded, not bank verified',
       'Refund events are recorded locally; actual transfer must be separately verified',
       'Unsettled room charges do not count as money collected',
-      'This is a collections reconciliation, not a profit or GST revenue statement'
+      'Expenses are staff-recorded outflows by chosen business date, not GST deductible amounts',
+      'Net cash movement is collections minus recorded expenses, NOT profit or earned revenue'
     ]
   };
 }

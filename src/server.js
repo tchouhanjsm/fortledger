@@ -20,6 +20,7 @@ import {createStaff,listStaff,updateStaff,updateOwnProfile} from './staff.js';
 import {ROLE_PERMISSIONS} from './access.js';
 import {transitionBooking,assertBookingEditAllowed} from './booking-transitions.js';
 import {dailyCollections} from './daily-collections.js';
+import {recordExpense,listExpenses} from './expenses.js';
 import {paymentMethod,recordAudit,auditEvents,recordHotelPayment} from './financial-audit.js';
 
 export function createApp(db,{authRecord=null,authFile=null}={}) {
@@ -55,6 +56,15 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
   app.use(express.static(publicDir));
 
   const listRooms = db.prepare('SELECT * FROM rooms ORDER BY id');
+  app.get('/api/finance/expenses',(req,res,next)=>{
+    try{res.json(listExpenses(db,req.query.date));}catch(error){next(error);}
+  });
+  app.post('/api/finance/expenses',(req,res,next)=>{
+    try{
+      const saved=recordExpense(db,req.body,req.actor);
+      res.status(saved.already_recorded?200:201).json(saved);
+    }catch(error){next(error);}
+  });
   app.get('/api/finance/daily',(req,res,next)=>{
     try{res.json(dailyCollections(db,req.query.date));}
     catch(error){next(error);}

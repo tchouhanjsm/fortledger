@@ -12,7 +12,7 @@ export function validateBackup(filename) {
     const integrity=db.pragma('integrity_check',{simple:true});
     if (integrity!=='ok') throw new Error('Backup integrity check failed: '+integrity);
     const version=db.pragma('user_version',{simple:true});
-    if(version>1)throw new Error('Backup database version '+version+' is newer than this application');
+    if(version>2)throw new Error('Backup database version '+version+' is newer than this application');
     const foreignKeys=db.pragma('foreign_key_check');
     if(foreignKeys.length)throw new Error('Backup foreign-key consistency check failed');
     const tables=new Set(db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(x=>x.name));

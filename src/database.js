@@ -10,6 +10,7 @@ import {ensureTaxDraftSchema} from './tax-draft.js';
 import {ensureLogoSchema} from './hotel-logo.js';
 import {ensureStaffSchema} from './staff.js';
 import {ensureFinancialAuditSchema} from './financial-audit.js';
+import {ensureExpenseSchema} from './expenses.js';
 
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -17,7 +18,7 @@ export function openDatabase(filename = databasePath()) {
   try {
     db.pragma('foreign_keys = ON');
     const current = db.pragma('user_version', {simple:true});
-    if(current > 1)throw new Error('Database schema '+current+' is newer than this FortLedger version (1); update the app before opening it');
+    if(current > 2)throw new Error('Database schema '+current+' is newer than this FortLedger version (2); update the app before opening it');
     if(current < 0)throw new Error('Invalid database schema version');
     // Version 0 includes all legacy pre-versioned FortLedger installations.
     // A single SQLite transaction makes the baseline upgrade all-or-nothing.
@@ -76,6 +77,11 @@ export function openDatabase(filename = databasePath()) {
   const violations=db.pragma('foreign_key_check');
   if(violations.length)throw new Error('Database has foreign key violations; no schema upgrade was applied');
   db.pragma('user_version = 1');
+    })();
+    // Version 2: expenses are additive; existing bookings/invoices/payments stay untouched.
+    if(current<2)db.transaction(()=>{
+      ensureExpenseSchema(db);
+      db.pragma('user_version = 2');
     })();
     // Preserve the established repair for legacy direct room_id records on reopen.
     // This is idempotent DML, not a schema migration.
