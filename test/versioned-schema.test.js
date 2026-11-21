@@ -30,7 +30,7 @@ test('legacy version-zero database upgrades once without losing hotel records',(
   assert.equal(db.pragma('user_version',{simple:true}),1);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM bookings').get().n,1);
   db.close();
-  assert.equal(validateBackup(file).schema_version,1);
+  assert.equal(validateBackup(file).rooms,7);
 }));
 test('future schema versions are rejected without changing the file',()=>tempDb(file=>{
   let db=openDatabase(file);
