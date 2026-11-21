@@ -186,3 +186,10 @@ All five increments completed in this development session were reviewed and merg
 - Added `operation_audit` table for actor-attributed booking create/edit/status, hotel payment and refund, and folio settlement actions. Audit events are stored with server-resolved username, role and limited non-sensitive action metadata.
 - Existing bookings, restaurant bills, payments, refunds and invoice snapshots are preserved. No destructive migration. The audit ledger is new; historic actions are not fabricated.
 - Added migration/integration tests; release remains pre-production and requires audited recovery, strict status transitions and reconciliation follow-up.
+
+## 2026-11-21 — Phase 1B: safe stay transitions and proforma integrity
+- Replaced permissive direct status PATCH with a transaction-scoped transition policy: reserved → checked-in or cancelled; checked-in → checked-out; closed states terminal. Idempotent replays do not create duplicate audit events.
+- Check-in requires assignment of every physical room, preventing an in-house guest from existing as an unallocated category hold.
+- Checkout with an outstanding accommodation/restaurant folio requires explicit operator acknowledgment; the debt remains recorded and is not automatically forgiven. Cancellation with a positive deposit emits an explicit refund/credit follow-up warning.
+- Issued proforma bookings cannot be silently edited until an audited amendment/revision flow is implemented. Payments continue independently and original PDF snapshots remain unchanged.
+- Added staff UI transitions and tests for forbidden reversals, multi-room assignment, acknowledged unpaid departures and immutable issued proformas.
