@@ -281,6 +281,20 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
     }).filter(b=>!q||[b.guest_name,b.company_name,b.category,b.assigned_room||''].some(x=>x.toLowerCase().includes(q))));
   });
 
+  // Read-only recovery for a lost POST response. Never replays a payment,
+  // allocates another room, or modifies a booking.
+  app.get('/api/bookings/request/:requestId',(req,res,next)=>{
+    try{
+      const requestId=req.params.requestId;
+      if(!/^[A-Za-z0-9_-]{16,80}$/.test(requestId))
+        return res.status(400).json({error:'Invalid booking request ID'});
+      const saved=db.prepare('SELECT booking_id FROM booking_create_requests WHERE request_id=?').get(requestId);
+      if(saved)return res.json({recorded:true,id:saved.booking_id});
+      const deleted=db.prepare('SELECT 1 FROM deleted_booking_requests WHERE request_id=?').get(requestId);
+      return res.json({recorded:false,deleted:Boolean(deleted)});
+    }catch(error){next(error);}
+  });
+
   app.post('/api/bookings', (req,res,next)=>{
     try{
       const booking=normalizeBooking(req.body);
