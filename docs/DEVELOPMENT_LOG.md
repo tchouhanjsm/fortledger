@@ -206,3 +206,11 @@ All five increments completed in this development session were reviewed and merg
 - Repeat request with identical booking/method/amount/note returns the original receipt; mismatched reuse is rejected; audit event is written only on first payment.
 - Existing integrations without request IDs remain compatible for now but do not receive retry protection. Restaurant bill and refund replay handling remain unchanged.
 - Integration tests verify idempotency, historic-null keys, exact balances and absence of duplicate audit events; no production finance approval claimed.
+
+## 2026-11-21 — Phase 2A: schema versioning and recovery safety
+- Existing SQLite bootstrap and idempotent feature upgrades previously ran on every application startup, without a recorded version. Introduced schema baseline v1 using SQLite `PRAGMA user_version` and a single transactional legacy migration.
+- Existing databases with version 0 are upgraded in place without deleting or rebuilding booking/payment/invoice/staff records. Version 1 opens without repeating schema mutations; newer unknown versions fail closed to prevent an older binary editing upgraded data.
+- FK integrity is verified before migration commit. Failed migrations roll back and do not increment `user_version`.
+- Recovery validation now rejects future schema versions and foreign-key corruption before copying into a live location. Restore CLI path handling now uses a cross-platform file URL conversion.
+- Regression tests simulate pre-versioned populated ledgers, incompatible future versions, corrupt legacy FK records and repeated startup.
+- **Remaining:** This v1 baseline is a migration foundation, not proof of production safe restore. Before each future migration, perform an external verified backup and full Windows recovery drill.
