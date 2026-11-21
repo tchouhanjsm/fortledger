@@ -27,3 +27,5 @@ Replace the sample IP/port with your confirmed values. **The explicit `--confirm
 **Human outcome record:** date, operator, physical printer model, IP/port environment description, test-slip paper actually received (yes/no), line clipping, offline failure, duplicate suppression, explicit reprint behavior, corrective action. Store this record privately. Never print sensitive real hotel data as a test.
 
 **Gate:** Mark Epson hardware accepted only after physical paper and failure/reprint behavior were observed and verified by hotel staff. CLI/test CI is not that acceptance.
+
+**Command safety:** Running this without `--confirm` exits without contacting the printer. A network timeout or TCP error is not evidence that paper did or did not print; inspect the device before any second attempt.
