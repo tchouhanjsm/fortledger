@@ -294,4 +294,17 @@
   <p id="tax-draft-message" role="alert"></p>
   <div class="dialog-actions"><button type="button" class="secondary" id="cancel-tax-draft">Cancel</button><button type="submit" class="primary">Generate draft PDF</button></div>
 </form></dialog>
+<nav id="mobile-shortcuts" aria-label="Mobile shortcuts" hidden>
+  <a href="#dashboard" data-view="dashboard">Today</a>
+  <a href="#bookings" data-view="bookings">Bookings</a>
+  <a href="#rooms" data-view="rooms">Rooms</a>
+  <a href="#restaurant" data-view="restaurant">Restaurant</a>
+  <button id="mobile-more-toggle" type="button" aria-controls="mobile-more-panel" aria-expanded="false">More</button>
+</nav>
+<div id="mobile-more-panel" role="group" aria-label="Other workspaces" hidden>
+  <a href="#guests" data-view="guests">Guests</a>
+  <a href="#invoices" data-view="invoices">Invoices</a>
+  <a href="#business-settings" data-view="business-settings">Hotel settings</a>
+  <a href="#profile" data-view="profile">My profile & staff</a>
+</div>
 <script type="module" src="/app.js"></script></body></html>

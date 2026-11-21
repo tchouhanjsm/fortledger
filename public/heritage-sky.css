@@ -105,3 +105,18 @@ dialog::backdrop{background:rgba(23,38,62,.72)}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
+
+/* V2 mobile: fast primary navigation without exposing unauthorized workspaces. */
+#mobile-shortcuts,#mobile-more-panel{display:none}
+@media(max-width:700px){
+  .sidebar nav{display:none}
+  body main{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+  #mobile-shortcuts{position:fixed;left:0;right:0;bottom:0;z-index:75;display:flex;align-items:stretch;justify-content:space-around;gap:2px;padding:5px max(8px,env(safe-area-inset-right,0px)) calc(5px + env(safe-area-inset-bottom,0px));background:#fffdf9;border-top:1px solid #dce6e0;box-shadow:0 -8px 25px rgba(22,40,56,.11)}
+  #mobile-shortcuts a,#mobile-shortcuts button{flex:1 1 0;min-width:0;min-height:53px;display:flex;align-items:center;justify-content:center;text-align:center;padding:7px 4px;border:0;background:transparent;color:#304a5a;font-size:12px;font-weight:650;text-decoration:none;border-radius:9px;line-height:1.25}
+  #mobile-shortcuts a.active{background:#e9f1ed;color:#153c30;box-shadow:inset 0 -3px #b69054}
+  #mobile-shortcuts button[aria-expanded="true"]{background:#e9f1ed}
+  #mobile-shortcuts a:focus-visible,#mobile-shortcuts button:focus-visible,#mobile-more-panel a:focus-visible{outline:3px solid #a78146;outline-offset:-3px}
+  #mobile-more-panel{position:fixed;z-index:74;bottom:calc(64px + env(safe-area-inset-bottom,0px));right:8px;left:8px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;background:#fffdf9;padding:13px;border:1px solid #dce6e0;box-shadow:0 -8px 25px rgba(22,40,56,.12);border-radius:13px}
+  #mobile-more-panel a{display:flex;align-items:center;justify-content:center;text-align:center;border-radius:9px;background:#f0f5f0;min-height:48px;color:#234338;font-weight:650;font-size:12px;text-decoration:none;padding:9px}
+  #mobile-more-panel a.active{background:#dae9de}
+}
