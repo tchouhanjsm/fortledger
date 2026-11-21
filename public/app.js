@@ -255,16 +255,21 @@ function renderDashboard(){
 }
 async function renderCollections(){
   const panel=$('#home-collections');
+  $('#home-expenses').hidden=!can('finance.write');
   if(!can('finance.read')){panel.hidden=true;return;}
   panel.hidden=false;
   const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
     timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'
   }).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
   const today=parts.year+'-'+parts.month+'-'+parts.day;
+  const businessDate=$('#expense-form').elements.namedItem('business_date');
+  if(!businessDate.value)businessDate.value=today;
   try{
     const report=await api('/api/finance/daily?date='+today);
     $('#home-collections-net').textContent=money(report.net_collections_paise);
-    $('#home-collections-note').textContent='Hotel '+money(report.hotel_received_paise)+
+    $('#home-collections-note').textContent='Expenses paid '+money(report.expenses_paid_paise)+
+      ' · Cash movement '+money(report.net_cash_movement_paise)+
+      ' · Hotel '+money(report.hotel_received_paise)+
       ' · Restaurant '+money(report.restaurant_received_paise)+
       ' · Refunds '+money(report.refunds_recorded_paise)+
       (report.unrecorded_method_paise>0?' · METHOD REVIEW '+money(report.unrecorded_method_paise):'');
@@ -273,6 +278,43 @@ async function renderCollections(){
     $('#home-collections-note').textContent=error.message;
   }
 }
+async function renderExpenseList(){
+  if(!can('finance.read'))return;
+  const date=$('#expense-form').elements.namedItem('business_date').value;
+  if(!date)return;
+  const list=$('#expense-list');list.replaceChildren();
+  try{
+    const entries=await api('/api/finance/expenses?date='+encodeURIComponent(date));
+    if(!entries.length){list.append(label('p','No expenses for this business date.','muted'));return;}
+    for(const entry of entries){
+      const row=label('div',undefined,'home-activity');
+      row.append(label('strong',entry.category+' · '+money(entry.amount_paise)),
+        label('span',entry.method+' · '+entry.payee+' · '+entry.actor_username));
+      list.append(row);
+    }
+  }catch(error){list.append(label('p','Expense history unavailable: '+error.message,'muted'));}
+}
+$('#expense-form').onsubmit=async event=>{
+  event.preventDefault();
+  const form=event.currentTarget,message=$('#expense-message'),button=form.querySelector('[type=submit]');
+  const values=Object.fromEntries(new FormData(form));
+  const request_id=form.dataset.pendingRequestId||crypto.randomUUID();
+  form.dataset.pendingRequestId=request_id;
+  button.disabled=true;message.textContent='';
+  try{
+    await api('/api/finance/expenses',{method:'POST',body:JSON.stringify({...values,request_id})});
+    delete form.dataset.pendingRequestId;
+    form.elements.namedItem('amount').value='';
+    form.elements.namedItem('payee').value='';
+    form.elements.namedItem('note').value='';
+    message.textContent='Expense saved. No duplicate entry will be created on request retry.';
+    await renderCollections();
+    await renderExpenseList();
+  }catch(error){message.textContent=error.message;}
+  finally{button.disabled=false;}
+};
+$('#expense-form').oninput=()=>{delete $('#expense-form').dataset.pendingRequestId;};
+$('#expense-form').elements.namedItem('business_date').onchange=renderExpenseList;
 async function load(){
   currentUser=await api('/api/me');
   [rooms,bookings,invoices,businessSettings,menu,restaurantBills]=await Promise.all([
@@ -303,6 +345,7 @@ async function load(){
   await renderProfile();
   renderDashboard();
   await renderCollections();
+  if(can('finance.read'))await renderExpenseList();
   $('#invoice-empty-action').hidden=Boolean(invoices.length)||!can('bookings.read');
   if(!menu.length&&can('restaurant.write'))$('#menu-import-section').open=true;
   applyWorkspaceView();
