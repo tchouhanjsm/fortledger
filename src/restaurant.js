@@ -52,27 +52,53 @@ function parseCsv(csv){
   row.push(field);if(row.some(v=>v.trim()))rows.push([...row]);
   return rows;
 }
-export function importMenuCsv(db,csv){
+const MENU_HEADER_ALIASES = {
+  name:['name','item','item name','item_name','itemname','menu item','menu_item','dish','dish name','product','product name'],
+  category:['category','group','group name','section','item category','item_category','menu category','type'],
+  price:['price','rate','selling price','selling_price','sellingprice','unit price','unit_price','amount','price inr','price (inr)','mrp'],
+  tax_rate:['tax_rate','tax rate','gst','gst %','gst%','gst rate','gst_rate','tax','tax %','tax%','tax percentage','gst percentage']
+};
+const canonicalHeader = value=>String(value||'').replace(/^\uFEFF/,'').trim().toLowerCase()
+  .replace(/[_-]+/g,' ').replace(/\s+/g,' ');
+export function parseMenuCsv(csv){
   const rows=parseCsv(csv);
-  if(rows.length<2)throw new Error('CSV requires header and at least one item');
-  const header=rows.shift().map(x=>x.trim().toLowerCase());
-  const fields=['name','category','price','tax_rate'];
-  if(header.length!==4||fields.some((v,i)=>v!==header[i]))throw new Error('CSV header must be name,category,price,tax_rate');
+  if(rows.length<2)throw new Error('CSV requires a header and at least one menu item');
+  const header=rows.shift().map(canonicalHeader);
+  const columns={};
+  for(const field of ['name','category','price','tax_rate']){
+    const aliases=MENU_HEADER_ALIASES[field].map(canonicalHeader);
+    const positions=header.flatMap((label,i)=>aliases.includes(label)?[i]:[]);
+    if(positions.length!==1)throw new Error('Missing or duplicate "'+field+'" column. Required: item/name, category, price, and GST/tax rate. Detected: '+header.join(', '));
+    columns[field]=positions[0];
+  }
   if(rows.length>500)throw new Error('Maximum 500 menu items per import');
-  const normalized=rows.map((cols,i)=>{
-    if(cols.length!==4)throw new Error('Wrong number of columns at line '+(i+2));
-    const [name,category,price,tax]=cols.map(x=>x.trim());
-    if(!name||name.length>120||!category||category.length>80)throw new Error('Invalid menu description at line '+(i+2));
-    const tax_rate=Number(tax);
-    if(!Number.isInteger(tax_rate)||tax_rate<0||tax_rate>28)throw new Error('Invalid tax rate at line '+(i+2));
-    return {name,category,price_paise:toPaise(price),tax_rate};
+  const items=rows.map((cols,i)=>{
+    if(cols.length!==header.length)throw new Error('Line '+(i+2)+': expected '+header.length+' columns; found '+cols.length);
+    const value=field=>cols[columns[field]].trim();
+    const name=value('name'),category=value('category'),rawPrice=value('price'),
+      rawTax=value('tax_rate');
+    if(!name||name.length>120||!category||category.length>80)
+      throw new Error('Line '+(i+2)+': item name and category are required');
+    if(!rawTax)throw new Error('Line '+(i+2)+': GST/tax rate is blank. Enter an explicit rate, including 0 if applicable.');
+    const tax_rate=Number(rawTax.replace(/\s*%$/,''));
+    if(!Number.isInteger(tax_rate)||tax_rate<0||tax_rate>28)
+      throw new Error('Line '+(i+2)+': GST/tax rate must be an integer between 0 and 28');
+    const cleanedPrice=rawPrice.replace(/^[₹Rs.\s]+/i,'').replace(/,/g,'').trim();
+    let price_paise;
+    try{price_paise=toPaise(cleanedPrice);}
+    catch{throw new Error('Line '+(i+2)+': invalid inclusive price "'+rawPrice+'". Use rupees with at most 2 decimal places.');}
+    return {name,category,price_paise,tax_rate};
   });
   const keys=new Set();
-  for(const item of normalized){
-    const key=item.category+'\u0000'+item.name;
+  for(const item of items){
+    const key=item.category.toLowerCase()+'\u0000'+item.name.toLowerCase();
     if(keys.has(key))throw new Error('Duplicate menu item in CSV: '+item.name);
     keys.add(key);
   }
+  return items;
+}
+export function importMenuCsv(db,csv){
+  const normalized=parseMenuCsv(csv);
   db.transaction(()=>{
     const upsert=db.prepare(`INSERT INTO menu_items(name,category,price_paise,tax_rate,active) VALUES(@name,@category,@price_paise,@tax_rate,1)
        ON CONFLICT(name,category) DO UPDATE SET price_paise=excluded.price_paise,tax_rate=excluded.tax_rate,active=1`);
