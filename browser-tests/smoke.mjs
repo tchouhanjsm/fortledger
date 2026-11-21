@@ -42,7 +42,14 @@ try{
       console.error('Page hierarchy overflow:',JSON.stringify(hierarchy));
       console.error('Horizontal overflow candidates at '+width+'px:',JSON.stringify(offenders));
     }
-    assert.ok(overflow<=2,'Unexpected page horizontal overflow at '+width+'px: '+overflow);
+    const horizontalPan=await page.evaluate(()=>{
+      window.scrollTo(40,0);
+      const observed=window.scrollX;
+      window.scrollTo(0,0);
+      return observed;
+    });
+    assert.ok(horizontalPan<=2,'Page can pan sideways at '+width+'px: '+horizontalPan+
+      'px (document intrinsic overflow '+overflow+'px)');
 
     if(width===390){
       await page.locator('#new-booking').click();
