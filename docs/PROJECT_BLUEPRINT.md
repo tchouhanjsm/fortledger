@@ -91,3 +91,6 @@ Owner/manager dashboard now includes a collection summary by business day (India
 
 ## Phase 1D — Duplicate payment retry protection
 New hotel payment requests send UUID request IDs to a unique, nullable `payments.request_id` field. A retry with the same request ID and same fields returns the first payment without booking a second receipt. Legacy callers without request IDs are supported but do not gain replay protection until upgraded.
+
+## Phase 2A — SQLite schema versioning
+The application now establishes baseline schema version 1 with `PRAGMA user_version`. Legacy v0 databases transition atomically; supported v1 databases avoid repeated bootstrap mutations; newer database versions are rejected. The offline restore validator checks forward compatibility and FK integrity. Future releases must introduce explicit v2/v3 migration steps, backed by rollback snapshots and tests.
