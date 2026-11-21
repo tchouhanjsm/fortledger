@@ -226,3 +226,11 @@ All five increments completed in this development session were reviewed and merg
 - Any successful password change removes all active user sessions, including other browser windows. A staff password reset or account deactivation by the owner also revokes active sessions.
 - Added profile UI and tests for incorrect password, old-password rejection, owner file persistence, staff self-rotation and owner reset.
 - No external email/password reset SaaS. Manual owner account recovery and on-device security audit remain pending.
+
+## 2026-11-21 — Phase 3A: lightweight expense recording
+- Added owner/manager-only expense ledger; deliberately avoided a general accounting system. Captures business date, category, amount, payment method, optional payee and reason, actor identity and unique request ID.
+- Expenses are write-once. Matching request replay returns the existing record; mismatched reuse is rejected. No deletion or silent editing.
+- Explicit SQLite schema migration v1→v2 adds expenses table and index; pre-existing bookings, payments, proforma invoices and restaurant records remain unchanged. Future-schema guard and offline backup validation now accept v2.
+- Daily financial dashboard distinguishes received collections from paid expenses and labels the difference *net cash movement*, never profit or GST revenue. Staff cashier and front desk roles cannot view owner/manager expense records.
+- Tests cover preservation across v1→v2 migration, permission denials, exact amounts, actor audit and duplicate prevention.
+- Remaining: expense reversals, receipt attachments, reviewed end-of-day cash close, GST compliance approval and real machine validation.
