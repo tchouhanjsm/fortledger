@@ -13,7 +13,7 @@ test('automated diagnostics alone cannot certify real-device or statutory releas
   assert.equal(report.physical_gates.length,5);
   assert.ok(report.physical_gates.every(g=>g.status==='PENDING HUMAN VERIFICATION'));
   assert.ok(report.physical_gates.some(g=>g.id==='gst_accountant_signoff'));
-  assert.ok(report.physical_gates.some(g=>g.id==='windows_replacement_restore'));
+  assert.ok(report.physical_gates.some(g=>g.id==='replacement_device_restore'));
   assert.ok(report.physical_gates.some(g=>g.id==='epson_paper_output'));
 });
 test('release report preserves failing diagnostics without sensitive payloads',()=>{
@@ -26,7 +26,7 @@ test('release report preserves failing diagnostics without sensitive payloads',(
   assert.equal(report.blocking_items.length,1);
   assert.equal(report.blocking_items[0].status,'fail');
   assert.deepEqual(PHYSICAL_RELEASE_GATES.map(g=>g.id),[
-    'windows_replacement_restore','epson_paper_output','gst_accountant_signoff',
+    'replacement_device_restore','epson_paper_output','gst_accountant_signoff',
     'frontdesk_device_qa','offsite_backup_isolation'
   ]);
 });
