@@ -13,7 +13,8 @@
     "restore": "node src/restore.js",
     "setup-auth": "node src/setup-auth.js",
     "backup:decrypt": "node src/decrypt-backup.js",
-    "doctor": "node src/doctor.js"
+    "doctor": "node src/doctor.js",
+    "recovery:drill": "node src/recovery-drill.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
