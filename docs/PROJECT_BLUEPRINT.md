@@ -109,3 +109,6 @@ SQLite v5 adds a lightweight maintenance issue register and optional date-scoped
 
 ## Phase 4A — Returning-guest directory
 Add a lightweight local guest profile with optional contact/company/preference fields. Booking reference `guest_id` is nullable: staff must consciously choose a returning guest; never infer identity or merge prior bookings based on display name. Front desk and manager may read/write CRM; cashier cannot. A profile update never rewrites contractually agreed booking terms or immutable invoice snapshots.
+
+## Phase 4B — Operational room performance
+A lightweight owner/manager report calculates booking occupancy, gross ADR and gross RevPAR from half-open hotel night intervals, not payment receipt dates. Denominator = active inventory minus room-nights blocked by **currently open** maintenance outages. Numerator = noncancelled reservation room-nights and associated GST-inclusive contracted nightly amounts. Labels explicitly distinguish booking pace from physical occupancy, tax-exclusive accounting revenue and cash receipts. A statutory tax rate / revenue-recognition model and immutable historic room availability must be validated before conventional net room revenue/ADR/RevPAR are considered complete.
