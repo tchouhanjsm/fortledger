@@ -28,7 +28,22 @@ try{
     assert.equal(await page.locator('#bookings').isVisible(),true);
     assert.equal(await page.locator('#dashboard').isVisible(),false,
       'Hidden dashboard should not be exposed by responsive CSS');
-    assert.equal(await page.getByRole('navigation',{name:'Primary'}).isVisible(),true);
+    if(width<=700){
+      assert.equal(await page.getByRole('navigation',{name:'Mobile shortcuts'}).isVisible(),true);
+      assert.equal(await page.getByRole('navigation',{name:'Primary'}).isVisible(),false);
+      const bookingsShortcut=page.locator('#mobile-shortcuts a[data-view="bookings"]');
+      assert.equal(await bookingsShortcut.getAttribute('aria-current'),'page');
+      await page.locator('#mobile-more-toggle').click();
+      assert.equal(await page.locator('#mobile-more-panel').isVisible(),true);
+      await page.locator('#mobile-more-panel a[data-view="guests"]').click();
+      await page.locator('#guests').waitFor({state:'visible'});
+      assert.equal(await page.locator('#mobile-more-panel').isVisible(),false);
+      await bookingsShortcut.click();
+      await page.locator('#bookings').waitFor({state:'visible'});
+    }else{
+      assert.equal(await page.getByRole('navigation',{name:'Primary'}).isVisible(),true);
+      assert.equal(await page.getByRole('navigation',{name:'Mobile shortcuts'}).isVisible(),false);
+    }
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-
       document.documentElement.clientWidth);
     if(overflow>2){
