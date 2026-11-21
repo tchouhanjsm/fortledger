@@ -3,10 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {DEFAULT_AUTH_FILE,loadPasswordRecord} from './auth.js';
+import {databasePath} from './data-paths.js';
 import {validatePrinterAddress} from './printer.js';
 
 export function diagnose({
-  databaseFile=process.env.FORTLEDGER_DB||path.resolve('data/fortledger.sqlite'),
+  databaseFile=databasePath(),
   authFile=DEFAULT_AUTH_FILE,
   env=process.env,now=new Date()
 }={}){

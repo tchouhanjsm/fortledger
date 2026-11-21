@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
+import {databasePath} from './data-paths.js';
 import { ensureInvoiceSchema } from './invoice-schema.js';
 import { ensureBusinessSettings } from './business-settings.js';
 import { ensureRestaurantSchema } from './restaurant.js';
@@ -8,7 +9,7 @@ import { ensureRefundSchema } from './payment-ledger.js';
 import {ensureTaxDraftSchema} from './tax-draft.js';
 import {ensureLogoSchema} from './hotel-logo.js';
 
-export function openDatabase(filename = process.env.FORTLEDGER_DB || path.resolve('data/fortledger.sqlite')) {
+export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
   const db = new Database(filename);
   db.pragma('journal_mode = WAL');

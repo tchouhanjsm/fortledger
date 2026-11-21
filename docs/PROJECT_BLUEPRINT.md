@@ -70,3 +70,6 @@ See [development log](DEVELOPMENT_LOG.md) for the latest implemented items, veri
 
 ## Operational diagnostics
 Use `npm run doctor` to check local authentication, SQLite integrity, physical inventory, unmatched room charges, print transport uncertainty, backup freshness and tax issuance blockers without exposing guest details. It does not substitute for external production validation.
+
+## Windows deployment and future upgrades (2026-11-21)
+See [WINDOWS_SETUP.md](WINDOWS_SETUP.md). Initial Windows installation clones the repo once, uses Node.js 22 and keeps the seven-room SQLite ledger and administrator credentials in `%LOCALAPPDATA%\\FortLedger\\data`, **outside Git**. Setup, start and update scripts are in `scripts/`; updates require stopping the app, taking a verified SQLite snapshot, fast-forwarding approved `main`, reinstalling dependencies and running tests. No automatic unsupervised updates or MSI packaging in this alpha. Windows-specific CI is part of the release gate; test physical local machine separately.

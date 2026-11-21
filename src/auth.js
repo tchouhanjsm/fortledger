@@ -1,8 +1,9 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import {authPath} from './data-paths.js';
 
-export const DEFAULT_AUTH_FILE=path.resolve('data/admin-auth.json');
+export const DEFAULT_AUTH_FILE=authPath();
 const SESSIONS_MS=8*60*60*1000;
 export function createPasswordRecord(password){
   if(typeof password!=='string'||password.length<12||password.length>256)

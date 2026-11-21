@@ -4,6 +4,10 @@
 
 > **Status:** Active alpha with booking calendar, proformas, local business settings, restaurant billing and guest folios. NOT production-ready. Do not enter real guest, bank or payment details yet.
 
+## Windows install and update (initial alpha)
+
+For Windows 10/11, follow the complete [Windows installation and non-destructive update guide](docs/WINDOWS_SETUP.md). It covers Git clone, Node.js 22, `npm install`, local password setup, startup, verified pre-update backups and later `git pull`-based updates **without deleting reservations or invoices**. Use the Windows launch/update scripts; do not run bare `npm start` without the same persistent data environment. Current release is pre-production.
+
 ## Start locally
 Requires Node.js 22+ and a local build toolchain for the SQLite native dependency.
 
@@ -111,3 +115,6 @@ Run `npm run doctor` from the project directory after setting up the administrat
 
 ## Focused module navigation
 FortLedger now opens a single operational area at a time instead of stacking unrelated sections on one long page. The five navigation links show booking calendar/ledger, seven-room inventory, invoices, restaurant billing, or hotel settings. The current module is reflected in the URL fragment, so bookmarks work. On mobile, the navigation remains accessible via a horizontally scrollable menu. This improves first-screen clarity and reduces unnecessary scrolling without introducing client-side routing dependencies.
+
+## Persistent data directory override
+Set `FORTLEDGER_DATA_DIR` to keep both `fortledger.sqlite` and `admin-auth.json` outside the source checkout. Individual `FORTLEDGER_DB` and `FORTLEDGER_AUTH_FILE` overrides remain available for special cases. The Windows scripts use `%LOCALAPPDATA%\\FortLedger\\data` automatically. The code directory can be updated and dependencies reinstalled without overwriting that data location. The existing `.gitignore` also excludes the legacy `data/` folder.
