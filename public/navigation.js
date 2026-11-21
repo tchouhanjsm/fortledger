@@ -1,4 +1,5 @@
 export const VIEWS={
+  dashboard:{title:'Operations dashboard',subtitle:'Your most important work, in one place.',sections:['dashboard']},
   bookings:{title:'Bookings & guest stays',subtitle:'Calendar, arrivals, advances and balances.',sections:['stats','calendar','bookings']},
   rooms:{title:'Room inventory',subtitle:'Seven physical rooms and their accommodation categories.',sections:['rooms']},
   invoices:{title:'Hotel invoices',subtitle:'Prepare proformas, PDF downloads and reviewed GST drafts.',sections:['invoices']},
@@ -8,5 +9,5 @@ export const VIEWS={
 };
 export function viewForHash(hash){
   const name=String(hash||'').replace(/^#/,'');
-  return Object.hasOwn(VIEWS,name)?name:'bookings';
+  return Object.hasOwn(VIEWS,name)?name:'dashboard';
 }
