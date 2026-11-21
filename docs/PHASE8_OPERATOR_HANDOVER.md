@@ -82,3 +82,7 @@ Record one manual private acceptance sheet containing **date, tested device, ope
 - If recovery cannot be demonstrated, remain offline and use a separately approved manual process; do not claim the software is production-ready.
 
 **Release status stays:** `NOT RELEASED` until actual external-device evidence and accountant approval have been completed.
+
+## Live build sync and read-only hotel verification
+
+After approving GitHub `main`, use the two-stage [Windows live sync and test guide](LIVE_SYNC_ACCEPTANCE.md): the existing stopped-app `windows-update.ps1` creates a verified pre-update backup and fast-forwards the code, then `windows-live-check.ps1` checks the running local service and diagnostics without changing guest records. A pass is not production certification.
