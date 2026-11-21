@@ -215,6 +215,29 @@
   <option value="cash">Cash</option><option value="upi">UPI</option>
   <option value="card">Card</option><option value="bank">Bank transfer</option>
 </select></label></div><div id="form-total" class="form-preview">Enter dates and rate to calculate total.</div><p id="form-error" role="alert"></p><div class="dialog-actions"><button type="button" id="cancel-dialog" class="secondary">Cancel</button><button type="submit" id="booking-submit" class="primary">Save booking</button></div></form></dialog>
+<dialog id="booking-payment-dialog" aria-labelledby="payment-title">
+  <form id="booking-payment-form">
+    <div class="dialog-heading"><div><span class="eyebrow">BOOKING RECEIPT</span>
+      <h2 id="payment-title">Record payment received</h2></div>
+      <button type="button" id="payment-close" class="icon-btn" aria-label="Close payment dialog">×</button></div>
+    <p id="payment-guest" class="payment-guest"></p>
+    <p id="payment-current-due" class="muted"></p>
+    <p class="muted">Record only money actually received. This action does not charge a card or transfer funds.</p>
+    <div class="form-grid">
+      <label>Amount received (₹)<input name="amount" type="number" min="0.01" step="0.01" required inputmode="decimal"></label>
+      <label>Received via<select name="method" required>
+        <option value="">Select method</option><option value="cash">Cash</option>
+        <option value="upi">UPI</option><option value="card">Card</option>
+        <option value="bank">Bank transfer</option>
+      </select></label>
+    </div>
+    <p id="payment-message" role="status" aria-live="polite"></p>
+    <div class="dialog-actions">
+      <button id="payment-cancel" type="button" class="secondary">Cancel</button>
+      <button id="payment-submit" type="submit" class="primary">Record received payment</button>
+    </div>
+  </form>
+</dialog>
 <dialog id="invoice-dialog"><form id="invoice-form">
   <div class="dialog-heading"><div><span class="eyebrow">PROFORMA INVOICE</span><h2>Review and issue</h2></div><button id="close-invoice" type="button" class="icon-btn" aria-label="Close">×</button></div>
   <p class="muted">Edit accommodation lines before issuing. Saved proformas are immutable.</p>
