@@ -969,11 +969,15 @@ $('#booking-payment-form').onsubmit=async event=>{
     delete form.dataset.pendingRequestId;
     paymentBookingId=null;
     $('#booking-payment-dialog').close();
-    await load();
   }catch(error){
     message.textContent='Payment could not be confirmed: '+error.message+
       '. Review the ledger before retrying. Retrying the same values uses the same request ID.';
-  }finally{button.disabled=false;}
+    button.disabled=false;
+    return;
+  }
+  button.disabled=false;
+  try{await load();}
+  catch(error){alert('Payment recorded, but refresh failed: '+error.message+' Reload to review the ledger.');}
 };
 async function showPayments(b){
   try{
