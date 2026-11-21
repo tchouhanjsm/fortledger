@@ -111,3 +111,15 @@ $env:FORTLEDGER_DATA_DIR = Join-Path $env:LOCALAPPDATA 'FortLedger\data'
 npm.cmd run recovery:drill
 ```
 The command works with an online database by creating a consistent snapshot and restores only to a private temporary path. It compares all table rows and an admin-credential copy without changing the live source. It does **not** substitute for physically restoring an off-device encrypted backup and signing in on the destination Windows machine.
+
+## Phase 8 — operator acceptance before real guest use
+
+For the **real encrypted backup artifact** and physical-device acceptance sequence, use [Phase 8 operator handover](PHASE8_OPERATOR_HANDOVER.md). A read-only-on-live-database Windows rehearsal helper is available:
+
+```powershell
+$env:FORTLEDGER_BACKUP_PASSPHRASE = Read-Host 'Backup passphrase'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows-recovery-rehearsal.ps1 -BackupFile 'E:\FortLedgerBackups\fortledger-example.flbk'
+Remove-Item Env:\FORTLEDGER_BACKUP_PASSPHRASE
+```
+
+Use the path to your **actual** separately protected backup. This only restores to disposable private scratch storage. It does **not** certify a physical replacement Windows device, an independent disk, Epson paper output or statutory GST invoice compliance. The actual rollout stays **NO-GO** until those human sign-offs are completed.
