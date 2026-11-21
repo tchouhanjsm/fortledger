@@ -6,6 +6,7 @@ import { ensureBusinessSettings } from './business-settings.js';
 import { ensureRestaurantSchema } from './restaurant.js';
 import { ensureRefundSchema } from './payment-ledger.js';
 import {ensureTaxDraftSchema} from './tax-draft.js';
+import {ensureLogoSchema} from './hotel-logo.js';
 
 export function openDatabase(filename = process.env.FORTLEDGER_DB || path.resolve('data/fortledger.sqlite')) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -53,6 +54,7 @@ export function openDatabase(filename = process.env.FORTLEDGER_DB || path.resolv
   db.exec('INSERT OR IGNORE INTO booking_room_allocations(booking_id,room_id) SELECT id,room_id FROM bookings WHERE room_id IS NOT NULL');
   ensureInvoiceSchema(db);
   ensureTaxDraftSchema(db);
+  ensureLogoSchema(db);
   ensureBusinessSettings(db);
   ensureRestaurantSchema(db);
   ensureRefundSchema(db);
