@@ -276,6 +276,7 @@ function renderDashboard(){
 async function renderCollections(){
   const panel=$('#home-collections');
   $('#home-expenses').hidden=!can('finance.write');
+  $('#home-closing').hidden=!can('finance.write');
   if(!can('finance.read')){panel.hidden=true;return;}
   panel.hidden=false;
   const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
@@ -284,6 +285,8 @@ async function renderCollections(){
   const today=parts.year+'-'+parts.month+'-'+parts.day;
   const businessDate=$('#expense-form').elements.namedItem('business_date');
   if(!businessDate.value)businessDate.value=today;
+  const closingDate=$('#daily-close-form').elements.namedItem('business_date');
+  if(!closingDate.value)closingDate.value=today;
   try{
     const report=await api('/api/finance/daily?date='+today);
     $('#home-collections-net').textContent=money(report.net_collections_paise);
@@ -335,6 +338,51 @@ $('#expense-form').onsubmit=async event=>{
 };
 $('#expense-form').oninput=()=>{delete $('#expense-form').dataset.pendingRequestId;};
 $('#expense-form').elements.namedItem('business_date').onchange=renderExpenseList;
+async function renderDailyClose(){
+  if(!can('finance.read'))return;
+  const form=$('#daily-close-form');
+  const day=form.elements.namedItem('business_date').value;
+  if(!day)return;
+  const summary=$('#daily-close-summary');
+  const button=form.querySelector('[type=submit]');
+  summary.replaceChildren();button.disabled=false;
+  try{
+    const close=await api('/api/finance/closing?date='+encodeURIComponent(day));
+    const text=close.stale?
+      'WARNING: Ledger changed after this close; owner must review new transactions.':
+      'Closing recorded and source values match the current ledger.';
+    summary.append(label('strong',text),label('p',
+      'Expected cash '+money(close.expected_cash_paise)+
+      ' · Counted '+money(close.counted_cash_paise)+
+      ' · Difference '+money(close.discrepancy_paise)+
+      ' · By '+close.actor_username));
+    button.disabled=true;
+  }catch(error){
+    if(/No closing recorded/.test(error.message))summary.append(label('p','No close recorded for this date.','muted'));
+    else summary.append(label('p',error.message,'muted'));
+  }
+}
+$('#daily-close-form').onsubmit=async event=>{
+  event.preventDefault();
+  const form=event.currentTarget,message=$('#daily-close-message'),
+    button=form.querySelector('[type=submit]');
+  if(!confirm('Record final day closing? Existing closing entries cannot be edited or silently overwritten.'))return;
+  const input=Object.fromEntries(new FormData(form));
+  const request_id=form.dataset.pendingRequestId||crypto.randomUUID();
+  form.dataset.pendingRequestId=request_id;
+  input.request_id=request_id;
+  input.acknowledge_discrepancy=form.elements.namedItem('acknowledge_discrepancy').checked;
+  input.acknowledge_unrecorded=form.elements.namedItem('acknowledge_unrecorded').checked;
+  button.disabled=true;message.textContent='';
+  try{
+    await api('/api/finance/closing',{method:'POST',body:JSON.stringify(input)});
+    delete form.dataset.pendingRequestId;
+    message.textContent='Day closing recorded. Verify cash and electronic payments against actual records.';
+    await renderDailyClose();
+  }catch(error){message.textContent=error.message;button.disabled=false;}
+};
+$('#daily-close-form').oninput=()=>{delete $('#daily-close-form').dataset.pendingRequestId;};
+$('#daily-close-form').elements.namedItem('business_date').onchange=renderDailyClose;
 async function load(){
   currentUser=await api('/api/me');
   [rooms,bookings,invoices,businessSettings,menu,restaurantBills]=await Promise.all([
@@ -365,7 +413,7 @@ async function load(){
   await renderProfile();
   renderDashboard();
   await renderCollections();
-  if(can('finance.read'))await renderExpenseList();
+  if(can('finance.read')){await renderExpenseList();await renderDailyClose();}
   $('#invoice-empty-action').hidden=Boolean(invoices.length)||!can('bookings.read');
   if(!menu.length&&can('restaurant.write'))$('#menu-import-section').open=true;
   applyWorkspaceView();
