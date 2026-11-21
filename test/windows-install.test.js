@@ -42,6 +42,17 @@ test('pre-update backup is consistent, preserves credentials and does not alter 
     assert.ok(fs.existsSync(path.join(backup.folder,'RECOVERY.txt')));
     assert.notEqual(backup.folder,data);
     await assert.rejects(()=>backupBeforeUpdate(data,{source,auth}),/outside/);
+    // Prevent backups which appear separate by filename but are still located
+    // within the live SQLite data tree (or linked into it).
+    await assert.rejects(()=>backupBeforeUpdate(path.join(data,'nested','backups'),{source,auth}),/outside/);
+    assert.equal(fs.existsSync(path.join(data,'nested','backups','fortledger.sqlite')),false);
+    const alias=path.join(root,'external-alias');
+    try{
+      fs.symlinkSync(data,alias,process.platform==='win32'?'junction':'dir');
+      await assert.rejects(()=>backupBeforeUpdate(path.join(alias,'nested'),{source,auth}),/outside/);
+    }catch(error){
+      if(!['EPERM','EACCES','ENOTSUP'].includes(error.code))throw error;
+    }
   }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
 test('updates do not create a missing or corrupt live database',async()=>{
