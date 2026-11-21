@@ -35,6 +35,11 @@ try{
           el.getBoundingClientRect().right>document.documentElement.clientWidth+2)
         .slice(0,12).map(el=>({tag:el.tagName,id:el.id,klass:el.className,
           right:Math.round(el.getBoundingClientRect().right)})));
+      const hierarchy=await page.evaluate(()=>[...document.querySelectorAll('body,body > *,main > *,#bookings > *,#calendar > *,header > *, .sidebar > *')]
+        .map(el=>({tag:el.tagName,id:el.id,cls:typeof el.className==='string'?el.className:'',width:Math.round(el.getBoundingClientRect().width),right:Math.round(el.getBoundingClientRect().right),scrollWidth:el.scrollWidth,display:getComputedStyle(el).display}))
+        .filter(x=>x.right>document.documentElement.clientWidth+2||x.scrollWidth>x.width+3)
+        .slice(0,40));
+      console.error('Page hierarchy overflow:',JSON.stringify(hierarchy));
       console.error('Horizontal overflow candidates at '+width+'px:',JSON.stringify(offenders));
     }
     assert.ok(overflow<=2,'Unexpected page horizontal overflow at '+width+'px: '+overflow);
