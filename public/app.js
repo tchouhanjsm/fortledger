@@ -24,8 +24,30 @@ function applyWorkspaceView(){
     if(active)nav.setAttribute('aria-current','page');
     else nav.removeAttribute('aria-current');
   }
+  updateMobileNavigation(view);
   window.scrollTo(0,0);
 }
+function updateMobileNavigation(view){
+  const quick=$('#mobile-shortcuts'),more=$('#mobile-more-panel'),toggle=$('#mobile-more-toggle');
+  if(!quick||!more||!toggle)return;
+  for(const anchor of document.querySelectorAll('#mobile-shortcuts a, #mobile-more-panel a')){
+    const target=anchor.dataset.view;
+    anchor.hidden=Boolean(currentUser&&!can(VIEW_ACCESS[target]));
+    const selected=view===target;
+    anchor.classList.toggle('active',selected);
+    if(selected)anchor.setAttribute('aria-current','page');
+    else anchor.removeAttribute('aria-current');
+  }
+  const extras=[...more.querySelectorAll('a')];
+  toggle.hidden=!extras.some(a=>!a.hidden);
+  more.hidden=true;toggle.setAttribute('aria-expanded','false');
+  quick.hidden=false;
+}
+$('#mobile-more-toggle').onclick=()=>{
+  const panel=$('#mobile-more-panel'),toggle=$('#mobile-more-toggle');
+  panel.hidden=!panel.hidden;
+  toggle.setAttribute('aria-expanded',String(!panel.hidden));
+};
 window.addEventListener('hashchange',applyWorkspaceView);
 
 const money = paise => new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(paise/100);
