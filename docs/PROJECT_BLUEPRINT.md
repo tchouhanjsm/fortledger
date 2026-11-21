@@ -49,7 +49,7 @@ Merged PRs #1–#10. Booking calendar includes room-wise week and aggregate mont
 **Next engineering order:** refine recently added local authentication and perform security QA; business invoice details/legal tax verification and final conversion; menu tax verification; Epson printing/receipt queue and physical printer test; manual unmatched room-charge review; automated backup and restoration drill; visual QA on PDFs/calendar; packaging and installation. Record new work in the development log.
 
 ## Invoice branding decision (2026-11-20)
-- A hotel logo is mandatory as a supported **feature**, but the logo asset itself is not yet supplied. Provide upload/change/preview in business Settings; validate accepted image types, size and safe storage. Persist local logo and use it consistently on proforma/final tax PDFs.
+- Hotel logo upload/change/preview is implemented for PNG/JPEG in business Settings, with local validated asset storage, immutable per-proforma snapshots and aspect-preserving PDF embedding. The actual hotel logo has not yet been supplied; statutory final invoices remain disabled.
 - Never use the FortLedger application mark as a substitute for the hotel's actual logo; show hotel name as the fallback until its logo is uploaded. Do not commit private hotel assets unless explicitly authorized.
 
 ## Acceptance scenarios

@@ -127,6 +127,7 @@ async function load(){
   renderMenu();renderCart();renderRestaurantHistory();
   for(const [key,value] of Object.entries(businessSettings)){const field=$('#business-form').elements.namedItem(key);if(field)field.value=value;}
   renderBookings();renderRooms();renderCalendar();renderInvoices();
+  await refreshHotelLogo();
 }
 function renderInvoices(){
   const list=$('#invoice-list');list.replaceChildren();
@@ -505,6 +506,32 @@ $('#folio-combined').onclick=async()=>{
   }catch(e){message.textContent=e.message;button.disabled=false;}
 };
 
+async function refreshHotelLogo(){
+  const current=await api('/api/settings/logo');
+  const image=$('#hotel-logo-preview');
+  image.hidden=!current.active;
+  if(current.active)image.src='/api/settings/logo/image?changed='+encodeURIComponent(current.active.sha256);
+}
+$('#hotel-logo-upload').onclick=async()=>{
+  const file=$('#hotel-logo-file').files[0],message=$('#hotel-logo-message');
+  if(!file){message.textContent='Choose a hotel logo first.';return;}
+  if(!['image/png','image/jpeg'].includes(file.type)||file.size>800*1024){
+    message.textContent='Choose a PNG or JPEG smaller than 800 KB.';return;
+  }
+  const button=$('#hotel-logo-upload');button.disabled=true;
+  try{
+    const base64=await new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onload=()=>resolve(String(reader.result).split(',')[1]);
+      reader.onerror=()=>reject(new Error('Unable to read the logo'));
+      reader.readAsDataURL(file);
+    });
+    await api('/api/settings/logo',{method:'POST',body:JSON.stringify({mime:file.type,base64})});
+    await refreshHotelLogo();
+    message.textContent='Logo saved. New invoices will preserve this branding.';
+  }catch(error){message.textContent=error.message;}
+  finally{button.disabled=false;}
+};
 $('#business-form').onsubmit=async event=>{
   event.preventDefault();
   const form=event.currentTarget,message=$('#settings-message'),button=form.querySelector('[type=submit]');

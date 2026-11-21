@@ -1,5 +1,6 @@
 import {getBusinessSettings} from './business-settings.js';
 import {getInvoice} from './invoices.js';
+import {getActiveLogoId} from './hotel-logo.js';
 
 export function ensureTaxDraftSchema(db){
   db.exec(`CREATE TABLE IF NOT EXISTS tax_invoice_drafts(
@@ -56,7 +57,7 @@ export function prepareTaxDraft(db,proformaId,input={}){
   const snapshot={
     kind:'tax_draft',label:'DRAFT - NOT A GST TAX INVOICE',
     proforma_id:source.id,proforma_number:source.number,prepared_on:new Date().toISOString().slice(0,10),
-    business,recipient_name:original.bill_to,recipient_address,recipient_gstin,signatory_name,
+    business,logo_asset_id:getActiveLogoId(db),recipient_name:original.bill_to,recipient_address,recipient_gstin,signatory_name,
     place_of_supply:'Rajasthan (08)',reverse_charge:false,
     guest_name:original.guest_name,checkin:original.checkin,checkout:original.checkout,
     lines,total_paise:total,taxable_paise,gst_paise,cgst_paise,sgst_paise,

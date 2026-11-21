@@ -132,3 +132,9 @@ All five increments completed in this development session were reviewed and merg
 - Enforces that SAC codes are explicitly selected (996311 hotel/guest-house, 996312 campsite) and flags accommodation units outside the supported 5% value band.
 - **Statutory invoice issuance remains disabled**; drafts do not consume final tax invoice numbers, do not represent a signed invoice, and can be revised without changing original proformas.
 - Source: official CBIC Rule 46, PIB September 2025 clarification, and GST Council SAC classification. A professional signoff and issuer credentials remain required.
+
+## 2026-11-21 — Hotel logo upload, immutable branding and PDF updates
+- Added locally persisted PNG/JPEG hotel logo assets with size/header checks and a selected active-logo pointer. Assets remain stored in the SQLite database, not in the Git repository.
+- New proforma snapshots reference the logo active when issued; PDFs resolve that historical asset even after later branding changes. Tax draft PDFs use the logo selected at draft preparation.
+- Added Settings upload/preview UI, authenticated logo file API, and fallback to hotel name when no logo exists. Image aspect ratio is maintained.
+- Actual Garh Jaisal logo artwork has not yet been provided, so precise visual branding approval remains pending.

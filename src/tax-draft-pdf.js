@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit';
 const money=n=>'INR '+(n/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
-export function streamTaxDraftPdf(s,res){
+export function streamTaxDraftPdf(s,res,logo=null){
   const pdf=new PDFDocument({size:'A4',margin:44,info:{Title:'Tax invoice draft from '+s.proforma_number}});
   res.setHeader('Content-Type','application/pdf');
   res.setHeader('Content-Disposition','attachment; filename="tax-draft-'+s.proforma_number+'.pdf"');
@@ -9,7 +9,8 @@ export function streamTaxDraftPdf(s,res){
     pdf.fillColor('#172c25').text(String(value),230,y,{width:325});};
   pdf.rect(0,0,595,10).fill('#194532');
   pdf.fillColor('#a13b35').font('Helvetica-Bold').fontSize(17).text('DRAFT - NOT A TAX INVOICE',44,34,{align:'center',width:505});
-  pdf.fillColor('#194532').fontSize(20).text((s.business.hotel_name||'GARH JAISAL').toUpperCase(),44,75,{width:500});
+  if(logo?.data)pdf.image(logo.data,470,72,{fit:[70,70]});
+  pdf.fillColor('#194532').fontSize(20).text((s.business.hotel_name||'GARH JAISAL').toUpperCase(),44,75,{width:logo?.data?405:500});
   pdf.fillColor('#52695b').font('Helvetica').fontSize(9)
     .text('Proforma reference: '+s.proforma_number+'    Prepared: '+s.prepared_on,44,109);
   pdf.text('Supplier GSTIN: '+(s.business.gstin||'NOT CONFIGURED'),44,128);
