@@ -26,3 +26,5 @@
 .room-choices{display:flex;gap:7px;flex-wrap:wrap}.room-choice{display:flex!important;align-items:center;flex-direction:row!important;gap:7px!important;border:1px solid #dce2db;padding:9px 11px;border-radius:8px;cursor:pointer;background:white}.room-choice input{width:16px;height:16px;padding:0!important;margin:0;accent-color:#28523c}
 
 .restaurant-field input{font:inherit;width:100%;padding:10px;border:1px solid #dce2db;border-radius:8px}#manual-room-fields{margin-top:10px;padding:12px;border-radius:9px;background:#f5f8f4}.menu-item button{margin-left:5px}
+
+#tax-draft-dialog{width:min(680px,96vw)}#tax-draft-dialog h3{font-size:14px;color:#234d3d;margin-top:18px}.tax-sac-row{display:grid;grid-template-columns:1fr 220px;align-items:center;gap:15px;padding:10px 0;border-bottom:1px solid #e8ece7;font-size:12px}.tax-sac-row select{border:1px solid #dce2db;border-radius:7px;padding:10px;min-width:0}#tax-draft-message{color:#af3535;font-size:12px}@media(max-width:600px){.tax-sac-row{grid-template-columns:1fr}}

@@ -73,4 +73,19 @@
   <div class="dialog-actions"><button id="folio-combined" class="primary">Settle all outstanding</button></div>
   <p class="muted">Each restaurant room bill can also be settled individually above. This is a payment record, not a tax invoice.</p>
 </dialog>
+<dialog id="tax-draft-dialog"><form id="tax-draft-form">
+  <div class="dialog-heading"><div><span class="eyebrow">LEGAL REVIEW PREVIEW</span><h2>Tax invoice draft</h2></div>
+    <button id="close-tax-draft" type="button" class="icon-btn" aria-label="Close">×</button></div>
+  <p class="muted">Prepare a preview from the saved proforma. No statutory invoice number is issued; the PDF is prominently marked as a draft.</p>
+  <div class="form-grid">
+    <label class="wide">Recipient address<textarea name="recipient_address" maxlength="500" rows="2"></textarea></label>
+    <label>Recipient GSTIN (optional)<input name="recipient_gstin" maxlength="15" placeholder="15-character GSTIN"></label>
+    <label>Authorized signatory (name only)<input name="signatory_name" maxlength="120" placeholder="For draft review"></label>
+  </div>
+  <h3>Review service accounting codes (SAC)</h3>
+  <div id="tax-draft-sac-list"></div>
+  <p class="muted">Hotel accommodation: 996311. Campsite services: 996312. Confirm classification with your accountant.</p>
+  <p id="tax-draft-message" role="alert"></p>
+  <div class="dialog-actions"><button type="button" class="secondary" id="cancel-tax-draft">Cancel</button><button type="submit" class="primary">Generate draft PDF</button></div>
+</form></dialog>
 <script type="module" src="/app.js"></script></body></html>
