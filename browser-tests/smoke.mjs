@@ -69,6 +69,32 @@ try{
       horizontalPan+'px (document intrinsic overflow '+overflow+'px)');
 
     if(width===390){
+      // A physically dirty room should appear once as a read-only Today
+      // exception, then open the existing authorized readiness controls.
+      const makeDirty=await page.request.patch(base+'/api/housekeeping/1',{
+        data:{status:'dirty'},headers:{'Content-Type':'application/json'}});
+      assert.equal(makeDirty.status(),200);
+      await page.reload();
+      await page.waitForFunction(()=>document.querySelector('#booking-results-count')?.textContent?.includes('bookings shown'));
+      await page.locator('#mobile-shortcuts a[data-view="dashboard"]').click();
+      await page.locator('#today-attention').waitFor({state:'visible'});
+      await page.locator('#today-attention-items').getByRole('button',{
+        name:/Rooms needing cleaning or out of service/}).click();
+      await page.locator('#rooms').waitFor({state:'visible'});
+      assert.equal(await page.locator('[data-room-filter="attention"]').getAttribute('aria-pressed'),'true');
+      assert.equal(await page.locator('#room-readiness-count').textContent(),'1 of 7 physical rooms shown');
+      const markReady=await page.request.patch(base+'/api/housekeeping/1',{
+        data:{status:'ready'},headers:{'Content-Type':'application/json'}});
+      assert.equal(markReady.status(),200);
+      await page.reload();
+      await page.waitForFunction(()=>document.querySelector('#room-readiness-count')?.textContent?.includes('physical rooms shown'));
+      await page.locator('[data-room-filter="attention"]').click();
+      assert.equal(await page.locator('#room-readiness-count').textContent(),'0 of 7 physical rooms shown');
+      await page.locator('#mobile-shortcuts a[data-view="bookings"]').click();
+      await page.locator('[data-booking-queue="unassigned"]').click();
+      assert.equal(await page.locator('[data-booking-queue="unassigned"]').getAttribute('aria-pressed'),'true');
+      assert.equal(await page.locator('#booking-work-filter').inputValue(),'unassigned');
+      await page.locator('[data-booking-queue="all"]').click();
       // A read-only status check must report a lost local server without
       // submitting or replaying any financial mutation.
       await page.waitForFunction(()=>document.querySelector('#connection-status')?.dataset.state==='connected');
