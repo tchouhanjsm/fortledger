@@ -101,3 +101,9 @@ main,.sidebar{max-width:100%;overflow-x:clip}
 .today-attention-action span{font-size:12px;font-weight:650;line-height:1.45}
 .today-attention-action:focus-visible{outline:3px solid var(--hs-focus);outline-offset:2px}
 @media(max-width:700px){.today-attention{padding:14px}.today-attention-items{grid-template-columns:1fr}}
+
+/* Front-desk work queues: touch-first without replacing detailed filters. */
+.booking-quick-queues{display:flex;gap:7px;overflow-x:auto;scrollbar-width:thin;overscroll-behavior-inline:contain;margin:0 0 13px;padding:2px 0 7px}
+.booking-quick-queues button{min-height:44px;flex:0 0 auto;padding:9px 13px;border-radius:999px;white-space:nowrap}
+.booking-quick-queues button[aria-pressed="true"]{background:#294e40;color:white;border-color:#294e40}
+.booking-quick-queues button:focus-visible{outline:3px solid var(--hs-focus);outline-offset:2px}
