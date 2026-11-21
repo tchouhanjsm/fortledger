@@ -311,21 +311,37 @@ function renderRooms(){
     for(const [value,title] of [['ready','Ready'],['dirty','Needs cleaning'],['cleaning','Cleaning']]){
       const option=label('option',title);option.value=value;state.append(option);
     }
-    state.value=room.housekeeping_status||'ready';
+    const originalState=room.housekeeping_status||'ready';
+    state.value=originalState;
     state.disabled=!can('housekeeping.write');
-    const saveState=label('button','Set room status','secondary');
-    saveState.type='button';saveState.disabled=!can('housekeeping.write');
+    const saveState=label('button','Update housekeeping','secondary');
+    saveState.type='button';saveState.disabled=true;
+    const stateSummary=label('small','Current housekeeping: '+
+      (originalState==='dirty'?'Needs cleaning':originalState==='cleaning'?'Cleaning':'Ready'),
+      'room-state-summary');
+    const updateStateButton=()=>{saveState.disabled=!can('housekeeping.write')||state.value===originalState;};
+    state.onchange=updateStateButton;
     saveState.onclick=async()=>{
       if(state.value==='ready'&&room.housekeeping_status!=='ready'&&!confirm(
         'Confirm '+room.name+' is physically inspected and ready for guests?'))return;
+      saveState.disabled=true;
       try{
         await api('/api/housekeeping/'+room.id,{method:'PATCH',
           body:JSON.stringify({status:state.value})});
         await load();
-      }catch(error){alert(error.message);state.value=room.housekeeping_status||'ready';}
+      }catch(error){
+        alert(error.message);state.value=originalState;updateStateButton();
+      }
     };
-    if(room.out_of_service_today)row.append(label('strong','Out of service today','room-outage-label'));
-    row.append(name,category,save,state,saveState);
+    const today=dateISO(new Date());
+    const isCheckedIn=bookings.some(b=>b.status==='checked_in' &&
+      (b.room_ids||[]).includes(room.id) && b.checkin<=today && today<b.checkout);
+    const operational=label('div',undefined,'room-operational-context');
+    operational.append(label('strong',isCheckedIn?'Guest checked in':'No confirmed in-house guest'));
+    operational.append(stateSummary);
+    if(room.out_of_service_today)
+      operational.append(label('small','Out of service today','room-outage-label'));
+    row.append(operational,name,category,save,state,saveState);
     row.onsubmit=async e=>{e.preventDefault();try{await api('/api/rooms/'+room.id,{method:'PATCH',body:JSON.stringify({name:name.value,category:category.value})});await load();}catch(error){alert(error.message);}};
     list.append(row);
   }
