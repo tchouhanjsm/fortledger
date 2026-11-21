@@ -32,7 +32,7 @@ function updateMobileNavigation(view){
   if(!quick||!more||!toggle)return;
   for(const anchor of document.querySelectorAll('#mobile-shortcuts a, #mobile-more-panel a')){
     const target=anchor.dataset.view;
-    anchor.hidden=Boolean(currentUser&&!can(VIEW_ACCESS[target]));
+    anchor.hidden=Boolean(!currentUser||!can(VIEW_ACCESS[target]));
     const selected=view===target;
     anchor.classList.toggle('active',selected);
     if(selected)anchor.setAttribute('aria-current','page');
@@ -41,7 +41,7 @@ function updateMobileNavigation(view){
   const extras=[...more.querySelectorAll('a')];
   toggle.hidden=!extras.some(a=>!a.hidden);
   more.hidden=true;toggle.setAttribute('aria-expanded','false');
-  quick.hidden=false;
+  quick.hidden=!currentUser;
 }
 $('#mobile-more-toggle').onclick=()=>{
   const panel=$('#mobile-more-panel'),toggle=$('#mobile-more-toggle');
