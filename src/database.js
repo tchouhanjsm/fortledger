@@ -77,6 +77,9 @@ export function openDatabase(filename = databasePath()) {
   if(violations.length)throw new Error('Database has foreign key violations; no schema upgrade was applied');
   db.pragma('user_version = 1');
     })();
+    // Preserve the established repair for legacy direct room_id records on reopen.
+    // This is idempotent DML, not a schema migration.
+    db.exec('INSERT OR IGNORE INTO booking_room_allocations(booking_id,room_id) SELECT id,room_id FROM bookings WHERE room_id IS NOT NULL');
     db.pragma('journal_mode = WAL');
     return db;
   }catch(error){
