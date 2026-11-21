@@ -158,8 +158,28 @@ function renderRooms(){
     const row=label('form',undefined,'room-row');
     const name=label('input');name.value=room.name;name.maxLength=80;name.setAttribute('aria-label','Room name');
     const category=label('input');category.value=room.category;category.maxLength=80;category.setAttribute('aria-label','Room category');
-    const save=label('button','Save','secondary');save.type='submit';
-    row.append(name,category,save);
+    const save=label('button','Save room','secondary');save.type='submit';
+    save.disabled=!can('rooms.write');
+    name.disabled=!can('rooms.write');category.disabled=!can('rooms.write');
+    const state=label('select');
+    state.setAttribute('aria-label','Housekeeping state for '+room.name);
+    for(const [value,title] of [['ready','Ready'],['dirty','Needs cleaning'],['cleaning','Cleaning']]){
+      const option=label('option',title);option.value=value;state.append(option);
+    }
+    state.value=room.housekeeping_status||'ready';
+    state.disabled=!can('housekeeping.write');
+    const saveState=label('button','Set room status','secondary');
+    saveState.type='button';saveState.disabled=!can('housekeeping.write');
+    saveState.onclick=async()=>{
+      if(state.value==='ready'&&room.housekeeping_status!=='ready'&&!confirm(
+        'Confirm '+room.name+' is physically inspected and ready for guests?'))return;
+      try{
+        await api('/api/housekeeping/'+room.id,{method:'PATCH',
+          body:JSON.stringify({status:state.value})});
+        await load();
+      }catch(error){alert(error.message);state.value=room.housekeeping_status||'ready';}
+    };
+    row.append(name,category,save,state,saveState);
     row.onsubmit=async e=>{e.preventDefault();try{await api('/api/rooms/'+room.id,{method:'PATCH',body:JSON.stringify({name:name.value,category:category.value})});await load();}catch(error){alert(error.message);}};
     list.append(row);
   }
