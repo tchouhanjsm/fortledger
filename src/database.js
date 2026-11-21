@@ -14,8 +14,14 @@ import {ensureFinancialAuditSchema} from './financial-audit.js';
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
   const db = new Database(filename);
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
+  try {
+    db.pragma('foreign_keys = ON');
+    const current = db.pragma('user_version', {simple:true});
+    if(current > 1)throw new Error('Database schema '+current+' is newer than this FortLedger version (1); update the app before opening it');
+    if(current < 0)throw new Error('Invalid database schema version');
+    // Version 0 includes all legacy pre-versioned FortLedger installations.
+    // A single SQLite transaction makes the baseline upgrade all-or-nothing.
+    if(current === 0)db.transaction(()=>{
   db.exec(`
     CREATE TABLE IF NOT EXISTS rooms (
       id INTEGER PRIMARY KEY,
@@ -65,9 +71,21 @@ export function openDatabase(filename = databasePath()) {
   ensureFinancialAuditSchema(db);
   if (db.prepare('SELECT count(*) AS count FROM rooms').get().count === 0) {
     const add = db.prepare('INSERT INTO rooms (name) VALUES (?)');
-    db.transaction(() => { for (let i = 1; i <= 7; i++) add.run('Room ' + i); })();
+    for (let i = 1; i <= 7; i++) add.run('Room ' + i);
   }
-  return db;
+  const violations=db.pragma('foreign_key_check');
+  if(violations.length)throw new Error('Database has foreign key violations; no schema upgrade was applied');
+  db.pragma('user_version = 1');
+    })();
+    // Preserve the established repair for legacy direct room_id records on reopen.
+    // This is idempotent DML, not a schema migration.
+    db.exec('INSERT OR IGNORE INTO booking_room_allocations(booking_id,room_id) SELECT id,room_id FROM bookings WHERE room_id IS NOT NULL');
+    db.pragma('journal_mode = WAL');
+    return db;
+  }catch(error){
+    db.close();
+    throw error;
+  }
 }
 
 // All reservations use half-open date ranges [checkin, checkout).

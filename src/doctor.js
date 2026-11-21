@@ -25,6 +25,9 @@ export function diagnose({
       db=new Database(databaseFile,{readonly:true,fileMustExist:true});
       const integrity=db.pragma('integrity_check',{simple:true});
       add('SQLite integrity',integrity==='ok'?'pass':'fail',integrity==='ok'?'Integrity check passed':'Integrity check failed');
+      const schemaVersion=db.pragma('user_version',{simple:true});
+      add('Schema migration version',schemaVersion===1?'pass':'warn',
+        schemaVersion===1?'Schema v1 confirmed':'Database is legacy or from a newer release; review app compatibility');
       const fk=db.pragma('foreign_key_check');
       add('Foreign-key integrity',fk.length?'fail':'pass',fk.length?'Database contains foreign-key violations':'Foreign keys consistent');
       const tableNames=new Set(db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(x=>x.name));
