@@ -10,7 +10,7 @@ test('automated diagnostics alone cannot certify real-device or statutory releas
   assert.equal(report.verdict,'NOT RELEASED');
   assert.equal(report.production_ready,false);
   assert.equal(report.automated.failed,0);
-  assert.equal(report.physical_gates.length,5);
+  assert.equal(report.physical_gates.length,6);
   assert.ok(report.physical_gates.every(g=>g.status==='PENDING HUMAN VERIFICATION'));
   assert.ok(report.physical_gates.some(g=>g.id==='gst_accountant_signoff'));
   assert.ok(report.physical_gates.some(g=>g.id==='replacement_device_restore'));
@@ -27,6 +27,6 @@ test('release report preserves failing diagnostics without sensitive payloads',(
   assert.equal(report.blocking_items[0].status,'fail');
   assert.deepEqual(PHYSICAL_RELEASE_GATES.map(g=>g.id),[
     'replacement_device_restore','epson_paper_output','gst_accountant_signoff',
-    'frontdesk_device_qa','offsite_backup_isolation'
+    'staff_lan_security','frontdesk_device_qa','offsite_backup_isolation'
   ]);
 });

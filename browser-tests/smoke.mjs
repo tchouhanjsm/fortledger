@@ -31,6 +31,9 @@ try{
     const manifest=await page.locator('link[rel="manifest"]').getAttribute('href');
     assert.equal(manifest,'/manifest.webmanifest','Both mobile and desktop should offer local install metadata');
     if(width<=700){
+      // Booking rows render before async profile/collections initialization;
+      // wait for role-aware mobile navigation instead of racing its setup.
+      await page.getByRole('navigation',{name:'Mobile shortcuts'}).waitFor({state:'visible'});
       assert.equal(await page.getByRole('navigation',{name:'Mobile shortcuts'}).isVisible(),true);
       assert.equal(await page.getByRole('navigation',{name:'Primary'}).isVisible(),false);
       const bookingsShortcut=page.locator('#mobile-shortcuts a[data-view="bookings"]');

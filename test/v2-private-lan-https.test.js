@@ -1,0 +1,96 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {openDatabase} from '../src/database.js';
+import {createApp} from '../src/server.js';
+import {createPasswordRecord,authGate} from '../src/auth.js';
+import {isPrivateLanIp,localListenerSettings,requireConfiguredHost,readLanTlsCredentials} from '../src/network-policy.js';
+
+const lan=()=>localListenerSettings({
+  FORTLEDGER_LAN_ENABLED:'1',FORTLEDGER_HOST:'192.168.21.12',PORT:'3000',
+  FORTLEDGER_TLS_CERT:'/local/staff-cert.pem',FORTLEDGER_TLS_KEY:'/local/staff-key.pem'
+});
+
+test('private LAN network policy requires deliberate HTTPS configuration',()=>{
+  for(const ip of ['10.0.0.1','172.16.0.2','172.31.255.254','192.168.1.8'])
+    assert.equal(isPrivateLanIp(ip),true,ip);
+  for(const ip of ['0.0.0.0','127.0.0.1','169.254.1.2','172.32.1.5',
+    '192.167.1.5','8.8.8.8','::1','localhost','10.0.0.1.evil.test'])
+    assert.equal(isPrivateLanIp(ip),false,ip);
+  assert.deepEqual(localListenerSettings({}),{host:'127.0.0.1',port:3000});
+  assert.deepEqual(lan(),{mode:'lan',host:'192.168.21.12',port:3000,
+    certPath:'/local/staff-cert.pem',keyPath:'/local/staff-key.pem'});
+  assert.throws(()=>localListenerSettings({FORTLEDGER_HOST:'192.168.21.12'}),/Unsafe FORTLEDGER_HOST/);
+  assert.throws(()=>localListenerSettings({FORTLEDGER_LAN_ENABLED:'1',FORTLEDGER_HOST:'0.0.0.0',
+    FORTLEDGER_TLS_CERT:'a',FORTLEDGER_TLS_KEY:'b'}),/private IPv4/);
+  assert.throws(()=>localListenerSettings({FORTLEDGER_LAN_ENABLED:'1',
+    FORTLEDGER_HOST:'192.168.1.10'}),/requires FORTLEDGER_TLS_CERT/);
+  assert.throws(()=>localListenerSettings({FORTLEDGER_LAN_ENABLED:'maybe'}),/must be 0 or 1/);
+  assert.throws(()=>localListenerSettings({FORTLEDGER_TLS_KEY:'x'}),/explicitly enabled LAN mode/);
+  assert.throws(()=>readLanTlsCredentials({mode:'lan',certPath:'/not/a/cert.pem',
+    keyPath:'/not/a/key.pem',host:'192.168.1.8'}));
+});
+
+test('HTTPS LAN request guard rejects fake Host and plaintext transport',()=>{
+  const policy=requireConfiguredHost(lan());
+  const invoke=(host,encrypted)=>{
+    let status=null,message=null,continued=false;
+    const req={headers:{host},socket:{encrypted}};
+    const res={setHeader:()=>{},status(code){status=code;return this;},json(value){message=value;}};
+    policy(req,res,()=>{continued=true;});
+    return {status,message,continued};
+  };
+  assert.equal(invoke('192.168.21.12:3000',false).status,421);
+  assert.equal(invoke('wrong.example:3000',true).status,421);
+  assert.equal(invoke('192.168.21.12:3000',true).continued,true);
+});
+
+test('LAN guard refuses unauthenticated application startup and HTTP downgrade',async()=>{
+  const db=openDatabase(':memory:');
+  assert.throws(()=>createApp(db,{network:lan()}),/requires configured authentication/);
+  const server=createApp(db,{network:lan(),authRecord:createPasswordRecord('strong-lan-test-owner-password')})
+    .listen(0,'127.0.0.1');
+  await new Promise(resolve=>server.once('listening',resolve));
+  try{
+    const response=await fetch('http://127.0.0.1:'+server.address().port+'/api/auth/status');
+    assert.equal(response.status,421);
+    assert.match((await response.json()).error,/HTTPS/);
+  }finally{await new Promise(resolve=>server.close(resolve));db.close();}
+});
+
+test('LAN authentication issues Secure cookies and enforces exact HTTPS Origin',()=>{
+  const db=openDatabase(':memory:');
+  const record=createPasswordRecord('strong-lan-test-owner-password');
+  const gate=authGate(record,db,{network:lan()});
+  const response=()=>({
+    headers:{},code:200,
+    setHeader(key,value){this.headers[key.toLowerCase()]=value;},
+    status(code){this.code=code;return this;},
+    json(value){this.body=value;return this;}
+  });
+  try{
+    const login=response();
+    gate.login({ip:'192.168.21.40',socket:{encrypted:true},
+      body:{username:'owner',password:'strong-lan-test-owner-password'}},login);
+    assert.equal(login.code,200);
+    assert.match(login.headers['set-cookie'],/; Secure(?:;|$)/);
+    assert.match(login.headers['set-cookie'],/SameSite=Strict/);
+    const check=(origin,encrypted=true)=>{
+      const res=response();let passed=false;
+      gate.checkRequest({method:'POST',headers:{host:'192.168.21.12:3000',origin},
+        socket:{encrypted},is:()=>true},res,()=>{passed=true;});
+      return {res,passed};
+    };
+    assert.equal(check('https://192.168.21.12:3000').passed,true);
+    assert.equal(check('http://192.168.21.12:3000').res.code,403);
+    assert.equal(check('https://192.168.21.13:3000').res.code,403);
+    assert.equal(check('https://192.168.21.12:3000',false).res.code,403);
+    assert.equal(check('https://192.168.21.12:3000.evil.test').res.code,403);
+  }finally{db.close();}
+});
+
+test('mobile recovery guidance reopens the current secure server origin, not phone localhost',()=>{
+  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+  assert.match(app,/window\.location\.origin\+'?, then check the ledger/);
+  assert.doesNotMatch(app,/http:\/\/127\.0\.0\.1:3000/);
+});
