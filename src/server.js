@@ -37,6 +37,17 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
   // Fail closed against hostile Host headers and DNS rebinding on the
   // single-machine alpha. Private staff-LAN mode requires a separate review.
   app.use(requireLoopbackHost);
+  // Sensitive API data and authenticated entry pages must never be stored by
+  // browsers, intermediaries, or a future installable-app cache.
+  app.use((req,res,next)=>{
+    res.setHeader('X-Content-Type-Options','nosniff');
+    if(req.path==='/api'||req.path.startsWith('/api/')||
+       req.path==='/'||req.path==='/index.html'||req.path==='/login.html'){
+      res.setHeader('Cache-Control','no-store');
+      res.setHeader('Pragma','no-cache');
+    }
+    next();
+  });
   app.use('/api/settings/logo',express.json({limit:'1.2mb'}));
   app.use(express.json({ limit: '64kb' }));
   const gate=authGate(authRecord,db,{authFile});
