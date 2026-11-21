@@ -2,9 +2,9 @@ export const ROLE_PERMISSIONS={
   owner:['*'],
   manager:['bookings.read','bookings.write','payments.write','refunds.write','rooms.read','rooms.write',
     'invoices.read','invoices.write','restaurant.read','restaurant.write','folio.read','folio.write',
-    'settings.read','audit.read','finance.read','finance.write','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','maintenance.manage','profile.read','profile.write'],
+    'settings.read','audit.read','finance.read','finance.write','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','maintenance.manage','guests.read','guests.write','profile.read','profile.write'],
   frontdesk:['bookings.read','bookings.write','payments.write','rooms.read',
-    'invoices.read','invoices.write','restaurant.read','folio.read','folio.write','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write',
+    'invoices.read','invoices.write','restaurant.read','folio.read','folio.write','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','guests.read','guests.write',
     'profile.read','profile.write'],
   cashier:['restaurant.read','restaurant.write','profile.read','profile.write']
 };
@@ -33,6 +33,10 @@ export function requiredPermission(method,path){
     if(method==='GET')return 'restaurant.read';
     return 'restaurant.write';
   }
+  if(path==='/guests')return method==='GET'?'guests.read':
+    method==='POST'?'guests.write':null;
+  if(/^\/guests\/\d+\/stays$/.test(path))return method==='GET'?'guests.read':null;
+  if(/^\/guests\/\d+$/.test(path))return method==='PATCH'?'guests.write':null;
   if(path==='/maintenance')return method==='GET'?'maintenance.read':
     method==='POST'?'maintenance.write':null;
   if(/^\/maintenance\/\d+\/resolve$/.test(path))return method==='PATCH'?'maintenance.manage':null;
