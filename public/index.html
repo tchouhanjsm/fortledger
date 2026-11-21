@@ -22,6 +22,27 @@
       <p>Money received, less recorded refunds. Not a GST revenue statement or bank-confirmed closing.</p></div>
     <div><strong id="home-collections-net">—</strong><span id="home-collections-note"></span></div>
   </section>
+  <details id="home-expenses" class="panel" hidden>
+    <summary>Record an expense / today's expenses</summary>
+    <p class="muted">Record actual outflows for the chosen business date. No expense editing or deletion; corrections require a reviewed reversal workflow.</p>
+    <form id="expense-form" class="staff-create">
+      <label>Business date<input name="business_date" type="date" required></label>
+      <label>Category<select name="category">
+        <option value="supplies">Supplies</option><option value="housekeeping">Housekeeping</option>
+        <option value="maintenance">Maintenance</option><option value="utilities">Utilities</option>
+        <option value="transport">Transport</option><option value="staff">Staff expenses</option>
+        <option value="other">Other</option>
+      </select></label>
+      <label>Amount (₹)<input name="amount" type="number" min="0.01" step="0.01" required></label>
+      <label>Payment method<select name="method"><option value="cash">Cash</option>
+        <option value="upi">UPI</option><option value="card">Card</option>
+        <option value="bank">Bank transfer</option></select></label>
+      <label>Payee<input name="payee" maxlength="120" placeholder="Optional"></label>
+      <label>Note<input name="note" maxlength="300" placeholder="Optional receipt / reason"></label>
+      <button type="submit" class="primary">Save expense</button>
+    </form>
+    <p id="expense-message" role="status"></p><div id="expense-list"></div>
+  </details>
   <div class="home-grid">
     <div class="panel"><h2>Quick actions</h2><p>Jump straight to what needs attention.</p><div id="home-actions" class="home-action-list"></div></div>
     <div class="panel"><h2>Recent activity</h2><p>Saved locally on this computer.</p><div id="home-activity" class="home-activity-list"></div></div>
