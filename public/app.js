@@ -418,6 +418,50 @@ function renderDashboard(){
     activity.append(row);
   }
 }
+function currentHotelMonth(){
+  const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
+    timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit'
+  }).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+  const year=Number(parts.year),month=Number(parts.month);
+  const next=new Date(Date.UTC(year,month,1)).toISOString().slice(0,10);
+  return {start:parts.year+'-'+parts.month+'-01',end:next};
+}
+async function renderRoomPerformance(){
+  const panel=$('#home-room-performance');
+  if(!can('analytics.read')){panel.hidden=true;return;}
+  panel.hidden=false;
+  const form=$('#room-performance-form');
+  const start=form.elements.namedItem('start'),end=form.elements.namedItem('end');
+  if(!start.value||!end.value){
+    const defaults=currentHotelMonth();start.value=defaults.start;end.value=defaults.end;
+  }
+  const grid=$('#room-performance-kpis'),status=$('#room-performance-status');
+  grid.replaceChildren();status.textContent='';
+  try{
+    const report=await api('/api/analytics/rooms?start='+encodeURIComponent(start.value)+
+      '&end='+encodeURIComponent(end.value));
+    const cards=[
+      ['Booked occupancy',report.booking_occupancy_percent===null?'—':
+        report.booking_occupancy_percent.toFixed(2)+'%',report.booked_room_nights+' of '+
+        report.available_room_nights+' room-nights'],
+      ['Gross ADR',report.gross_adr_paise===null?'—':money(report.gross_adr_paise),
+        'GST-inclusive value / booked room-night'],
+      ['Gross RevPAR',report.gross_revpar_paise===null?'—':money(report.gross_revpar_paise),
+        'GST-inclusive value / available room-night'],
+      ['Booked accommodation',money(report.gross_booked_accommodation_paise),
+        report.blocked_room_nights+' room-night(s) out of service']
+    ];
+    for(const [name,value,note] of cards){
+      const card=label('article',undefined,'home-kpi');
+      card.append(label('span',name),label('strong',String(value)),label('small',note));
+      grid.append(card);
+    }
+    status.textContent='Reservation-based performance, not actual guest occupancy, tax-exclusive revenue or cash received.';
+  }catch(error){status.textContent='Unable to calculate room performance: '+error.message;}
+}
+$('#room-performance-form').onsubmit=async event=>{
+  event.preventDefault();await renderRoomPerformance();
+};
 async function renderCollections(){
   const panel=$('#home-collections');
   $('#home-expenses').hidden=!can('finance.write');
@@ -477,6 +521,7 @@ $('#expense-form').onsubmit=async event=>{
     form.elements.namedItem('note').value='';
     message.textContent='Expense saved. No duplicate entry will be created on request retry.';
     await renderCollections();
+  await renderRoomPerformance();
     await renderExpenseList();
   }catch(error){message.textContent=error.message;}
   finally{button.disabled=false;}
