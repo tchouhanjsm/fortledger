@@ -1,0 +1,30 @@
+/* Heritage Sky Phase 2: read-only operational overview and low-click booking filtering. */
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.today-room-board{margin:0 0 24px;padding:20px;border:1px solid var(--hs-border);border-radius:var(--hs-radius);background:var(--hs-surface);box-shadow:var(--hs-shadow)}
+.today-room-board .panel-head{margin-bottom:14px}
+.today-room-board h3{font-size:18px;margin:0 0 6px;color:var(--hs-ink)}
+.today-room-board p{color:var(--hs-muted);font-size:12px;margin:0;line-height:1.45}
+.today-room-board .secondary{text-decoration:none;display:inline-flex;align-items:center;min-height:40px}
+.today-room-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:12px}
+.today-room-card{min-width:0;padding:15px;border:1px solid #dbe2e8;background:#fff;border-radius:12px}
+.today-room-card.room-blocked{border-color:#b7824f;background:#fffaf3}
+.today-room-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.today-room-card-head strong{font-size:15px;color:var(--hs-ink)}
+.today-room-category{font-size:11px;color:var(--hs-muted);overflow-wrap:anywhere}
+.today-room-board .today-room-occupancy{font-weight:700;font-size:13px;margin:12px 0 5px;color:var(--hs-ink)}
+.today-room-board .today-room-readiness{font-size:12px;color:#225e51;margin:0 0 7px}
+.today-room-board .today-room-alert{font-size:12px;color:#8b471d;font-weight:700;margin:0 0 7px}
+.today-room-card small{display:block;font-size:11px;line-height:1.5;color:var(--hs-muted)}
+.booking-filters{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.booking-filters select{padding:10px 12px;min-height:42px;border:1px solid #cbd4dd;border-radius:var(--hs-control-radius);background:var(--hs-surface);color:var(--hs-ink)}
+.booking-filters input{min-width:190px;min-height:42px}
+@media(max-width:750px){
+  .today-room-board{padding:15px}
+  .today-room-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .booking-filters{width:100%}
+  .booking-filters input{flex:1 1 190px}
+}
+@media(max-width:390px){
+  .today-room-cards{grid-template-columns:1fr}
+  .booking-filters>*{flex:1 1 100%;width:100%}
+}
