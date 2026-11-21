@@ -12,7 +12,8 @@
     "test": "node --test",
     "restore": "node src/restore.js",
     "setup-auth": "node src/setup-auth.js",
-    "backup:decrypt": "node src/decrypt-backup.js"
+    "backup:decrypt": "node src/decrypt-backup.js",
+    "doctor": "node src/doctor.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

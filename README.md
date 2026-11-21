@@ -26,9 +26,10 @@ The database creates **seven placeholder rooms** (Room 1–Room 7), all under ca
 - ✅ GST-inclusive 5% *illustrative business-rule* breakdown in the backend, ledgered initial advances and balance due.
 - ✅ Seven-day room calendar including unassigned category reservations, booking edits, payment history/entry and SQLite backup download.
 - ✅ Initial immutable proforma snapshot and local PDF download from booking records (no tax invoice issuance).
-- ✅ Verified offline database restore CLI; full month overview and invoice editor still pending.
+- ✅ Verified offline database restore, weekly/monthly calendar and multi-line proforma editor.
 - ✅ Restaurant CSV import, saved bills, cash/UPI/card records, checked-in guest room charges and combined/separate settlement.
-- ⏳ Epson TM-T82 printing, statutory receipts, authentication, live-tax compliance and production hardening.
+- ✅ Local password sessions, experimental Epson LAN transport, hotel logo upload, encrypted backup scheduling and read-only operational diagnostics.
+- ⏳ Legally issued signed GST tax invoices, physical printer QA, customer directory, packaging and complete production review.
 
 **Tax disclaimer:** The stated 5% GST rule is an agreed business example, not a verified tax determination. Validate lawful tax treatment and invoice requirements before production billing.
 
@@ -104,3 +105,6 @@ From an issued proforma, select **Tax draft** to prepare a watermarked, download
 
 ## Hotel logo upload (alpha)
 In **Hotel & payment settings**, select a PNG or JPEG logo (maximum 800 KB) and save it. The current logo is stored only in local SQLite as a validated image asset. Issued proformas store the specific logo asset ID used at issue time, so updating your logo will **not silently change old invoices**. New tax drafts use the currently active logo. The PDF header preserves image aspect ratio and falls back to the hotel name when there is no logo. Logo files never need to be committed to GitHub; they are included in encrypted SQLite backups. Actual hotel artwork is still needed for final visual QA.
+
+## Local readiness diagnostics
+Run `npm run doctor` from the project directory after setting up the administrator login and starting the app at least once. The tool uses read-only SQLite checks for integrity, foreign keys and expected schema, verifies the seven-room inventory, counts pending manual room charges and uncertain printer jobs, and checks whether encrypted backup files are recent. It reports configuration status without printing guest names, banking details or secrets. It **never** labels the app production-ready: signed final GST invoice issuance, physical Epson tests and a complete recovery drill are independent release gates.
