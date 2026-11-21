@@ -97,3 +97,6 @@ The application now establishes baseline schema version 1 with `PRAGMA user_vers
 
 ## Phase 3A — Simple expense tracking
 A small date/category/method/amount expense ledger is now available to owner and manager on the dashboard. Separate net cash movement is derived from received collections less recorded outflows. Schema v2 adds the expense table without migrating financial values. This is not a profit-and-loss statement and does not automatically classify GST input tax.
+
+## Phase 3B — Room housekeeping
+Room inventory now stores physical housekeeping state with a v3 additive migration. Checkout marks rooms dirty, but only a staff member can mark a room ready. Check-in is denied for unready or still-occupied rooms. No automatic maintenance blackout or physical cleaning verification is claimed.
