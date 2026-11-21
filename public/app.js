@@ -756,8 +756,17 @@ async function load(){
   applyWorkspaceView();
 }
 function renderInvoices(){
+  const picker=$('#invoice-booking-select');picker.replaceChildren();
+  const first=label('option','Select a reservation');first.value='';picker.append(first);
+  const available=bookings.filter(b=>b.status!=='cancelled'&&!invoices.some(i=>i.booking_id===b.id));
+  for(const booking of available){
+    const option=label('option','#'+booking.id+' · '+booking.guest_name+' · '+booking.checkin);
+    option.value=String(booking.id);picker.append(option);
+  }
+  $('#invoice-create-proforma').disabled=!can('invoices.write')||!available.length;
+  $('#invoice-new-booking').disabled=!can('bookings.write')||!can('invoices.write');
   const list=$('#invoice-list');list.replaceChildren();
-  if(!invoices.length)list.append(label('p','No proforma invoices yet. Create one from a booking.','muted'));
+  if(!invoices.length)list.append(label('p','No proformas yet. Create one above without leaving Invoices.','muted'));
   for(const inv of invoices){
     const row=label('div',undefined,'invoice-row');
     const name=label('div');name.append(label('strong',inv.number),label('small',inv.snapshot.guest_name+' · '+inv.snapshot.issued_on));
@@ -895,6 +904,17 @@ $('#staff-create').onsubmit=async event=>{
   finally{submit.disabled=false;}
 };
 let invoiceBookingId=null;
+let invoiceBookingAfterCreate=false;
+$('#invoice-create-proforma').onclick=()=>{
+  const id=Number($('#invoice-booking-select').value);
+  const booking=bookings.find(b=>b.id===id);
+  if(!booking){$('#invoice-quick-message').textContent='Select an existing reservation first.';return;}
+  createInvoice(booking);
+};
+$('#invoice-new-booking').onclick=()=>{
+  openNew();invoiceBookingAfterCreate=true;
+  $('#invoice-quick-message').textContent='Save the reservation; its proforma editor opens automatically here.';
+};
 function makeInvoiceLine(item={description:'',rooms:1,nights:1,rate:0}){
   const row=label('div',undefined,'invoice-line-edit');
   for(const [key,title,value,type] of [
@@ -981,6 +1001,7 @@ function closeBookingEditor(){
   if(bookingFormSnapshot()!==bookingFormBaseline&&
       !confirm('Discard unsaved booking changes? No reservation will be saved.'))return;
   $('#booking-dialog').close();
+  invoiceBookingAfterCreate=false;
 }
 $('#booking-dialog').addEventListener('cancel',event=>{
   if(bookingSavePending){event.preventDefault();return;}
@@ -1418,9 +1439,13 @@ $('#booking-form').onsubmit=async e=>{
     form.dataset.pendingRequestId=request_id;
     data.request_id=request_id;
   }
+  let savedBookingId=null;
   try{
     if(editing)await api('/api/bookings/'+editingId,{method:'PATCH',body:JSON.stringify(data)});
-    else await api('/api/bookings',{method:'POST',body:JSON.stringify(data)});
+    else{
+      const saved=await api('/api/bookings',{method:'POST',body:JSON.stringify(data)});
+      savedBookingId=saved.id;
+    }
     delete form.dataset.pendingRequestId;
     captureBookingBaseline();
     $('#booking-dialog').close();
@@ -1440,6 +1465,11 @@ $('#booking-form').onsubmit=async e=>{
             alert('Booking #'+receipt.id+' was saved, but refreshing failed: '+refreshError.message+
               '. Reload the ledger; do not create another booking.');
             return;
+          }
+          if(invoiceBookingAfterCreate){
+            invoiceBookingAfterCreate=false;
+            const saved=bookings.find(b=>b.id===receipt.id);
+            if(saved)createInvoice(saved);
           }
           alert('Booking #'+receipt.id+' was saved successfully. The network response was lost, but the original booking was confirmed.');
           return;
@@ -1466,8 +1496,14 @@ $('#booking-form').onsubmit=async e=>{
   }finally{
     bookingSavePending=false;submit.disabled=false;
   }
-  try{await load();}
-  catch(error){alert('Booking saved, but refreshing failed: '+error.message+
+  try{
+    await load();
+    if(savedBookingId&&invoiceBookingAfterCreate){
+      invoiceBookingAfterCreate=false;
+      const booking=bookings.find(b=>b.id===savedBookingId);
+      if(booking)createInvoice(booking);
+    }
+  }catch(error){alert('Booking saved, but refreshing failed: '+error.message+
     '. Reload to view the saved reservation.');}
 };
 applyWorkspaceView();

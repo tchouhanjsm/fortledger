@@ -111,6 +111,26 @@ try{
       assert.equal(db.prepare('SELECT count(*) AS n FROM payments').get().n,1);
       await page.unroute('**/api/bookings');
     }
+    if(width===768){
+      // Create a proforma directly inside the invoice workspace without
+      // switching to a booking card or entering financial data twice.
+      await page.evaluate(()=>{window.location.hash='invoices';});
+      await page.locator('#invoices').waitFor({state:'visible'});
+      const select=page.locator('#invoice-booking-select');
+      const originalOption=select.locator('option').filter({hasText:'Synthetic Browser Guest'});
+      await select.selectOption(await originalOption.getAttribute('value'));
+      await page.locator('#invoice-create-proforma').click();
+      await page.locator('#invoice-dialog').waitFor({state:'visible'});
+      assert.equal(await page.locator('#invoice-form [name="bill_to"]').inputValue(),'Synthetic Browser Guest');
+      await page.locator('#invoice-form button[type=submit]').click();
+      await page.locator('#invoice-dialog').waitFor({state:'hidden'});
+      await page.locator('#invoice-list .invoice-row').first().waitFor({state:'visible'});
+      assert.equal(db.prepare('SELECT COUNT(*) AS n FROM invoices').get().n,1);
+      await page.locator('#invoice-list .invoice-row').first().getByRole('button',{name:'Tax draft'}).click();
+      await page.locator('#tax-draft-dialog').waitFor({state:'visible'});
+      assert.match(await page.locator('#tax-draft-dialog').textContent(),/No statutory invoice number is issued/);
+      await page.locator('#close-tax-draft').click();
+    }
     assert.deepEqual(errors,[],'Uncaught browser errors at '+width+'px: '+errors.join('; '));
     await page.close();
   }

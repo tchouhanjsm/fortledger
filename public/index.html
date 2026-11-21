@@ -93,7 +93,18 @@
   </select><input id="search" type="search" placeholder="Search bookings..." aria-label="Search bookings">
   <button id="booking-clear-filters" class="secondary" type="button">Clear filters</button>
   </div></div><p id="booking-results-count" class="booking-results-count" role="status"></p><div class="toolbar"><button id="backup-button" class="secondary" type="button">↓ Download database backup</button></div><div id="booking-list" class="booking-list"><p class="muted">Loading bookings…</p></div></section>
-  <section id="invoices" class="panel"><div class="panel-head"><div><h2>Proforma invoices</h2><p>Immutable PDF snapshots. Create from a booking and download anytime.</p></div></div><div id="invoice-list"><p class="muted">Loading invoices…</p></div><div id="invoice-empty-action" class="empty-action" hidden><p>Invoices begin with a guest reservation. Create or open a booking first, then generate its proforma.</p><a href="#bookings" class="primary">Go to bookings</a></div></section>
+  <section id="invoices" class="panel"><div class="panel-head"><div><h2>Invoices &amp; proformas</h2><p>Create proformas right here. Tax invoice drafts are for accountant review only; statutory issuance remains unavailable.</p></div></div>
+  <div class="invoice-quick-create">
+    <label for="invoice-booking-select">Choose an existing reservation</label>
+    <div class="toolbar">
+      <select id="invoice-booking-select" aria-label="Reservation to invoice"><option value="">Select a reservation</option></select>
+      <button id="invoice-create-proforma" type="button" class="primary">+ Create proforma</button>
+      <button id="invoice-new-booking" type="button" class="secondary">+ New guest &amp; proforma</button>
+    </div>
+    <p id="invoice-quick-message" class="muted" role="status">Select a booking to prepare the proforma without switching pages, or add a new reservation here.</p>
+  </div>
+  <div id="invoice-list"><p class="muted">Loading invoices…</p></div>
+  <div id="invoice-empty-action" class="empty-action" hidden><p>No proformas created yet. Choose a booking above or create a new reservation here to prepare one. Saved proformas cannot be edited; tax drafts remain review-only.</p></div></section>
   <section id="guests" class="panel">
   <div class="panel-head"><div><h2>Returning guests</h2><p>Reuse contact details and view linked stays. Historic bookings remain unchanged.</p></div>
     <input id="guest-search" type="search" placeholder="Search name, phone or company" aria-label="Search guest profiles"></div>
