@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {authGate,loadPasswordRecord} from './auth.js';
+import {authGate,loadPasswordRecord,DEFAULT_AUTH_FILE} from './auth.js';
 import {renderRestaurantReceipt} from './restaurant-receipt.js';
 import {prepareTaxDraft,getTaxDraft} from './tax-draft.js';
 import {streamTaxDraftPdf} from './tax-draft-pdf.js';
@@ -22,12 +22,12 @@ import {transitionBooking,assertBookingEditAllowed} from './booking-transitions.
 import {dailyCollections} from './daily-collections.js';
 import {paymentMethod,recordAudit,auditEvents,recordHotelPayment} from './financial-audit.js';
 
-export function createApp(db,{authRecord=null}={}) {
+export function createApp(db,{authRecord=null,authFile=null}={}) {
   const app = express();
   app.disable('x-powered-by');
   app.use('/api/settings/logo',express.json({limit:'1.2mb'}));
   app.use(express.json({ limit: '64kb' }));
-  const gate=authGate(authRecord,db);
+  const gate=authGate(authRecord,db,{authFile});
   app.use('/api',gate.checkRequest);
   app.post('/api/auth/login',gate.login);
   app.get('/api/auth/status',(req,res)=>res.json(gate.status(req)));
@@ -35,6 +35,7 @@ export function createApp(db,{authRecord=null}={}) {
   app.post('/api/auth/logout',gate.logout);
   app.use('/api',gate.authorize);
   app.get('/api/me',(req,res)=>res.json({...req.actor,permissions:ROLE_PERMISSIONS[req.actor.role]||[]}));
+  app.post('/api/me/password',gate.changePassword);
   app.patch('/api/me',(req,res,next)=>{
     try{res.json(updateOwnProfile(db,req.actor,req.body?.display_name));}
     catch(error){next(error);}
@@ -44,7 +45,11 @@ export function createApp(db,{authRecord=null}={}) {
     try{res.status(201).json(createStaff(db,req.body));}catch(error){next(error);}
   });
   app.patch('/api/staff/:id',(req,res,next)=>{
-    try{res.json(updateStaff(db,Number(req.params.id),req.body));}catch(error){next(error);}
+    try{
+      const updated=updateStaff(db,Number(req.params.id),req.body);
+      if(req.body?.password!==undefined||updated.active===false)gate.revokeUserSessions(updated.id);
+      res.json(updated);
+    }catch(error){next(error);}
   });
   const publicDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public');
   app.use(express.static(publicDir));
@@ -344,7 +349,7 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
     console.error('FortLedger requires local admin authentication. Run: npm run setup-auth');
     process.exitCode=1;db.close();
   }else{
-    createApp(db,{authRecord}).listen(port,'127.0.0.1',
+    createApp(db,{authRecord,authFile:DEFAULT_AUTH_FILE}).listen(port,'127.0.0.1',
       ()=>{
         console.log('FortLedger local app: http://127.0.0.1:'+port);
         scheduleEncryptedBackups(db);
