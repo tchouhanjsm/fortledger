@@ -33,3 +33,5 @@
 
 /* Keep mobile module navigation accessible instead of hiding all links. */
 @media(max-width:650px){.sidebar nav{display:flex;overflow-x:auto;gap:5px;margin-top:10px;white-space:nowrap;padding-bottom:4px}.sidebar nav a{font-size:12px;flex:0 0 auto;padding:9px 11px}.sidebar nav a:first-letter{font-size:12px}.sidebar .brand div{display:block}.header-actions{width:100%;justify-content:space-between}.header-actions button{padding:10px 12px}}
+
+.menu-import-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.menu-import-actions button{padding:9px 12px}.menu-import #menu-import-message{margin:10px 0;font-weight:600;color:#24523e}.import-preview-table{width:100%;border-collapse:collapse;font-size:12px}.import-preview-table td{border-bottom:1px solid #e4ece4;padding:9px;text-align:left}.menu-import a{color:#24523e;text-decoration:underline}
