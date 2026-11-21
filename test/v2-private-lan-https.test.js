@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {openDatabase} from '../src/database.js';
 import {createApp} from '../src/server.js';
 import {createPasswordRecord,authGate} from '../src/auth.js';
@@ -86,4 +87,10 @@ test('LAN authentication issues Secure cookies and enforces exact HTTPS Origin',
     assert.equal(check('https://192.168.21.12:3000',false).res.code,403);
     assert.equal(check('https://192.168.21.12:3000.evil.test').res.code,403);
   }finally{db.close();}
+});
+
+test('mobile recovery guidance reopens the current secure server origin, not phone localhost',()=>{
+  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+  assert.match(app,/window\.location\.origin\+'?, then check the ledger/);
+  assert.doesNotMatch(app,/http:\/\/127\.0\.0\.1:3000/);
 });
