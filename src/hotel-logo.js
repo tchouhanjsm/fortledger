@@ -1,4 +1,5 @@
 import {createHash} from 'node:crypto';
+import PDFDocument from 'pdfkit';
 
 const MAX_BYTES=800*1024;
 export function ensureLogoSchema(db){
@@ -31,6 +32,11 @@ function validLogo(data,mime){
        data[data.length-2]!==0xff||data[data.length-1]!==0xd9)
       throw new Error('Invalid JPEG logo');
   }else throw new Error('Only PNG or JPEG logos are supported');
+  // Decode the image with the same library the invoice PDF uses before persisting it.
+  try{
+    const doc=new PDFDocument({autoFirstPage:false});
+    doc.openImage(data);
+  }catch{throw new Error('Logo image could not be decoded');}
 }
 export function setHotelLogo(db,{mime,base64}={}){
   if(typeof base64!=='string'||!base64||base64.length>MAX_BYTES*2||
