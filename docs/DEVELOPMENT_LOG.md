@@ -153,3 +153,11 @@ All five increments completed in this development session were reviewed and merg
 - Replaced float multiply-and-round monetary input conversion with an exact decimal-string-to-integer-paise parser using BigInt internally.
 - Amounts with more than two decimal places, scientific notation, negatives, nonnumeric values, NaN/Infinity and values exceeding safe integer paise are explicitly rejected instead of silently rounded.
 - Added unit tests for INR 4,500.50, one-paisa precision, zero, invalid inputs and unsafe bounds. Existing GST-inclusive and refund calculations still use integer paise.
+
+## 2026-11-21 — Windows first installation and data-safe updates
+- Added `docs/WINDOWS_SETUP.md` with guided Windows clone, Node.js 22 + Git installation, initial `npm install`, local password and normal startup.
+- Added `scripts/windows-setup.ps1`, `windows-start.ps1` and `windows-update.ps1` for an app-directory-independent install, focused startup, and explicit Git fast-forward upgrades.
+- Windows persistent SQLite database and administrator hash use `%LOCALAPPDATA%\\FortLedger\\data`, independent of the tracked Git code folder. Existing non-Windows defaults continue working.
+- `src/backup-before-update.js` uses SQLite's consistent backup API and verifies the snapshot **before** Git changes, with a private copy of the local password hash for emergency recovery.
+- Update stops if the live app is running on its default port, tracked code has modifications, the Git remote is unexpected, or a verified backup is unavailable. Never runs `git reset --hard` and never deletes business data.
+- CI now tests the full suite on Windows and Linux (Node.js 22). Windows packaging as an MSI / background service is future scope.
