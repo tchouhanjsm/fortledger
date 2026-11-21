@@ -29,10 +29,14 @@ import {saveGuest,listGuests,guestStays,validateGuestLink} from './guests.js';
 import {paymentMethod,recordAudit,auditEvents,recordHotelPayment} from './financial-audit.js';
 import {createBookingSafely} from './booking-create.js';
 import {deleteUnusedBooking,deleteUnusedGuest} from './entry-deletion.js';
+import {requireLoopbackHost,localListenerSettings} from './network-policy.js';
 
 export function createApp(db,{authRecord=null,authFile=null}={}) {
   const app = express();
   app.disable('x-powered-by');
+  // Fail closed against hostile Host headers and DNS rebinding on the
+  // single-machine alpha. Private staff-LAN mode requires a separate review.
+  app.use(requireLoopbackHost);
   app.use('/api/settings/logo',express.json({limit:'1.2mb'}));
   app.use(express.json({ limit: '64kb' }));
   const gate=authGate(authRecord,db,{authFile});
@@ -433,15 +437,15 @@ function normalizeBooking(input) {
 
 if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const db=openDatabase();
-  const port=Number(process.env.PORT||3000);
+  const {host,port}=localListenerSettings();
   const authRecord=loadPasswordRecord();
   if(!authRecord){
     console.error('FortLedger requires local admin authentication. Run: npm run setup-auth');
     process.exitCode=1;db.close();
   }else{
-    createApp(db,{authRecord,authFile:DEFAULT_AUTH_FILE}).listen(port,'127.0.0.1',
+    createApp(db,{authRecord,authFile:DEFAULT_AUTH_FILE}).listen(port,host,
       ()=>{
-        console.log('FortLedger local app: http://127.0.0.1:'+port);
+        console.log('FortLedger local app: http://'+host+':'+port);
         scheduleEncryptedBackups(db);
       });
   }
