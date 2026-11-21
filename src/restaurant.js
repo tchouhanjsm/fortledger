@@ -1,4 +1,5 @@
 import { toPaise } from './finance.js';
+import {createHash} from 'node:crypto';
 import {ensurePrintSchema} from './printer.js';
 export function ensureRestaurantSchema(db){
   db.exec(`
@@ -19,6 +20,13 @@ export function ensureRestaurantSchema(db){
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_restaurant_bills_booking ON restaurant_bills(booking_id);
+    CREATE TABLE IF NOT EXISTS restaurant_bill_requests (
+      request_id TEXT PRIMARY KEY,
+      bill_id INTEGER NOT NULL UNIQUE REFERENCES restaurant_bills(id),
+      fingerprint TEXT NOT NULL,
+      response_json TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
     CREATE TABLE IF NOT EXISTS restaurant_settlements (
       id INTEGER PRIMARY KEY,
       restaurant_bill_id INTEGER NOT NULL UNIQUE REFERENCES restaurant_bills(id),
@@ -108,8 +116,17 @@ export function importMenuCsv(db,csv){
 }
 export function listMenu(db){return db.prepare('SELECT * FROM menu_items WHERE active=1 ORDER BY category,name').all();}
 export function listRestaurantBills(db){return db.prepare('SELECT * FROM restaurant_bills ORDER BY id DESC').all().map(x=>({...x,items:JSON.parse(x.items_snapshot)}));}
+export function restaurantBillRequest(db,requestId){
+  if(typeof requestId!=='string'||!/^[A-Za-z0-9_-]{16,80}$/.test(requestId))
+    throw new Error('Invalid restaurant bill request ID');
+  const row=db.prepare('SELECT bill_id FROM restaurant_bill_requests WHERE request_id=?').get(requestId);
+  return row?{recorded:true,id:row.bill_id}:{recorded:false};
+}
 export function createRestaurantBill(db,input){
   if(!input||!Array.isArray(input.items)||input.items.length===0||input.items.length>50)throw new Error('Add 1–50 menu lines');
+  const requestId=input.request_id;
+  if(requestId!==undefined&&(typeof requestId!=='string'||!/^[A-Za-z0-9_-]{16,80}$/.test(requestId)))
+    throw new Error('Invalid restaurant bill request ID');
   const payment_method=String(input.payment_method||'');
   if(!['cash','upi','card','room'].includes(payment_method))throw new Error('Select a valid payment method');
   const hasManual=payment_method==='room'&&
@@ -121,15 +138,35 @@ export function createRestaurantBill(db,input){
     if(hasManual){
       if(!manual_room||manual_room.length>80||!manual_guest||manual_guest.length>150)
         throw new Error('Manual room charges require room identifier and guest name');
-    }else{
-      if(!Number.isSafeInteger(booking_id)||booking_id<1)throw new Error('Choose a checked-in guest');
+    }else if(!Number.isSafeInteger(booking_id)||booking_id<1){
+      throw new Error('Choose a checked-in guest');
+    }
+  }
+  // Fingerprint only the normalized submitted intent, never current menu prices:
+  // a lost-response retry must still resolve after a price or occupancy change.
+  const normalizedItems=input.items.map(line=>{
+    const id=Number(line.menu_item_id),quantity=Number(line.quantity);
+    if(!Number.isSafeInteger(id)||id<1||!Number.isInteger(quantity)||quantity<1||quantity>100)
+      throw new Error('Invalid item ID or quantity');
+    return {menu_item_id:id,quantity};
+  });
+  const fingerprint=requestId?createHash('sha256').update(JSON.stringify({
+    payment_method,booking_id,manual_room,manual_guest,items:normalizedItems
+  })).digest('hex'):null;
+  return db.transaction(()=>{
+    if(requestId){
+      const existing=db.prepare('SELECT fingerprint,response_json FROM restaurant_bill_requests WHERE request_id=?').get(requestId);
+      if(existing){
+        if(existing.fingerprint!==fingerprint)throw new Error('Restaurant bill request ID already used with different details');
+        return {...JSON.parse(existing.response_json),already_recorded:true};
+      }
+    }
+    if(payment_method==='room'&&!hasManual){
       const booking=db.prepare('SELECT status FROM bookings WHERE id=?').get(booking_id);
       if(!booking||booking.status!=='checked_in')throw new Error('Room charge requires a checked-in guest');
     }
-  }
-  return db.transaction(()=>{
     const get=db.prepare('SELECT * FROM menu_items WHERE id=? AND active=1');
-    const items=input.items.map(line=>{
+    const items=normalizedItems.map(line=>{
       const id=Number(line.menu_item_id),quantity=Number(line.quantity);
       if(!Number.isSafeInteger(id)||id<1||!Number.isInteger(quantity)||quantity<1||quantity>100)
         throw new Error('Invalid item ID or quantity');
@@ -144,7 +181,10 @@ export function createRestaurantBill(db,input){
     if(!Number.isSafeInteger(total_paise)||total_paise>1e11)throw new Error('Restaurant bill exceeds allowed amount');
     const result=db.prepare(`INSERT INTO restaurant_bills(payment_method,booking_id,items_snapshot,total_paise,tax_paise,manual_room,manual_guest)
       VALUES(?,?,?,?,?,?,?)`).run(payment_method,booking_id,JSON.stringify(items),total_paise,tax_paise,manual_room,manual_guest);
-    return {id:Number(result.lastInsertRowid),payment_method,booking_id,manual_room,manual_guest,items,total_paise,tax_paise};
+    const response={id:Number(result.lastInsertRowid),payment_method,booking_id,manual_room,manual_guest,items,total_paise,tax_paise};
+    if(requestId)db.prepare('INSERT INTO restaurant_bill_requests(request_id,bill_id,fingerprint,response_json) VALUES(?,?,?,?)')
+      .run(requestId,response.id,fingerprint,JSON.stringify(response));
+    return {...response,already_recorded:false};
   })();
 }
 

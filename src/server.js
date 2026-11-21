@@ -13,7 +13,7 @@ import { bookingTotals, nightsBetween, toPaise } from './finance.js';
 import { createProforma,getInvoice,listInvoices } from './invoices.js';
 import { streamProformaPdf } from './invoice-pdf.js';
 import { getBusinessSettings,updateBusinessSettings } from './business-settings.js';
-import {importMenuCsv,parseMenuCsv,listMenu,createRestaurantBill,listRestaurantBills,linkManualRoomCharge} from './restaurant.js';
+import {importMenuCsv,parseMenuCsv,listMenu,createRestaurantBill,restaurantBillRequest,listRestaurantBills,linkManualRoomCharge} from './restaurant.js';
 import {getGuestFolio,settleRoomBill,settleCombined} from './folio.js';
 import { NET_PAYMENTS_SQL, paymentHistory,recordRefund } from './payment-ledger.js';
 import {createStaff,listStaff,updateStaff,updateOwnProfile} from './staff.js';
@@ -187,9 +187,16 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
     try{res.json(linkManualRoomCharge(db,Number(req.params.id),Number(req.body?.booking_id)));}
     catch(error){next(error);}
   });
+  app.get('/api/restaurant/bills/request/:requestId',(req,res,next)=>{
+    try{res.json(restaurantBillRequest(db,req.params.requestId));}
+    catch(error){next(error);}
+  });
   app.get('/api/restaurant/bills',(_req,res)=>res.json(listRestaurantBills(db)));
   app.post('/api/restaurant/bills',(req,res,next)=>{
-    try{res.status(201).json(createRestaurantBill(db,req.body));}catch(error){next(error);}
+    try{
+      const bill=createRestaurantBill(db,req.body);
+      res.status(bill.already_recorded?200:201).json(bill);
+    }catch(error){next(error);}
   });
   app.get('/api/settings/logo',(_req,res)=>res.json({active:getCurrentLogo(db)}));
   app.get('/api/settings/logo/image',(_req,res)=>{

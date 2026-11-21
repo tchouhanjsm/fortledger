@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {openDatabase} from '../src/database.js';
 import {createApp} from '../src/server.js';
+import {importMenuCsv} from '../src/restaurant.js';
 
 const db=openDatabase(':memory:');
+importMenuCsv(db,'name,category,price,tax_rate\nMasala Chai,Hot Drinks,80,5');
 const server=createApp(db).listen(0,'127.0.0.1');
 await new Promise((resolve,reject)=>{
   server.once('listening',resolve);
@@ -130,6 +132,30 @@ try{
       await page.locator('#tax-draft-dialog').waitFor({state:'visible'});
       assert.match(await page.locator('#tax-draft-dialog').textContent(),/No statutory invoice number is issued/);
       await page.locator('#close-tax-draft').click();
+    }
+    if(width===1440){
+      // The real server commits a restaurant bill, but Chromium loses the
+      // POST response. The UI must lookup the UUID, not create a second bill.
+      await page.evaluate(()=>{window.location.hash='restaurant';});
+      await page.locator('#restaurant').waitFor({state:'visible'});
+      await page.locator('#menu-items').getByRole('button',{name:'+ Add'}).first().click();
+      const sum=await page.locator('#cart-total').textContent();
+      assert.match(sum,/80\.00/);
+      let submissions=0;
+      await page.route('**/api/restaurant/bills',async route=>{
+        if(route.request().method()!=='POST')return route.continue();
+        submissions++;
+        const committed=await route.fetch();
+        assert.equal(committed.status(),201);
+        await route.abort('failed');
+      });
+      page.once('dialog',dialog=>dialog.accept());
+      await page.locator('#save-restaurant-bill').click();
+      await page.locator('#restaurant-history').getByText('#1', {exact:false}).first().waitFor({state:'visible'});
+      assert.equal(submissions,1,'Lost response must not duplicate restaurant bill');
+      assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bills').get().n,1);
+      assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bill_requests').get().n,1);
+      await page.unroute('**/api/restaurant/bills');
     }
     assert.deepEqual(errors,[],'Uncaught browser errors at '+width+'px: '+errors.join('; '));
     await page.close();
