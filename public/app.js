@@ -1,6 +1,7 @@
 import {occupiedRoomCount,monthGrid} from './calendar-utils.js';
 import {VIEWS,viewForHash} from './navigation.js';
 import {matchesWorkQueue} from './booking-work-queue.js';
+import {bookingDraftError} from './booking-editor-guards.js';
 const $ = selector => document.querySelector(selector);
 let currentUser=null;
 const can=permission=>Boolean(currentUser&&(currentUser.permissions.includes('*')||currentUser.permissions.includes(permission)));
@@ -1334,12 +1335,8 @@ $('#booking-form').onsubmit=async e=>{
   if(bookingSavePending)return;
   const form=e.currentTarget, data=Object.fromEntries(new FormData(form));
   data.room_ids=[...document.querySelectorAll('#room-assignment-list input:checked')].map(x=>Number(x.value));
-  if(!data.checkin||!data.checkout||data.checkout<=data.checkin){
-    setMessage('Check-out must be after check-in. Dates are hotel nights.');return;
-  }
-  if(data.room_ids.length>Number(data.rooms_count)){
-    setMessage('Assigned physical rooms cannot exceed the booked room count.');return;
-  }
+  const draftError=bookingDraftError(data,data.room_ids.length);
+  if(draftError){setMessage(draftError);return;}
   if(!editingId&&Number(data.amount_paid)>0&&!['cash','upi','card','bank'].includes(data.advance_method)){
     setMessage('Choose the advance payment method before saving.');return;
   }
