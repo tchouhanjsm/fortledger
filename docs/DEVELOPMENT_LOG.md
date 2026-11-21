@@ -173,3 +173,9 @@ All five increments completed in this development session were reviewed and merg
 - Revoked/deactivated users lose access on the next request; role changes are dynamically applied to existing sessions. Staff password hashes stay in SQLite and are never included in API responses.
 - UI loads only endpoints that the logged-in role can access, with owner-only team management in My Profile. RBAC regression tests cover endpoint denials and revocation.
 - Remaining: audit event log, staff change-password UI and dedicated production security review; existing owner hash file is preserved for upgrades.
+
+## 2026-11-21 — Role-aware first-screen UX improvement
+- Reviewed actual Mac screenshots: booking calendar dominated the landing screen; empty invoice view was a dead end; restaurant menu import was visually buried behind a generic error.
+- Added a personalized Dashboard with focused actions, occupancy/arrival/outstanding indicators or cashier-facing food sales/menu/pending charges. User-specific data obey existing RBAC permissions.
+- Added contextual invoices CTA and made menu import more discoverable when the menu is empty; retitled duplicated restaurant section to 'New food bill'.
+- Added responsive dashboard styles, navigation regression tests and no extra hosted analytics dependencies.
