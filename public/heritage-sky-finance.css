@@ -1,0 +1,35 @@
+/* Heritage Sky Phase 4: cash review and restaurant desk density.
+   All figures remain server-supplied; no browser financial formulas. */
+#home-expenses,#home-closing{border-color:var(--hs-border);overflow:hidden}
+#home-expenses>summary,#home-closing>summary{
+  cursor:pointer;font-size:15px;font-weight:700;color:var(--hs-ink);
+  padding:5px 0;line-height:1.5
+}
+#home-expenses>summary::marker,#home-closing>summary::marker{color:var(--hs-gold)}
+#home-expenses .staff-create,#home-closing .staff-create{margin-top:17px}
+#home-expenses input,#home-closing input,#home-expenses select{min-height:43px}
+#expense-list{margin-top:16px}
+.expense-entry{display:flex;align-items:flex-start;gap:16px;padding:13px 0;border-top:1px solid var(--hs-border)}
+.expense-entry>strong{flex:0 0 112px;text-align:right;font-size:15px;color:var(--hs-ink);font-variant-numeric:tabular-nums}
+.expense-entry-details{display:grid;gap:5px;min-width:0}
+.expense-entry-details span{font-size:13px;font-weight:600;color:var(--hs-ink)}
+.expense-entry-details small{font-size:11px;color:var(--hs-muted);line-height:1.5;overflow-wrap:anywhere}
+#daily-close-summary{padding:14px;margin-top:14px;border:1px solid var(--hs-border);background:var(--hs-ivory);border-radius:12px}
+#daily-close-summary:empty{display:none}
+#daily-close-summary strong{color:var(--hs-sage);font-size:13px}
+#daily-close-summary.close-stale{background:#fff7ed;border-color:#c98f5f}
+#daily-close-summary.close-stale strong{color:#8a451a}
+#daily-close-summary p{font-size:12px;line-height:1.6;margin-top:8px;font-variant-numeric:tabular-nums}
+#restaurant .restaurant-flex{gap:clamp(14px,2vw,26px)}
+#restaurant .restaurant-flex>div{min-width:0}
+#restaurant .menu-item,#restaurant .cart-row{padding:12px 2px;gap:10px}
+#restaurant #cart-total{font-size:18px;font-weight:750;font-variant-numeric:tabular-nums;color:var(--hs-ink)}
+#restaurant #save-restaurant-bill{width:100%;min-height:48px;margin-top:15px}
+#restaurant #restaurant-message:empty{display:none}
+#restaurant #restaurant-message:not(:empty){padding:10px 12px;border-radius:10px;background:var(--hs-ivory)}
+#restaurant .menu-import{border:1px solid var(--hs-border);border-radius:14px;padding:16px}
+@media(max-width:700px){
+  .expense-entry{display:grid;gap:5px}
+  .expense-entry>strong{text-align:left}
+  #restaurant .restaurant-flex{grid-template-columns:1fr}
+}

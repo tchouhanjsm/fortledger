@@ -550,10 +550,12 @@ async function renderExpenseList(){
     const entries=await api('/api/finance/expenses?date='+encodeURIComponent(date));
     if(!entries.length){list.append(label('p','No expenses for this business date.','muted'));return;}
     for(const entry of entries){
-      const row=label('div',undefined,'home-activity');
-      row.append(label('strong',entry.category+' · '+money(entry.amount_paise)),
-        label('span',entry.method+' · '+entry.payee+' · '+entry.actor_username));
-      list.append(row);
+      const row=label('div',undefined,'expense-entry');
+      row.append(label('strong',money(entry.amount_paise)));
+      const detail=label('div',undefined,'expense-entry-details');
+      detail.append(label('span',entry.category+' · '+entry.method),
+        label('small',['Payee: '+(entry.payee||'not recorded'),'Recorded by: '+entry.actor_username].join(' · ')));
+      row.append(detail);list.append(row);
     }
   }catch(error){list.append(label('p','Expense history unavailable: '+error.message,'muted'));}
 }
@@ -586,17 +588,20 @@ async function renderDailyClose(){
   if(!day)return;
   const summary=$('#daily-close-summary');
   const button=form.querySelector('[type=submit]');
-  summary.replaceChildren();button.disabled=false;
+  summary.replaceChildren();summary.classList.remove('close-stale');summary.setAttribute('role','status');button.disabled=false;
   try{
     const close=await api('/api/finance/closing?date='+encodeURIComponent(day));
     const text=close.stale?
       'WARNING: Ledger changed after this close; owner must review new transactions.':
       'Closing recorded and source values match the current ledger.';
+    summary.classList.toggle('close-stale',Boolean(close.stale));
+    summary.setAttribute('role',close.stale?'alert':'status');
     summary.append(label('strong',text),label('p',
       'Expected cash '+money(close.expected_cash_paise)+
       ' · Counted '+money(close.counted_cash_paise)+
       ' · Difference '+money(close.discrepancy_paise)+
       ' · By '+close.actor_username));
+    summary.append(label('p','This is a recorded cash snapshot, not verified bank reconciliation.','muted'));
     button.disabled=true;
   }catch(error){
     if(/No closing recorded/.test(error.message))summary.append(label('p','No close recorded for this date.','muted'));
