@@ -407,6 +407,23 @@ async function renderProfile(){
     }
   }
 }
+$('#profile-password-form').onsubmit=async event=>{
+  event.preventDefault();
+  const form=event.currentTarget,message=$('#profile-password-message');
+  const values=Object.fromEntries(new FormData(form));
+  if(values.new_password!==values.confirm_password){
+    message.textContent='New passwords do not match.';return;
+  }
+  const button=form.querySelector('[type=submit]');button.disabled=true;message.textContent='';
+  try{
+    await api('/api/me/password',{method:'POST',body:JSON.stringify({
+      current_password:values.current_password,new_password:values.new_password
+    })});
+    form.reset();
+    window.location.href='/login.html';
+  }catch(error){message.textContent=error.message;}
+  finally{button.disabled=false;}
+};
 $('#profile-form').onsubmit=async event=>{
   event.preventDefault();
   const message=$('#profile-message');

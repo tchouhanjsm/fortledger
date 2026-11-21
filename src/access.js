@@ -15,6 +15,7 @@ export function may(role,permission){
 export function requiredPermission(method,path){
   if(path==='/health')return 'profile.read';
   if(path==='/me')return method==='GET'?'profile.read':'profile.write';
+  if(path==='/me/password')return method==='POST'?'profile.write':null;
   if(path.startsWith('/staff'))return 'staff.admin';
   if(path.startsWith('/audit/'))return method==='GET'?'audit.read':null;
   if(path.startsWith('/finance/'))return method==='GET'?'finance.read':null;

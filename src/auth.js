@@ -35,9 +35,64 @@ export function savePasswordRecord(filename,password){
   fs.writeFileSync(filename,JSON.stringify(record,null,2)+'\n',{mode:0o600,flag:'wx'});
   return filename;
 }
-export function authGate(record,db){
+export function replacePasswordRecord(filename,newPassword){
+  const record=createPasswordRecord(newPassword);
+  if(!filename)throw new Error('Owner password file is not configured');
+  if(!fs.existsSync(filename))throw new Error('Owner password file missing; password not changed');
+  const temp=filename+'.new-'+process.pid+'-'+randomBytes(4).toString('hex');
+  try{
+    fs.writeFileSync(temp,JSON.stringify(record,null,2)+'\n',{mode:0o600,flag:'wx'});
+    fs.renameSync(temp,filename);
+    return record;
+  }finally{
+    if(fs.existsSync(temp))fs.unlinkSync(temp);
+  }
+}
+export function authGate(record,db,{authFile=null}={}){
   const sessions=new Map(),failures=new Map();
   const name='fortledger_session';
+  function revokeUserSessions(id){
+    for(const [token,item] of sessions)if(item.actor.id===id)sessions.delete(token);
+  }
+  function changePassword(req,res){
+    if(!record)return res.status(400).json({error:'Authentication not configured'});
+    const previous=req.body?.current_password,next=req.body?.new_password;
+    if(typeof previous!=='string'||typeof next!=='string')
+      return res.status(400).json({error:'Current and new passwords are required'});
+    const key=req.actor.id+':'+(req.ip||'local'),now=Date.now();
+    const entry=failures.get('change:'+key)||{count:0,until:0};
+    if(entry.until>now)return res.status(429).json({error:'Too many attempts; try again later'});
+    const actor=req.actor;
+    let valid=false;
+    if(actor.id===0)valid=verifyPassword(previous,record);
+    else{
+      const staff=db.prepare('SELECT password_json FROM staff_users WHERE id=? AND active=1').get(actor.id);
+      try{valid=Boolean(staff&&verifyPassword(previous,JSON.parse(staff.password_json)));}
+      catch{valid=false;}
+    }
+    if(!valid){
+      entry.count++;
+      if(entry.count>=5){entry.count=0;entry.until=now+15*60*1000;}
+      failures.set('change:'+key,entry);
+      return res.status(401).json({error:'Current password incorrect'});
+    }
+    failures.delete('change:'+key);
+    if(previous===next)return res.status(400).json({error:'New password must differ from the current password'});
+    try{
+      if(actor.id===0){
+        if(!authFile)return res.status(400).json({error:'Owner password file not configured'});
+        record=replacePasswordRecord(authFile,next);
+      }else{
+        const hashed=createPasswordRecord(next);
+        db.prepare('UPDATE staff_users SET password_json=? WHERE id=? AND active=1')
+          .run(JSON.stringify(hashed),actor.id);
+      }
+      revokeUserSessions(actor.id);
+      res.setHeader('Set-Cookie',name+'=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
+      res.json({ok:true,reauthenticate:true});
+    }catch(error){res.status(400).json({error:error.message});}
+  }
+
   function session(req){
     const raw=(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='));
     const token=raw?.slice(name.length+1);
@@ -104,7 +159,7 @@ export function authGate(record,db){
     res.setHeader('Set-Cookie',name+'=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
     res.json({ok:true});
   }
-  return {protect,authorize,checkRequest,login,logout,status:req=>({
+  return {protect,authorize,checkRequest,login,logout,changePassword,revokeUserSessions,status:req=>({
     enabled:Boolean(record),authenticated:!record||Boolean(session(req))
   })};
 }

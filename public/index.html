@@ -65,6 +65,17 @@
     <form id="profile-form" class="profile-form"><label>Display name<input name="display_name" required maxlength="90"></label><button type="submit" class="primary">Save my profile</button></form>
     <p id="profile-message" role="status"></p>
     <h3>My permissions</h3><div id="profile-permissions" class="profile-permissions"></div>
+    <details class="password-panel">
+      <summary>Change my password</summary>
+      <p class="muted">Your current password is required. Changing it signs out all sessions on this computer.</p>
+      <form id="profile-password-form" class="staff-create">
+        <label>Current password<input name="current_password" type="password" required autocomplete="current-password"></label>
+        <label>New password<input name="new_password" type="password" required minlength="12" maxlength="256" autocomplete="new-password"></label>
+        <label>Confirm new password<input name="confirm_password" type="password" required minlength="12" maxlength="256" autocomplete="new-password"></label>
+        <button type="submit" class="primary">Update password & sign out</button>
+      </form>
+      <p id="profile-password-message" role="alert"></p>
+    </details>
     <div id="staff-admin" hidden>
       <h3>Staff accounts</h3><p class="muted">Owner-only account management. Deactivated staff lose access immediately.</p>
       <div id="staff-list"></div>

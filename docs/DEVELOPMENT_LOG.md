@@ -219,3 +219,10 @@ All five increments completed in this development session were reviewed and merg
 - Implemented `npm run recovery:drill` to use a consistent SQLite backup, exercise the existing offline restore into an isolated temporary directory, and cryptographically compare every restored table and value to the snapshot.
 - The verification also tests copying the local administrator authentication file without printing the credential or private guest data. The temporary restored data is removed afterward; the live database remains untouched.
 - Regression tests cover bookings, payments, issued proforma, menu, food bills, staff, branding and missing credential files. This is **not** a verified external-drive disaster recovery and does not certify Windows installation hardware.
+
+## 2026-11-21 — Phase 2C: staff/owner password rotation and immediate revocation
+- Existing staff profiles lacked self-service password change, and an owner-reset staff password did not revoke existing sessions.
+- Added authenticated `POST /api/me/password` requiring the old password and a new 12+ character password. Owner credentials are written atomically to the existing local `admin-auth.json` and become effective immediately; staff credentials use a new salted hash in SQLite.
+- Any successful password change removes all active user sessions, including other browser windows. A staff password reset or account deactivation by the owner also revokes active sessions.
+- Added profile UI and tests for incorrect password, old-password rejection, owner file persistence, staff self-rotation and owner reset.
+- No external email/password reset SaaS. Manual owner account recovery and on-device security audit remain pending.
