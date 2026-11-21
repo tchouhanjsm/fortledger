@@ -2,6 +2,8 @@ import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {authPath} from './data-paths.js';
+import {getStaffById,getStaffLogin,getOwnerProfile} from './staff.js';
+import {may,requiredPermission} from './access.js';
 
 export const DEFAULT_AUTH_FILE=authPath();
 const SESSIONS_MS=8*60*60*1000;
@@ -33,20 +35,32 @@ export function savePasswordRecord(filename,password){
   fs.writeFileSync(filename,JSON.stringify(record,null,2)+'\n',{mode:0o600,flag:'wx'});
   return filename;
 }
-export function authGate(record){
+export function authGate(record,db){
   const sessions=new Map(),failures=new Map();
   const name='fortledger_session';
   function session(req){
     const raw=(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='));
     const token=raw?.slice(name.length+1);
-    const expires=token&&sessions.get(token);
-    if(!expires)return null;
-    if(expires<Date.now()){sessions.delete(token);return null;}
-    return token;
+    const item=token&&sessions.get(token);
+    if(!item)return null;
+    if(item.expires<Date.now()){sessions.delete(token);return null;}
+    // Re-read staff status and role on every request: revocations apply immediately.
+    const actor=item.actor.id===0?getOwnerProfile(db):getStaffById(db,item.actor.id);
+    if(!actor?.active){sessions.delete(token);return null;}
+    return {token,actor};
   }
   function protect(req,res,next){
-    if(!record)return next();
-    if(!session(req))return res.status(401).json({error:'Login required'});
+    if(!record){req.actor={id:0,username:'owner',display_name:'Owner',role:'owner',active:true};return next();}
+    const found=session(req);
+    if(!found)return res.status(401).json({error:'Login required'});
+    req.actor=found.actor;
+    next();
+  }
+  function authorize(req,res,next){
+    const permission=requiredPermission(req.method,req.path);
+    if(req.actor?.role==='owner')return next();
+    if(!permission||!may(req.actor?.role,permission))
+      return res.status(403).json({error:'Your staff role does not permit this operation'});
     next();
   }
   function checkRequest(req,res,next){
@@ -65,25 +79,32 @@ export function authGate(record){
   }
   function login(req,res){
     if(!record)return res.status(400).json({error:'Authentication not configured'});
-    const ip=req.ip||'local',now=Date.now(),entry=failures.get(ip)||{count:0,until:0};
+    const username=String(req.body?.username||'owner').trim().toLowerCase();
+    const ip=req.ip||'local',now=Date.now(),key=ip+':'+username;
+    const entry=failures.get(key)||{count:0,until:0};
     if(entry.until>now)return res.status(429).json({error:'Too many attempts; try again later'});
-    if(!verifyPassword(req.body?.password,record)){
+    const actor=username==='owner'?
+      (verifyPassword(req.body?.password,record)?getOwnerProfile(db):null):
+      getStaffLogin(db,username,req.body?.password);
+    if(!actor){
       entry.count++;
       if(entry.count>=5){entry.until=now+15*60*1000;entry.count=0;}
-      failures.set(ip,entry);
-      return res.status(401).json({error:'Invalid password'});
+      failures.set(key,entry);
+      return res.status(401).json({error:'Invalid username or password'});
     }
-    failures.delete(ip);
+    failures.delete(key);
     const token=randomBytes(32).toString('hex');
-    sessions.set(token,now+SESSIONS_MS);
+    sessions.set(token,{expires:now+SESSIONS_MS,actor:{id:actor.id}});
     res.setHeader('Set-Cookie',name+'='+token+'; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800');
-    res.json({ok:true});
+    res.json({ok:true,user:actor});
   }
   function logout(req,res){
-    const token=session(req);
-    if(token)sessions.delete(token);
+    const found=session(req);
+    if(found)sessions.delete(found.token);
     res.setHeader('Set-Cookie',name+'=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
     res.json({ok:true});
   }
-  return {protect,checkRequest,login,logout,status:req=>({enabled:Boolean(record),authenticated:!record||Boolean(session(req))})};
+  return {protect,authorize,checkRequest,login,logout,status:req=>({
+    enabled:Boolean(record),authenticated:!record||Boolean(session(req))
+  })};
 }
