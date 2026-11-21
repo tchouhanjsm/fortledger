@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "FortLedger — Garh Jaisal",
+  "short_name": "FortLedger",
+  "description": "Local hotel and restaurant operations for Garh Jaisal",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fffaf2",
+  "theme_color": "#22324b",
+  "icons": [
+    {
+      "src": "/fortledger-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
