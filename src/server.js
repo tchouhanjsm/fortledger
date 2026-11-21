@@ -16,18 +16,33 @@ import { getBusinessSettings,updateBusinessSettings } from './business-settings.
 import {importMenuCsv,parseMenuCsv,listMenu,createRestaurantBill,listRestaurantBills,linkManualRoomCharge} from './restaurant.js';
 import {getGuestFolio,settleRoomBill,settleCombined} from './folio.js';
 import { NET_PAYMENTS_SQL, paymentHistory,recordRefund } from './payment-ledger.js';
+import {createStaff,listStaff,updateStaff,updateOwnProfile} from './staff.js';
+import {ROLE_PERMISSIONS} from './access.js';
 
 export function createApp(db,{authRecord=null}={}) {
   const app = express();
   app.disable('x-powered-by');
   app.use('/api/settings/logo',express.json({limit:'1.2mb'}));
   app.use(express.json({ limit: '64kb' }));
-  const gate=authGate(authRecord);
+  const gate=authGate(authRecord,db);
   app.use('/api',gate.checkRequest);
   app.post('/api/auth/login',gate.login);
   app.get('/api/auth/status',(req,res)=>res.json(gate.status(req)));
   app.use('/api',gate.protect);
   app.post('/api/auth/logout',gate.logout);
+  app.use('/api',gate.authorize);
+  app.get('/api/me',(req,res)=>res.json({...req.actor,permissions:ROLE_PERMISSIONS[req.actor.role]||[]}));
+  app.patch('/api/me',(req,res,next)=>{
+    try{res.json(updateOwnProfile(db,req.actor,req.body?.display_name));}
+    catch(error){next(error);}
+  });
+  app.get('/api/staff',(_req,res)=>res.json(listStaff(db)));
+  app.post('/api/staff',(req,res,next)=>{
+    try{res.status(201).json(createStaff(db,req.body));}catch(error){next(error);}
+  });
+  app.patch('/api/staff/:id',(req,res,next)=>{
+    try{res.json(updateStaff(db,Number(req.params.id),req.body));}catch(error){next(error);}
+  });
   const publicDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public');
   app.use(express.static(publicDir));
 
@@ -40,6 +55,9 @@ export function createApp(db,{authRecord=null}={}) {
   });
   app.post('/api/bookings/:id/folio/room-bills/:billId/settle',(req,res,next)=>{
     try{res.status(201).json(settleRoomBill(db,Number(req.params.id),Number(req.params.billId),req.body.method));}catch(error){next(error);}
+  });
+  app.get('/api/restaurant/checked-in',(_req,res)=>{
+    res.json(db.prepare("SELECT id,guest_name,category,status FROM bookings WHERE status='checked_in' ORDER BY guest_name").all());
   });
   app.get('/api/restaurant/menu',(_req,res)=>res.json(listMenu(db)));
   app.post('/api/restaurant/menu/preview',(req,res,next)=>{

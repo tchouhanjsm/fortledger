@@ -1,17 +1,22 @@
 import {occupiedRoomCount,monthGrid} from './calendar-utils.js';
 import {VIEWS,viewForHash} from './navigation.js';
 const $ = selector => document.querySelector(selector);
+let currentUser=null;
+const can=permission=>Boolean(currentUser&&(currentUser.permissions.includes('*')||currentUser.permissions.includes(permission)));
+const VIEW_ACCESS={bookings:'bookings.read',rooms:'rooms.read',invoices:'invoices.read',restaurant:'restaurant.read','business-settings':'settings.read',profile:'profile.read'};
 function applyWorkspaceView(){
-  const view=viewForHash(window.location.hash);
+  let view=viewForHash(window.location.hash);
+  if(currentUser&&!can(VIEW_ACCESS[view]))view=can('bookings.read')?'bookings':can('restaurant.read')?'restaurant':'profile';
   const config=VIEWS[view],shown=new Set(config.sections);
-  for(const id of ['stats','calendar','bookings','rooms','invoices','restaurant','business-settings','roadmap']){
+  for(const id of ['stats','calendar','bookings','rooms','invoices','restaurant','business-settings','roadmap','profile']){
     const panel=document.getElementById(id);
     if(panel)panel.hidden=!shown.has(id);
   }
   $('#workspace-title').textContent=config.title;
   $('#workspace-subtitle').textContent=config.subtitle;
-  $('#new-booking').hidden=view!=='bookings';
+  $('#new-booking').hidden=view!=='bookings'||!can('bookings.write');
   for(const nav of document.querySelectorAll('.sidebar nav a')){
+    nav.hidden=Boolean(currentUser&&!can(VIEW_ACCESS[viewForHash(nav.getAttribute('href'))]));
     const active=viewForHash(nav.getAttribute('href'))===view;
     nav.classList.toggle('active',active);
     if(active)nav.setAttribute('aria-current','page');
@@ -144,11 +149,34 @@ function updateRoomOptions(selected=[]){
   if(!list.children.length)list.append(label('p','Set up physical rooms for this category first.','muted'));
 }
 async function load(){
-  [rooms,bookings,invoices,businessSettings,menu,restaurantBills]=await Promise.all([api('/api/rooms'),api('/api/bookings'),api('/api/invoices'),api('/api/settings/business'),api('/api/restaurant/menu'),api('/api/restaurant/bills')]);
+  currentUser=await api('/api/me');
+  [rooms,bookings,invoices,businessSettings,menu,restaurantBills]=await Promise.all([
+    can('rooms.read')?api('/api/rooms'):Promise.resolve([]),
+    can('bookings.read')?api('/api/bookings'):can('restaurant.read')?api('/api/restaurant/checked-in'):Promise.resolve([]),
+    can('invoices.read')?api('/api/invoices'):Promise.resolve([]),
+    can('settings.read')?api('/api/settings/business'):Promise.resolve(null),
+    can('restaurant.read')?api('/api/restaurant/menu'):Promise.resolve([]),
+    can('restaurant.read')?api('/api/restaurant/bills'):Promise.resolve([])
+  ]);
   renderMenu();renderCart();renderRestaurantHistory();
-  for(const [key,value] of Object.entries(businessSettings)){const field=$('#business-form').elements.namedItem(key);if(field)field.value=value;}
-  renderBookings();renderRooms();renderCalendar();renderInvoices();
-  await refreshHotelLogo();
+  if(businessSettings){
+    for(const [key,value] of Object.entries(businessSettings)){
+      const field=$('#business-form').elements.namedItem(key);if(field)field.value=value;
+    }
+  }
+  if(can('bookings.read')){renderBookings();renderCalendar();}
+  if(can('rooms.read'))renderRooms();
+  if(can('invoices.read'))renderInvoices();
+  if(can('settings.read'))await refreshHotelLogo();
+  $('#backup-button').hidden=!can('settings.admin');
+  $('#save-restaurant-bill').hidden=!can('restaurant.write');
+  $('#import-menu').hidden=!can('restaurant.write');
+  $('#preview-menu').hidden=!can('restaurant.write');
+  $('#staff-admin').hidden=currentUser.role!=='owner';
+  const settingsSave=$('#business-form').querySelector('[type=submit]');
+  if(settingsSave)settingsSave.disabled=!can('settings.admin');
+  await renderProfile();
+  applyWorkspaceView();
 }
 function renderInvoices(){
   const list=$('#invoice-list');list.replaceChildren();
@@ -203,6 +231,74 @@ $('#tax-draft-form').onsubmit=async event=>{
     alert('DRAFT ONLY. The document is not legally issued. Remaining blockers: '+draft.snapshot.readiness.blockers.join('; '));
   }catch(error){message.textContent=error.message;}
   finally{button.disabled=false;}
+};
+async function renderProfile(){
+  if(!currentUser)return;
+  $('#profile-name').textContent=currentUser.display_name;
+  $('#profile-role').textContent=currentUser.role==='frontdesk'?'Front desk':currentUser.role==='cashier'?'Restaurant cashier':
+    currentUser.role==='owner'?'Owner / administrator':'Hotel manager';
+  $('#profile-username').textContent='@'+currentUser.username+' · Local staff account';
+  $('#profile-avatar').textContent=currentUser.display_name.trim().split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()||'').join('');
+  $('#profile-form').elements.namedItem('display_name').value=currentUser.display_name;
+  const perms=$('#profile-permissions');perms.replaceChildren();
+  const labels=currentUser.permissions.includes('*')?['Full owner access']:currentUser.permissions.map(p=>p.replaceAll('.',' · '));
+  for(const perm of labels)perms.append(label('span',perm,'permission-pill'));
+  if(currentUser.role==='owner'){
+    const staff=await api('/api/staff');
+    const list=$('#staff-list');list.replaceChildren();
+    if(!staff.length)list.append(label('p','No staff accounts yet. Add your first staff member below.','muted'));
+    for(const user of staff){
+      const row=label('div',undefined,'staff-row');
+      const detail=label('div');
+      detail.append(label('strong',user.display_name),label('small','@'+user.username+' · '+user.role+' · '+(user.active?'Active':'Disabled')));
+      const roleSelect=label('select');
+      roleSelect.setAttribute('aria-label','Role for '+user.display_name);
+      for(const [value,title] of [['manager','Manager'],['frontdesk','Front desk'],['cashier','Cashier']]){
+        const opt=label('option',title);opt.value=value;roleSelect.append(opt);
+      }
+      roleSelect.value=user.role;
+      roleSelect.onchange=async()=>{
+        if(!confirm('Change role for '+user.display_name+' to '+roleSelect.value+'?')){
+          roleSelect.value=user.role;return;
+        }
+        try{
+          await api('/api/staff/'+user.id,{method:'PATCH',body:JSON.stringify({role:roleSelect.value})});
+          await renderProfile();
+        }catch(error){roleSelect.value=user.role;$('#staff-message').textContent=error.message;}
+      };
+      const toggle=label('button',user.active?'Disable':'Enable','secondary');
+      toggle.onclick=async()=>{
+        if(!confirm((user.active?'Disable':'Enable')+' account for '+user.display_name+'?'))return;
+        try{
+          await api('/api/staff/'+user.id,{method:'PATCH',body:JSON.stringify({active:!user.active})});
+          await renderProfile();
+        }catch(error){$('#staff-message').textContent=error.message;}
+      };
+      row.append(detail,roleSelect,toggle);list.append(row);
+    }
+  }
+}
+$('#profile-form').onsubmit=async event=>{
+  event.preventDefault();
+  const message=$('#profile-message');
+  try{
+    await api('/api/me',{method:'PATCH',body:JSON.stringify({
+      display_name:event.currentTarget.elements.namedItem('display_name').value
+    })});
+    message.textContent='Profile updated.';
+    await load();
+  }catch(error){message.textContent=error.message;}
+};
+$('#staff-create').onsubmit=async event=>{
+  event.preventDefault();
+  const form=event.currentTarget,message=$('#staff-message');
+  const submit=form.querySelector('[type=submit]');submit.disabled=true;message.textContent='';
+  try{
+    await api('/api/staff',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(form)))});
+    form.reset();message.textContent='Staff account created.';
+    await renderProfile();
+  }catch(error){message.textContent=error.message;}
+  finally{submit.disabled=false;}
 };
 let invoiceBookingId=null;
 function makeInvoiceLine(item={description:'',rooms:1,nights:1,rate:0}){
@@ -365,7 +461,8 @@ function renderMenu(){
     const row=label('div',undefined,'menu-item');
     const details=label('div');details.append(label('strong',item.name),label('small',item.category+' · '+money(item.price_paise)));
     const add=label('button','+ Add','secondary');add.onclick=()=>{const existing=cart.find(x=>x.menu_item_id===item.id);if(existing)existing.quantity++;else cart.push({menu_item_id:item.id,quantity:1});renderCart();};
-    row.append(details,add);list.append(row);
+    if(can('restaurant.write'))row.append(details,add);else row.append(details);
+    list.append(row);
   }
   if(!list.children.length)list.append(label('p','No menu items found. Import a CSV to start.','muted'));
   const guest=$('#restaurant-guest'),old=guest.value;guest.replaceChildren();

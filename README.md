@@ -118,3 +118,6 @@ FortLedger now opens a single operational area at a time instead of stacking unr
 
 ## Persistent data directory override
 Set `FORTLEDGER_DATA_DIR` to keep both `fortledger.sqlite` and `admin-auth.json` outside the source checkout. Individual `FORTLEDGER_DB` and `FORTLEDGER_AUTH_FILE` overrides remain available for special cases. The Windows scripts use `%LOCALAPPDATA%\\FortLedger\\data` automatically. The code directory can be updated and dependencies reinstalled without overwriting that data location. The existing `.gitignore` also excludes the legacy `data/` folder.
+
+## Staff profiles and RBAC (alpha)
+The original single-administrator sign-in is now the **owner** account (username `owner`, existing password unchanged). The owner can create individual manager, front desk and restaurant cashier users under **My Profile**. Each staff member logs in with their own username and password. API-level RBAC restricts bank settings, backups, invoices, bookings and restaurant endpoints; merely knowing a URL cannot bypass roles. Disabling a staff user invalidates ongoing access on the next request. Staff records are stored in local SQLite and included in existing backups. Run `npm test` after updates. This remains alpha and must pass a separate on-device security review before live business use.
