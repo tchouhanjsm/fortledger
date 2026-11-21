@@ -101,3 +101,10 @@ All five increments completed in this development session were reviewed and merg
 - Users can assign 0–N physical rooms to a category booking, where N is the booked room quantity; partial allocations retain unassigned category capacity.
 - Availability engine detects conflicts across all assigned room IDs and unassigned category holds; weekly calendar and unassigned list show partial allocation correctly.
 - Regression tests and PR CI required before merge. This closes a gap found during deeper review of the original one-room-only allocation model.
+
+## 2026-11-21 — Refund and financial audit ledger
+- Created append-only refund records linked to individual original payments, requiring a reason and cash/UPI/card/bank method.
+- Refund records preserve originals and use a unique request ID for retry-safe idempotency, with server-side over-refund protection inside a transaction.
+- Booking list, folio, and new proforma issuance use **net payments** (receipts minus recorded refunds); prior issued proformas remain immutable snapshots.
+- A recorded refund is **NOT** a transfer initiated through the bank or payment gateway. Operator must execute and verify the actual refund separately.
+- Tests cover refund bounds, repeated requests, cancelled stays and unchanged historical invoice snapshots.

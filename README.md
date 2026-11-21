@@ -72,3 +72,6 @@ The app **does not issue GST tax invoices**. Review [docs/COMPLIANCE_REVIEW.md](
 
 ## Multi-room physical allocations
 Bookings may reserve rooms by category, assign any number of physical rooms up to the booked quantity, or remain partially unassigned. A two-room booking can allocate two individual rooms without duplication. Availability validates both category-held capacity and physical-room conflicts on every occupied night, and legacy single-room assignments migrate to the allocation table automatically.
+
+## Refund records (alpha)
+The payment ledger supports **append-only refund records** against a specific original booking payment. Each record includes method, reason, amount, and retry-safe unique request ID; refunded amounts reduce outstanding paid balance across bookings and guest folios. Already-issued proformas remain unchanged; future proformas use the current net-paid balance. FortLedger **does not send money or trigger an external refund**; an operator must complete the actual bank/UPI/card/cash refund separately.

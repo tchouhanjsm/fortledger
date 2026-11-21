@@ -1,6 +1,7 @@
 import { bookingTotals } from './finance.js';
 import { FIXED_TERMS } from './terms.js';
 import { normalizeInvoiceInput } from './invoice-lines.js';
+import { NET_PAYMENTS_SQL } from './payment-ledger.js';
 import { getBusinessSettings } from './business-settings.js';
 
 export function createProforma(db,bookingId,input={}){
@@ -10,7 +11,7 @@ export function createProforma(db,bookingId,input={}){
     if(existing)return {...existing,snapshot:JSON.parse(existing.snapshot),already_existed:true};
     const booking=db.prepare(`
       SELECT b.*,r.name AS room_name,
-      COALESCE((SELECT sum(amount_paise) FROM payments p WHERE p.booking_id=b.id),0) AS paid_paise
+      ${NET_PAYMENTS_SQL} AS paid_paise
       FROM bookings b LEFT JOIN rooms r ON r.id=b.room_id WHERE b.id=?
     `).get(bookingId);
     if(!booking)throw new Error('Booking not found');

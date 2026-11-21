@@ -37,7 +37,8 @@ function renderBookings(){
     const proforma=label('button','Proforma PDF','secondary');proforma.disabled=b.status==='cancelled';
     proforma.onclick=()=>createInvoice(b);
     const folioButton=label('button','Guest folio','secondary');folioButton.onclick=()=>showFolio(b);
-    actions.append(edit,payment,history,proforma,folioButton);
+    const refundButton=label('button','Record refund','secondary');refundButton.onclick=()=>recordPaymentRefund(b);
+    actions.append(edit,payment,history,refundButton,proforma,folioButton);
     row.append(guest,dates,stage,due,actions);list.append(row);
   }
   $('#stat-bookings').textContent=bookings.filter(b=>b.status!=='cancelled').length;
@@ -248,10 +249,48 @@ async function addPayment(b){
 }
 async function showPayments(b){
   try{
-    const rows=await api('/api/bookings/'+b.id+'/payments');
-    const text=rows.length?rows.map(x=>x.created_at+' · '+money(x.amount_paise)+(x.note?' · '+x.note:'')).join('\n'):'No payments recorded.';
-    alert('Payment history — '+b.guest_name+'\n\n'+text);
+    const [rows,refunds]=await Promise.all([
+      api('/api/bookings/'+b.id+'/payments'),
+      api('/api/bookings/'+b.id+'/refunds')
+    ]);
+    const payments=rows.length?rows.map(x=>'Payment #'+x.id+' · '+x.created_at+' · '+money(x.amount_paise)+
+      (x.refunded_paise?' · Refunded '+money(x.refunded_paise):'')+
+      (x.note?' · '+x.note:'')).join('\\n'):'No payments recorded.';
+    const events=refunds.length?'\\n\\nREFUNDS (operator-recorded)\\n'+refunds.map(r=>
+      'Refund #'+r.id+' / Payment #'+r.payment_id+' · '+money(r.amount_paise)+' · '+r.method+' · '+r.reason).join('\\n'):'';
+    alert('Payment and refund ledger — '+b.guest_name+'\\n\\n'+payments+events);
   }catch(e){alert(e.message);}
+}
+async function recordPaymentRefund(b){
+  try{
+    const payments=await api('/api/bookings/'+b.id+'/payments');
+    const eligible=payments.filter(p=>p.amount_paise>p.refunded_paise);
+    if(!eligible.length){alert('No refundable payment remains for this booking.');return;}
+    const choices=eligible.map(p=>'#'+p.id+' · Available '+money(p.amount_paise-p.refunded_paise)).join('\\n');
+    const value=prompt('Select original payment ID to refund for '+b.guest_name+':\\n'+choices,eligible[0].id);
+    if(value===null)return;
+    const payment=eligible.find(p=>String(p.id)===value.trim());
+    if(!payment){alert('Choose a listed payment ID.');return;}
+    const requested=prompt('Refund amount in rupees (available '+money(payment.amount_paise-payment.refunded_paise)+')');
+    if(requested===null)return;
+    const amount=Number(requested);
+    if(!Number.isFinite(amount)||amount<=0||Math.round(amount*100)>payment.amount_paise-payment.refunded_paise){
+      alert('Refund must be a positive amount within the remaining original payment.');return;
+    }
+    const reason=prompt('Reason for recording this refund (required):');
+    if(reason===null)return;
+    if(reason.trim().length<3){alert('Provide a refund reason.');return;}
+    const method=prompt('Refund method: cash, upi, card or bank','upi');
+    if(method===null)return;
+    if(!['cash','upi','card','bank'].includes(method.trim().toLowerCase())){alert('Choose a valid refund method.');return;}
+    if(!confirm('Record a '+money(Math.round(amount*100))+' '+method+' refund for '+b.guest_name+'?\\nThis records the refund only; it does NOT transfer money.'))return;
+    const request_id=crypto.randomUUID();
+    await api('/api/bookings/'+b.id+'/payments/'+payment.id+'/refunds',{
+      method:'POST',body:JSON.stringify({amount,reason:reason.trim(),method:method.trim().toLowerCase(),request_id})
+    });
+    await load();
+    alert('Refund event recorded. Complete or verify the actual transfer separately.');
+  }catch(error){alert(error.message);}
 }
 
 function renderMenu(){
