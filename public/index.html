@@ -17,6 +17,14 @@
     <a class="primary" id="home-primary" href="#bookings">New booking</a>
   </div>
   <div id="home-kpis" class="home-kpis"></div>
+  <section id="home-room-performance" class="room-performance" hidden>
+    <div class="panel-head"><div><h3>Room performance</h3><p>Booked room-nights for the selected stay dates. GST-inclusive rates; not earned or taxable revenue.</p></div>
+      <form id="room-performance-form" class="room-period"><label>From<input type="date" name="start" required></label>
+        <label>Until (exclusive)<input type="date" name="end" required></label>
+        <button type="submit" class="secondary">View</button></form></div>
+    <div id="room-performance-kpis" class="home-kpis"></div>
+    <p id="room-performance-status" class="muted" role="status"></p>
+  </section>
   <section id="home-collections" class="home-collections" hidden>
     <div><span class="eyebrow">FINANCIAL CHECK</span><h3>Today's recorded collections <small>(India time)</small></h3>
       <p>Money received, less recorded refunds. Not a GST revenue statement or bank-confirmed closing.</p></div>
