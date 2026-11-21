@@ -18,7 +18,7 @@
     "test:browser": "node browser-tests/smoke.mjs",
     "recovery:encrypted-drill": "node src/encrypted-recovery-drill.js",
     "release:check": "node src/release-readiness.js",
-    "printer:test-slip": "node src/printer-self-test.js"
+    "printer:test-slip": "node src/epson-diagnostic-slip.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
