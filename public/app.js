@@ -304,10 +304,12 @@ function renderMenu(){
   }
   if(!list.children.length)list.append(label('p','No menu items found. Import a CSV to start.','muted'));
   const guest=$('#restaurant-guest'),old=guest.value;guest.replaceChildren();
+  const manual=label('option','Manual room / guest entry');manual.value='manual';guest.append(manual);
   for(const b of bookings.filter(x=>x.status==='checked_in')){
     const option=label('option',b.guest_name+' · '+(b.assigned_room||b.category));option.value=b.id;guest.append(option);
   }
   if([...guest.options].some(x=>x.value===old))guest.value=old;
+  updateManualRoomFields();
 }
 function renderCart(){
   const list=$('#cart-items');list.replaceChildren();
@@ -349,18 +351,58 @@ function renderRestaurantHistory(){
         }catch(next){alert(next.message);}
       }
     };
+    if(bill.payment_method==='room'&&bill.booking_id===null){
+      details.append(label('small','Needs review · '+(bill.manual_room||'Unknown room')+' · '+(bill.manual_guest||'Unknown guest')));
+      const link=label('button','Link to guest','secondary');
+      link.onclick=()=>linkPendingCharge(bill);
+      row.append(link);
+    }
     row.append(details,print,lan);
     list.append(row);
   }
   if(!restaurantBills.length)list.append(label('p','No restaurant bills yet.','muted'));
 }
+function updateManualRoomFields(){
+  $('#manual-room-fields').hidden=$('#restaurant-guest').value!=='manual';
+}
+async function linkPendingCharge(bill){
+  const active=bookings.filter(b=>b.status==='checked_in');
+  if(!active.length){alert('No checked-in guest bookings available to link this charge.');return;}
+  const candidates=active.map(b=>'#'+b.id+' · '+b.guest_name+' · '+(b.assigned_room||b.category)).join('\\n');
+  const entered=prompt('Verify the charge belongs to the correct checked-in booking.\\n'+
+    'Original: '+bill.manual_guest+' / '+bill.manual_room+'\\n\\n'+candidates+
+    '\\n\\nEnter matching booking ID:');
+  if(entered===null)return;
+  const booking=active.find(b=>String(b.id)===entered.trim());
+  if(!booking){alert('Select a valid checked-in booking ID.');return;}
+  if(!confirm('Link food bill #'+bill.id+' to '+booking.guest_name+
+    '? This will add the unpaid charge to their folio.'))return;
+  try{
+    await api('/api/restaurant/bills/'+bill.id+'/link-booking',{
+      method:'POST',body:JSON.stringify({booking_id:booking.id})
+    });
+    await load();
+    alert('Restaurant bill linked to the selected guest for settlement.');
+  }catch(error){alert(error.message);}
+}
 $('#menu-search').oninput=renderMenu;
-$('#restaurant-method').onchange=()=>{$('#room-charge-choice').hidden=$('#restaurant-method').value!=='room';};
+$('#restaurant-method').onchange=()=>{
+  $('#room-charge-choice').hidden=$('#restaurant-method').value!=='room';
+  updateManualRoomFields();
+};
+$('#restaurant-guest').onchange=updateManualRoomFields;
 $('#save-restaurant-bill').onclick=async()=>{
   const method=$('#restaurant-method').value,message=$('#restaurant-message');
   if(!cart.length){message.textContent='Add at least one item.';return;}
-  const body={payment_method:method,items:cart,booking_id:method==='room'?Number($('#restaurant-guest').value):undefined};
-  if(method==='room'&&!body.booking_id){message.textContent='No checked-in guest available for room charge.';return;}
+  const manual=method==='room'&&$('#restaurant-guest').value==='manual';
+  const body={payment_method:method,items:cart,
+    booking_id:method==='room'&&!manual?Number($('#restaurant-guest').value):undefined};
+  if(manual){
+    body.manual_room=$('#manual-room-number').value.trim();
+    body.manual_guest=$('#manual-room-guest').value.trim();
+    if(!body.manual_room||!body.manual_guest){message.textContent='Enter room identifier and guest name for manual review.';return;}
+  }
+  if(method==='room'&&!manual&&!body.booking_id){message.textContent='Choose a checked-in guest or manual entry.';return;}
   if(!confirm('Save this restaurant bill?'))return;
   const button=$('#save-restaurant-bill');button.disabled=true;
   try{await api('/api/restaurant/bills',{method:'POST',body:JSON.stringify(body)});cart=[];message.textContent='Bill saved locally.';await load();}
