@@ -16,7 +16,7 @@ const base='http://127.0.0.1:'+server.address().port;
 let browser;
 try{
   browser=await chromium.launch({headless:true});
-  for(const width of [390,768,1440]){
+  for(const width of [360,390,768,1024,1280,1440,1920]){
     const page=await browser.newPage({viewport:{width,height:850}});
     const errors=[];
     page.on('pageerror',error=>errors.push(error.message));
@@ -28,6 +28,8 @@ try{
     assert.equal(await page.locator('#bookings').isVisible(),true);
     assert.equal(await page.locator('#dashboard').isVisible(),false,
       'Hidden dashboard should not be exposed by responsive CSS');
+    const manifest=await page.locator('link[rel="manifest"]').getAttribute('href');
+    assert.equal(manifest,'/manifest.webmanifest','Both mobile and desktop should offer local install metadata');
     if(width<=700){
       assert.equal(await page.getByRole('navigation',{name:'Mobile shortcuts'}).isVisible(),true);
       assert.equal(await page.getByRole('navigation',{name:'Primary'}).isVisible(),false);
@@ -237,7 +239,7 @@ try{
   }
   assert.equal(db.prepare('SELECT count(*) AS n FROM bookings').get().n,2);
   assert.equal(db.prepare('SELECT count(*) AS n FROM booking_create_requests').get().n,2);
-  console.log('PASS: Chromium receipt-loss reconciliation, real booking/payment flow, 390/768/1440 px.');
+  console.log('PASS: Chromium receipt-loss reconciliation, booking/payment flow, responsive 360/390/768/1024/1280/1440/1920 px.');
 }finally{
   await browser?.close();
   await new Promise(resolve=>server.close(resolve));
