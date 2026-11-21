@@ -2,6 +2,7 @@ import {NET_PAYMENTS_SQL} from './payment-ledger.js';
 import {getGuestFolio} from './folio.js';
 import {recordAudit} from './financial-audit.js';
 import {assertRoomsReady,dirtyRoomsAfterCheckout} from './housekeeping.js';
+import {assertNoMaintenanceDuringStay} from './maintenance.js';
 
 const NEXT={
   reserved:['checked_in','cancelled'],
@@ -27,6 +28,7 @@ export function transitionBooking(db,id,status,{actor,acknowledge_balance=false,
       if(assigned!==current.rooms_count)
         throw new Error('Assign all '+current.rooms_count+' physical rooms before check-in (currently '+assigned+')');
       assertRoomsReady(db,id);
+      assertNoMaintenanceDuringStay(db,id);
     }
     let warnings=[];
     if(status==='checked_out'){

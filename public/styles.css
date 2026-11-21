@@ -77,3 +77,20 @@
 @media(max-width:450px){.home-kpis{gap:9px}.home-kpi{padding:14px}.home-kpi strong{font-size:22px}}
 
 .home-collections{display:flex;justify-content:space-between;align-items:center;gap:20px;background:#fbfcfa;border:1px solid #e5ebe4;padding:18px 22px;border-radius:13px;margin-bottom:20px}.home-collections h3{color:#2e5040;margin:8px 0;font-size:16px}.home-collections h3 small{color:#809187;font-size:11px}.home-collections p{color:#829187;font-size:11px;margin:0}.home-collections>div:last-child{text-align:right}.home-collections strong{font-family:Georgia,serif;font-size:25px;display:block;color:#1c4834}.home-collections span:not(.eyebrow){font-size:11px;color:#708577;display:block;margin-top:5px}@media(max-width:650px){.home-collections{flex-direction:column;align-items:stretch}.home-collections>div:last-child{text-align:left}}
+
+/* Compact maintenance workflow for seven physical rooms. */
+.maintenance-workspace{border-top:1px solid #e5eae4;margin-top:22px;padding-top:20px}
+.maintenance-workspace h3{font-size:17px;color:#294e3c;margin:0 0 6px}
+.maintenance-workspace details{border:1px solid #e2e9df;border-radius:10px;padding:13px;margin:12px 0 18px}
+.maintenance-workspace summary{cursor:pointer;font-weight:600;color:#2d6147;font-size:13px}
+.maintenance-workspace .staff-create{margin-bottom:8px}
+.maintenance-dates{grid-column:span 2;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.maintenance-dates[hidden],.maintenance-workspace[hidden],#maintenance-block-choice[hidden]{display:none}
+.maintenance-block-label{display:flex!important;align-items:center;gap:8px}
+.maintenance-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:13px 0;border-bottom:1px solid #eef1ed}
+.maintenance-row strong,.maintenance-row small{display:block}
+.maintenance-row strong{font-size:13px;color:#2b4a3a}
+.maintenance-row small{font-size:11px;color:#6f8275;margin-top:5px}
+.maintenance-row button{flex-shrink:0}
+.room-outage-label{color:#98532e;font-size:11px;font-weight:700}
+@media(max-width:650px){.maintenance-dates{grid-column:span 1;grid-template-columns:1fr}.maintenance-row{align-items:flex-start;flex-direction:column}}

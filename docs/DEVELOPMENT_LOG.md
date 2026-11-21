@@ -250,3 +250,11 @@ All five increments completed in this development session were reviewed and merg
 - Manager and owner only; cashier/front desk are blocked. Dashboard has a small closing review form and existing-status display.
 - Regression tests include discrepancy acknowledgement, zero/unknown methods, duplicate closing requests, stale detection, RBAC and v3→v4 preserving old payments.
 - **Remaining:** reviewed reversal/amendment workflow, documented safe correction procedure, physical Windows cash reconciliation and formal accounting sign-off.
+
+## 2026-11-21 — Phase 3D: maintenance requests and inventory-safe out-of-service periods
+- Added SQLite migration v5: an additive local maintenance issue ledger with room, priority, reason, created/resolved staff, and optional half-open date-scoped unavailability. Historic invoices, payments, bookings and seven-room inventory are untouched.
+- Front desk can report nonblocking issues; owner/manager can block rooms and confirm resolution. Cashier cannot access maintenance. Actions are attributed in the existing operation audit ledger.
+- Availability validation now subtracts rooms blocked by active maintenance per hotel-night, including category-only holds; assigned rooms cannot be used during their out-of-service period. Existing reservations cannot be silently displaced when staff proposes a block; the block is rejected with a conflict explanation.
+- Check-in revalidates the assigned room against maintenance windows. The Room Inventory UI surfaces issues, planned outage dates and a manager-only resolve/release action.
+- Regression tests cover seven-room capacity, assigned and unassigned reservations, date boundaries, role permissions, audit attribution, and v4→v5 migration preserving financial records.
+- Physical maintenance verification, alternate-room rebooking, and full production sign-off still require staff and device testing.

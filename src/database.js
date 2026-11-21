@@ -13,6 +13,7 @@ import {ensureFinancialAuditSchema} from './financial-audit.js';
 import {ensureExpenseSchema} from './expenses.js';
 import {ensureHousekeepingSchema} from './housekeeping.js';
 import {ensureDailyCloseSchema} from './daily-close.js';
+import {ensureMaintenanceSchema,blockedRoomIds} from './maintenance.js';
 
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -20,7 +21,7 @@ export function openDatabase(filename = databasePath()) {
   try {
     db.pragma('foreign_keys = ON');
     const current = db.pragma('user_version', {simple:true});
-    if(current > 4)throw new Error('Database schema '+current+' is newer than this FortLedger version (4); update the app before opening it');
+    if(current > 5)throw new Error('Database schema '+current+' is newer than this FortLedger version (5); update the app before opening it');
     if(current < 0)throw new Error('Invalid database schema version');
     // Version 0 includes all legacy pre-versioned FortLedger installations.
     // A single SQLite transaction makes the baseline upgrade all-or-nothing.
@@ -95,6 +96,11 @@ export function openDatabase(filename = databasePath()) {
       ensureDailyCloseSchema(db);
       db.pragma('user_version = 4');
     })();
+    // Version 5: additive maintenance issue log and date-scoped room outages.
+    if(current<5)db.transaction(()=>{
+      ensureMaintenanceSchema(db);
+      db.pragma('user_version = 5');
+    })();
     // Preserve the established repair for legacy direct room_id records on reopen.
     // This is idempotent DML, not a schema migration.
     db.exec('INSERT OR IGNORE INTO booking_room_allocations(booking_id,room_id) SELECT id,room_id FROM bookings WHERE room_id IS NOT NULL');
@@ -138,12 +144,17 @@ export function assertAvailability(db, booking, excludedId = null) {
   for(let date=Date.parse(booking.checkin+'T00:00:00Z');date<Date.parse(booking.checkout+'T00:00:00Z');date+=86400000){
     const day=new Date(date).toISOString().slice(0,10);
     const concurrent=existing.filter(b=>b.checkin<=day&&day<b.checkout);
+    const blocked=blockedRoomIds(db,day);
+    for(const id of roomIds)if(blocked.has(id))
+      throw new Error('Room out of service on '+day);
+    const dayCapacity=inventory.filter(r=>r.category===booking.category&&!blocked.has(r.id)).length;
     const reservedCount=concurrent.reduce((sum,b)=>sum+b.rooms_count,0);
-    if(reservedCount+booking.rooms_count>capacity)throw new Error('No availability for '+day+' in '+booking.category);
+    if(reservedCount+booking.rooms_count>dayCapacity)
+      throw new Error('No availability for '+day+' in '+booking.category+' (maintenance capacity)');
     const assignedIds=new Set(concurrent.flatMap(b=>allocated.get(b.id)||[]));
     for(const id of roomIds)if(assignedIds.has(id))throw new Error('Room already assigned for '+day);
     const unassigned=concurrent.reduce((sum,b)=>sum+b.rooms_count-(allocated.get(b.id)||[]).length,0);
-    if(roomIds.length>capacity-assignedIds.size-unassigned)
+    if(roomIds.length>dayCapacity-assignedIds.size-unassigned)
       throw new Error('Room capacity reserved by unassigned bookings');
   }
 }

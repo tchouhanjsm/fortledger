@@ -66,7 +66,31 @@
   <section class="panel" id="calendar"><div class="panel-head"><div><h2>Room calendar</h2><p>Week-by-room or month-by-occupancy. Checkout day is available for another arrival.</p></div><div class="calendar-controls"><button id="calendar-mode" class="secondary" aria-pressed="false">Month view</button><button id="week-prev" class="secondary" aria-label="Previous week">‹</button><span id="week-label"></span><button id="week-next" class="secondary" aria-label="Next week">›</button><button id="week-today" class="secondary">Today</button></div></div><div class="calendar-scroll" id="calendar-week"><div id="calendar-grid"></div></div><div id="calendar-month" class="month-grid" hidden></div><div id="unassigned-calendar" class="unassigned"></div></section>
   <section id="bookings" class="panel"><div class="panel-head"><div><h2>Reservation ledger</h2><p>Search guests, companies and room categories.</p></div><input id="search" type="search" placeholder="Search bookings..." aria-label="Search bookings"></div><div class="toolbar"><button id="backup-button" class="secondary" type="button">↓ Download database backup</button></div><div id="booking-list" class="booking-list"><p class="muted">Loading bookings…</p></div></section>
   <section id="invoices" class="panel"><div class="panel-head"><div><h2>Proforma invoices</h2><p>Immutable PDF snapshots. Create from a booking and download anytime.</p></div></div><div id="invoice-list"><p class="muted">Loading invoices…</p></div><div id="invoice-empty-action" class="empty-action" hidden><p>Invoices begin with a guest reservation. Create or open a booking first, then generate its proforma.</p><a href="#bookings" class="primary">Go to bookings</a></div></section>
-  <section id="rooms" class="panel"><div class="panel-head"><div><h2>Room inventory</h2><p>Rename the seven placeholders and assign their real accommodation categories before booking.</p></div></div><div id="room-list"></div></section>
+  <section id="rooms" class="panel"><div class="panel-head"><div><h2>Room inventory</h2><p>Rename the seven placeholders and assign their real accommodation categories before booking.</p></div></div><div id="room-list"></div>
+  <div id="maintenance-workspace" class="maintenance-workspace" hidden>
+    <div class="panel-head"><div><h3>Maintenance & room outages</h3>
+      <p>Report an issue without changing availability. Only the owner or manager can block/release rooms.</p></div></div>
+    <details id="maintenance-create">
+      <summary>+ Report maintenance issue</summary>
+      <form id="maintenance-form" class="staff-create">
+        <label>Room<select name="room_id" id="maintenance-room" required></select></label>
+        <label>Priority<select name="priority"><option value="normal">Normal</option>
+          <option value="urgent">Urgent</option><option value="low">Low</option></select></label>
+        <label>Issue<input name="title" maxlength="120" required placeholder="e.g. Air conditioner not cooling"></label>
+        <label>Notes<input name="note" maxlength="500" placeholder="Optional staff notes"></label>
+        <label class="maintenance-block-label" id="maintenance-block-choice" hidden>
+          <input type="checkbox" name="blocks_room" id="maintenance-block"> Take room out of service</label>
+        <div id="maintenance-dates" class="maintenance-dates" hidden>
+          <label>Out-of-service from<input type="date" name="start_date"></label>
+          <label>Return date (exclusive)<input type="date" name="end_date"></label>
+        </div>
+        <button type="submit" class="primary">Save maintenance issue</button>
+      </form>
+    </details>
+    <p role="status" id="maintenance-message"></p>
+    <div id="maintenance-list"></div>
+  </div>
+</section>
 <section id="restaurant" class="panel">
   <div class="panel-head"><div><h2>New food bill</h2><p>Select an item, add quantities, and settle or charge it to a room.</p></div></div>
   <div class="restaurant-flex">

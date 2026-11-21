@@ -23,6 +23,7 @@ import {dailyCollections} from './daily-collections.js';
 import {recordExpense,listExpenses} from './expenses.js';
 import {listHousekeeping,markRoomState} from './housekeeping.js';
 import {createDailyClose,getDailyClose} from './daily-close.js';
+import {createMaintenanceIssue,resolveMaintenanceIssue,listMaintenance,blockedRoomIds} from './maintenance.js';
 import {paymentMethod,recordAudit,auditEvents,recordHotelPayment} from './financial-audit.js';
 
 export function createApp(db,{authRecord=null,authFile=null}={}) {
@@ -59,6 +60,18 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
 
   const listRooms = db.prepare(`SELECT r.*,h.status AS housekeeping_status
     FROM rooms r LEFT JOIN room_housekeeping h ON h.room_id=r.id ORDER BY r.id`);
+  app.get('/api/maintenance',(req,res,next)=>{
+    try{res.json(listMaintenance(db,{status:req.query.status||'open'}));}
+    catch(error){next(error);}
+  });
+  app.post('/api/maintenance',(req,res,next)=>{
+    try{res.status(201).json(createMaintenanceIssue(db,req.body,req.actor));}
+    catch(error){next(error);}
+  });
+  app.patch('/api/maintenance/:id/resolve',(req,res,next)=>{
+    try{res.json(resolveMaintenanceIssue(db,Number(req.params.id),req.actor,req.body?.resolution_note??''));}
+    catch(error){next(error);}
+  });
   app.get('/api/housekeeping',(_req,res)=>res.json(listHousekeeping(db)));
   app.patch('/api/housekeeping/:id',(req,res,next)=>{
     try{
@@ -199,7 +212,14 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
     }catch(e){next(e);}
   });
   app.get('/api/health', (_req,res)=>res.json({ ok:true }));
-  app.get('/api/rooms', (_req,res)=>res.json(listRooms.all()));
+  app.get('/api/rooms',(_req,res)=>{
+    const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
+      timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'
+    }).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+    const day=parts.year+'-'+parts.month+'-'+parts.day;
+    const blocked=blockedRoomIds(db,day);
+    res.json(listRooms.all().map(room=>({...room,out_of_service_today:blocked.has(room.id)})));
+  });
   app.patch('/api/rooms/:id', (req,res,next)=>{
     try {
       const id=Number(req.params.id);
@@ -345,7 +365,7 @@ export function createApp(db,{authRecord=null,authFile=null}={}) {
     }catch(error){next(error);}
   });
   app.use((err,req,res,_next)=>{
-    const isConflict=/availability|capacity|already assigned|Not enough/.test(err.message);
+    const isConflict=/availability|capacity|already assigned|Not enough|^Room out of service|^Assigned room is out of service|Existing room assignment conflicts|reservations exceed/i.test(err.message);
     const isDuplicate=/UNIQUE constraint/.test(err.message);
     res.status(isConflict||isDuplicate?409:400).json({error:isDuplicate?'Room name already exists':err.message});
   });
