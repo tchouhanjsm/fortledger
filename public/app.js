@@ -44,7 +44,11 @@ async function api(url,options={}){
 function setMessage(message){const node=$('#form-error');node.textContent=message;}
 function renderBookings(){
   const q=$('#search').value.trim().toLowerCase(),list=$('#booking-list');list.replaceChildren();
-  const filtered=bookings.filter(b=>[b.guest_name,b.company_name,b.category,b.assigned_room||''].some(v=>v.toLowerCase().includes(q)));
+  const statusFilter=$('#booking-status-filter')?.value||'all';
+  const filtered=bookings.filter(b=>
+    (statusFilter==='all'||b.status===statusFilter)&&
+    [String(b.id),b.guest_name,b.company_name,b.category,b.assigned_room||'']
+      .some(v=>String(v||'').toLowerCase().includes(q)));
   if(!filtered.length)list.append(label('p','No matching bookings. Create your first reservation.','muted'));
   for(const b of filtered){
     const row=label('div',undefined,'booking-row');
@@ -344,6 +348,36 @@ function updateRoomOptions(selected=[]){
   }
   if(!list.children.length)list.append(label('p','Set up physical rooms for this category first.','muted'));
 }
+/* Read-only seven-room situational awareness; statuses are intentionally independent.
+   Reserved does not mean physically occupied and vacant does not mean guest-ready. */
+function renderTodayRoomBoard(today){
+  const panel=$('#today-room-board');
+  if(!panel)return;
+  panel.hidden=!can('rooms.read');
+  if(!can('rooms.read'))return;
+  const list=$('#today-room-cards');list.replaceChildren();
+  for(const room of rooms.filter(r=>r.active)){
+    const current=bookings.find(b=>b.status==='checked_in' &&
+      (b.room_ids||[]).includes(room.id) && b.checkin<=today && today<b.checkout);
+    const reserved=bookings.find(b=>b.status==='reserved' &&
+      (b.room_ids||[]).includes(room.id) && b.checkin<=today && today<b.checkout);
+    const readiness=room.housekeeping_status==='dirty'?'Needs cleaning':
+      room.housekeeping_status==='cleaning'?'Cleaning':'Ready';
+    const occupancy=current?'Checked in':reserved?'Reserved tonight':'No assigned stay tonight';
+    const card=label('article',undefined,'today-room-card');
+    if(room.out_of_service_today)card.classList.add('room-blocked');
+    const head=label('div',undefined,'today-room-card-head');
+    head.append(label('strong',room.name),label('span',room.category,'today-room-category'));
+    card.append(head);
+    card.append(label('p',occupancy,'today-room-occupancy'));
+    card.append(label('p','Housekeeping: '+readiness,'today-room-readiness'));
+    if(room.out_of_service_today)card.append(label('p','Out of service today','today-room-alert'));
+    if(current)card.append(label('small','Guest checked in · '+current.checkout+' departure'));
+    else if(reserved)card.append(label('small','Reservation scheduled; check-in not confirmed'));
+    list.append(card);
+  }
+  if(!list.children.length)list.append(label('p','No active room records. Check inventory setup.','muted'));
+}
 function renderDashboard(){
   if(!currentUser)return;
   const firstName=currentUser.display_name.split(/\s+/)[0];
@@ -384,6 +418,7 @@ function renderDashboard(){
     card.append(label('span',name),label('strong',String(value)),label('small',note));
     grid.append(card);
   }
+  renderTodayRoomBoard(today);
   const actions=$('#home-actions');actions.replaceChildren();
   const options=[
     ['#bookings','Booking calendar','Manage stays and room allocations','bookings.read'],
@@ -1171,6 +1206,7 @@ $('#category-select').onchange=()=>{updateRoomOptions();updatePreview();};
 $('#room-assignment-list').onchange=()=>{updatePreview();};
 $('#booking-form').oninput=updatePreview;
 $('#search').oninput=renderBookings;
+$('#booking-status-filter').onchange=renderBookings;
 $('#calendar-mode').onclick=()=>setCalendarMode(calendarMode==='week'?'month':'week');
 $('#week-prev').onclick=()=>{weekStart=calendarMode==='month'?new Date(weekStart.getFullYear(),weekStart.getMonth()-1,1):addDays(weekStart,-7);renderCalendar();};
 $('#week-next').onclick=()=>{weekStart=calendarMode==='month'?new Date(weekStart.getFullYear(),weekStart.getMonth()+1,1):addDays(weekStart,7);renderCalendar();};
