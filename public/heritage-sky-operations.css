@@ -28,3 +28,12 @@
   .today-room-cards{grid-template-columns:1fr}
   .booking-filters>*{flex:1 1 100%;width:100%}
 }
+
+/* Received-payment entry stays compact; financial mutations remain server-authorized. */
+#booking-payment-dialog{width:min(510px,calc(100vw - 24px));padding:clamp(18px,3vw,30px)}
+#booking-payment-dialog .payment-guest{font-size:17px;font-weight:750;color:var(--hs-ink);margin:2px 0 4px}
+#booking-payment-dialog .form-grid{margin:22px 0 10px}
+#booking-payment-dialog select,#booking-payment-dialog input{min-height:44px}
+#payment-message:not(:empty){padding:11px 13px;border-radius:10px;background:#f7eee2;color:#74451e;font-size:12px;line-height:1.5}
+#booking-payment-dialog .dialog-actions{flex-wrap:wrap;margin-top:22px}
+@media(max-width:480px){#booking-payment-dialog .form-grid{grid-template-columns:1fr}}

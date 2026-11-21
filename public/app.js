@@ -94,12 +94,16 @@ function renderBookings(){
     const due=label('div',undefined,'money');due.append(label('strong',money(b.total_paise)),label('small','Due '+money(b.due_paise)));
     const actions=label('div',undefined,'row-actions');
     const edit=label('button','Edit','secondary');edit.disabled=!can('bookings.write')||['cancelled','checked_out'].includes(b.status)||invoices.some(i=>i.booking_id===b.id);edit.onclick=()=>openEdit(b);
-    const payment=label('button','+ Payment','secondary');payment.disabled=b.status==='cancelled';payment.onclick=()=>addPayment(b);
+    const payment=label('button','+ Payment','secondary');
+    payment.disabled=!can('payments.write')||b.status==='cancelled';
+    payment.onclick=()=>addPayment(b);
     const history=label('button','Payments','secondary');history.onclick=()=>showPayments(b);
     const proforma=label('button','Proforma PDF','secondary');proforma.disabled=b.status==='cancelled';
     proforma.onclick=()=>createInvoice(b);
     const folioButton=label('button','Guest folio','secondary');folioButton.onclick=()=>showFolio(b);
-    const refundButton=label('button','Record refund','secondary');refundButton.onclick=()=>recordPaymentRefund(b);
+    const refundButton=label('button','Record refund','secondary');
+    refundButton.disabled=!can('refunds.write');
+    refundButton.onclick=()=>recordPaymentRefund(b);
     actions.append(edit,payment,history,refundButton,proforma,folioButton);
     row.append(guest,dates,stage,due,actions);list.append(row);
   }
@@ -917,23 +921,64 @@ function updatePreview(){
     nights+' night(s) · Total '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(gross)+' · Due '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(Math.max(0,gross-advance)):
     'Enter valid dates, room count and GST-inclusive rate.';
 }
-async function addPayment(b){
-  const response=prompt('Additional payment received from '+b.guest_name+' (₹):');
-  if(response===null)return;
-  const amount=Number(response);
-  if(!Number.isFinite(amount)||amount<=0){alert('Enter a valid positive payment amount.');return;}
-  const method=prompt('Payment method: cash, upi, card, bank');
-  if(method===null)return;
-  if(!['cash','upi','card','bank'].includes(method.trim().toLowerCase())){
-    alert('Choose cash, UPI, card or bank. No payment was saved.');return;
-  }
-  if(!confirm('Record '+money(Math.round(amount*100))+' via '+method+' for '+b.guest_name+'?'))return;
-  try{
-    await api('/api/bookings/'+b.id+'/payments',{method:'POST',
-      body:JSON.stringify({amount,method:method.trim().toLowerCase(),request_id:crypto.randomUUID()})});
-    await load();
-  }catch(e){alert(e.message);}
+/* The booking payment ledger supports idempotent request IDs.
+   Keep the same ID when a network error leaves the outcome uncertain. */
+let paymentBookingId=null;
+function addPayment(b){
+  if(!can('payments.write'))return;
+  paymentBookingId=b.id;
+  const form=$('#booking-payment-form');
+  form.reset();
+  delete form.dataset.pendingRequestId;
+  $('#payment-guest').textContent=b.guest_name;
+  $('#payment-current-due').textContent='Booking outstanding: '+money(b.due_paise);
+  $('#payment-message').textContent='';
+  $('#payment-submit').disabled=false;
+  $('#booking-payment-dialog').showModal();
+  form.elements.namedItem('amount').focus();
 }
+$('#payment-cancel').onclick=()=>$('#booking-payment-dialog').close();
+$('#payment-close').onclick=()=>$('#booking-payment-dialog').close();
+$('#booking-payment-form').addEventListener('input',event=>{
+  if(event.target.name==='amount'||event.target.name==='method')
+    delete event.currentTarget.dataset.pendingRequestId;
+});
+$('#booking-payment-form').onsubmit=async event=>{
+  event.preventDefault();
+  if(!can('payments.write')||paymentBookingId===null)return;
+  const form=event.currentTarget,button=$('#payment-submit'),message=$('#payment-message');
+  const amount=Number(form.elements.namedItem('amount').value);
+  const method=form.elements.namedItem('method').value;
+  if(!Number.isFinite(amount)||amount<=0||Math.round(amount*100)<1){
+    message.textContent='Enter an amount of at least ₹0.01.';return;
+  }
+  if(!['cash','upi','card','bank'].includes(method)){
+    message.textContent='Choose a payment method.';return;
+  }
+  const booking=bookings.find(b=>b.id===paymentBookingId);
+  if(!booking){message.textContent='Booking is no longer available. Reload and retry.';return;}
+  if(!confirm('Record '+money(Math.round(amount*100))+' via '+method.toUpperCase()+
+    ' for '+booking.guest_name+'? This records a received payment.'))return;
+  const request_id=form.dataset.pendingRequestId||crypto.randomUUID();
+  form.dataset.pendingRequestId=request_id;
+  button.disabled=true;message.textContent='Recording payment…';
+  try{
+    await api('/api/bookings/'+paymentBookingId+'/payments',{
+      method:'POST',body:JSON.stringify({amount,method,request_id})
+    });
+    delete form.dataset.pendingRequestId;
+    paymentBookingId=null;
+    $('#booking-payment-dialog').close();
+  }catch(error){
+    message.textContent='Payment could not be confirmed: '+error.message+
+      '. Review the ledger before retrying. Retrying the same values uses the same request ID.';
+    button.disabled=false;
+    return;
+  }
+  button.disabled=false;
+  try{await load();}
+  catch(error){alert('Payment recorded, but refresh failed: '+error.message+' Reload to review the ledger.');}
+};
 async function showPayments(b){
   try{
     const [rows,refunds]=await Promise.all([
