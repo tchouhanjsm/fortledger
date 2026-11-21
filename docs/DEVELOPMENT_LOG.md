@@ -143,3 +143,8 @@ All five increments completed in this development session were reviewed and merg
 - Added `npm run doctor` to verify administrator password configuration, SQLite integrity/foreign keys/schema, seven active rooms, pending manual charges and uncertain printing jobs.
 - Diagnostics check encrypted backup freshness and printer configuration without displaying guests, bank details or secrets; output is always labeled pre-production.
 - Remaining external blockers: real Epson model verification/printing, legally complete signed tax invoice issuance with accountant review, actual hotel logo artwork/visual acceptance, recovery drill on target computer, and production installation/QA.
+
+## 2026-11-21 — Focused module navigation and mobile access
+- Replaced the stacked multi-module landing experience with five hash-addressable operational views. Booking KPIs, calendar, and reservation ledger stay together; restaurant, invoices, inventory, and settings each have their own focused workspace.
+- Active navigation and page heading now reflect the selected module. Mobile navigation stays visible and horizontally scrollable instead of disappearing below 650 px.
+- Added pure navigation mapping tests to prevent inaccessible routes; no new frontend framework or subscription required.
