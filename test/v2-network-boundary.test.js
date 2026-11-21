@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {openDatabase} from '../src/database.js';
 import {createApp} from '../src/server.js';
 import {createPasswordRecord} from '../src/auth.js';
+import {request as httpRequest} from 'node:http';
 import {isAllowedLocalHost,localListenerSettings} from '../src/network-policy.js';
 
 test('hostname allowlist accepts only canonical loopback origins and valid TCP ports',()=>{
@@ -34,11 +35,22 @@ test('Host-header guard rejects rebinding before login and never touches hotel r
     const status=await fetch(root+'/api/auth/status');
     assert.equal(status.status,200);
     assert.equal((await status.json()).enabled,true);
+    // Raw HTTP sends the exact Host header; Node fetch/Undici may overwrite
+    // forbidden headers, so fetch() cannot exercise this security boundary.
+    const requestHost=(hostname,pathname)=>new Promise((resolve,reject)=>{
+      const req=httpRequest(root+pathname,{headers:{Host:hostname}},res=>{
+        const chunks=[];
+        res.on('data',chunk=>chunks.push(chunk));
+        res.on('end',()=>resolve({status:res.statusCode,body:Buffer.concat(chunks).toString('utf8')}));
+        res.on('error',reject);
+      });
+      req.on('error',reject);req.end();
+    });
     for(const header of ['other.hotel','127.0.0.1.evil.test','192.168.0.10','localhost:99999']){
-      const bad=await fetch(root+'/api/auth/status',{headers:{Host:header}});
+      const bad=await requestHost(header,'/api/auth/status');
       assert.equal(bad.status,421,header);
-      assert.match((await bad.json()).error,/localhost only/);
-      const html=await fetch(root+'/',{headers:{Host:header}});
+      assert.match(JSON.parse(bad.body).error,/localhost only/);
+      const html=await requestHost(header,'/');
       assert.equal(html.status,421,'Static app also must fail closed');
     }
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM bookings').get().n,0);
