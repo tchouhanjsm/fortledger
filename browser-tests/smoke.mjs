@@ -87,7 +87,9 @@ try{
         data:{status:'ready'},headers:{'Content-Type':'application/json'}});
       assert.equal(markReady.status(),200);
       await page.reload();
-      await page.waitForFunction(()=>document.querySelector('#room-readiness-count')?.textContent?.includes('0 of 7'));
+      await page.waitForFunction(()=>document.querySelector('#room-readiness-count')?.textContent?.includes('physical rooms shown'));
+      await page.locator('[data-room-filter="attention"]').click();
+      assert.equal(await page.locator('#room-readiness-count').textContent(),'0 of 7 physical rooms shown');
       await page.locator('#mobile-shortcuts a[data-view="bookings"]').click();
       // A read-only status check must report a lost local server without
       // submitting or replaying any financial mutation.
