@@ -1,0 +1,13 @@
+# Run from the installed repository. Keep this terminal open while using FortLedger.
+$ErrorActionPreference = 'Stop'
+Set-Location (Resolve-Path (Join-Path $PSScriptRoot '..'))
+$env:FORTLEDGER_DATA_DIR = Join-Path $env:LOCALAPPDATA 'FortLedger\data'
+$nodeVersion = (& node --version)
+if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch '^v22\.') {
+  throw "Expected Node.js 22.x. Found: $nodeVersion"
+}
+Write-Host 'FortLedger uses persistent data in:' $env:FORTLEDGER_DATA_DIR -ForegroundColor Cyan
+Write-Host 'After startup open http://127.0.0.1:3000 in this computer only.'
+Write-Host 'To stop safely press Ctrl+C in this terminal.' -ForegroundColor Yellow
+& npm.cmd start
+if ($LASTEXITCODE -ne 0) { throw 'FortLedger startup failed; run npm run doctor to investigate.' }
