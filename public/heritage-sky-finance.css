@@ -33,3 +33,15 @@
   .expense-entry>strong{text-align:left}
   #restaurant .restaurant-flex{grid-template-columns:1fr}
 }
+
+/* Read-only manager reconciliation: separate from POS and financial mutations. */
+.restaurant-reconciliation{margin:var(--sh-space-6) 0;padding:var(--sh-space-4);border:1px solid var(--hs-border);border-radius:var(--hs-control-radius);background:var(--hs-surface)}
+.restaurant-reconciliation>summary{cursor:pointer;color:var(--hs-ink);font-size:14px;font-weight:650;min-height:44px;padding:10px 0}
+.restaurant-reconciliation>summary:focus-visible{outline:3px solid var(--hs-focus);outline-offset:3px}
+.restaurant-reconciliation .muted{font-size:13px;line-height:1.5;margin:8px 0 14px}
+.restaurant-reconciliation-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sh-space-3)}
+.restaurant-reconciliation-actions label{font-size:13px;font-weight:600;color:var(--hs-ink)}
+.restaurant-reconciliation-actions input{min-width:170px;min-height:44px;padding:9px 12px;border:1px solid #cbd4dd;border-radius:var(--hs-control-radius);background:var(--hs-surface);color:var(--hs-ink)}
+.restaurant-reconciliation-actions button{min-height:44px}
+#restaurant-reconciliation-message{font-size:13px;line-height:1.5;color:var(--hs-muted)}
+@media(max-width:600px){.restaurant-reconciliation-actions>*{flex:1 1 100%;min-width:0}}
