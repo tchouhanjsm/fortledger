@@ -280,3 +280,10 @@ All five increments completed in this development session were reviewed and merg
 - Added `Update FortLedger.cmd` and an external PowerShell quick updater. It refuses an active app, requires a recent independently protected encrypted backup *and* successful encrypted restore drill, reuses the verified Windows updater, and starts the normal persistent-data launcher only after tests pass. It never deletes live files or triggers a money write.
 - Updated Windows setup/update to use the already-committed dependency lockfile via `npm ci`; updated older documentation. In-app update **installation** remains intentionally pending a safe supervisor rather than hiding a background process behind a payment-capable server.
 - Physical Windows and Mac validation, replacement-device encrypted recovery, printer hardware, tax compliance and production release remain unfinished.
+
+## 2026-11-22 — Optional pickup and stay notes, schema v12
+- Add two optional text fields to the booking editor in a collapsed block so routine booking stays one-click/simple. The reservation list signals when notes exist without displaying their sensitive details by default.
+- Authorized staff can view/edit notes through a standalone operational-only action even when an issued proforma locks contractual booking edits. Existing issued proforma PDF snapshots and all money remain unchanged.
+- Version 12 adds columns transactionally with empty defaults; old booking request fingerprints for empty notes remain unchanged, while different nonempty notes are fingerprinted for safe retries.
+- Note-only updates are actor-audited without duplicating guest text in the event log. No automatic pickup reservation, driver dispatch, transfer cost, or guest communications are implied.
+- Mac/Windows physical acceptance and protected backup remain mandatory; see docs/BOOKING_OPERATIONAL_NOTES.md.
