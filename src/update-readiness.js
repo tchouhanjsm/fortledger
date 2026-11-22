@@ -1,10 +1,9 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import {execFile as execFileCallback} from 'node:child_process';
 import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
+import {randomUUID} from 'node:crypto';
 import {backupFreshness} from './backup-freshness.js';
-import {dataDirectory} from './data-paths.js';
 import {updateStatus} from './update-status.js';
 import {approvedMainCommit} from './approved-update.js';
 
@@ -94,7 +93,7 @@ export function createSupervisedUpdateIpc(ipc=process){
       if(!SHA.test(target_sha))return Promise.reject(new Error('Invalid pinned update SHA'));
       if(pending)return Promise.reject(new Error('Update already requested'));
       return new Promise((resolve,reject)=>{
-        const id=crypto.randomUUID();
+        const id=randomUUID();
         const timer=setTimeout(()=>{
           if(pending?.id===id){pending=null;reject(new Error('The update supervisor did not respond'));}
         },10000);
