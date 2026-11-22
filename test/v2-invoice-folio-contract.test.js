@@ -51,7 +51,7 @@ test('historic mismatched immutable proforma remains visible but blocks combined
     assert.throws(()=>settleCombined(db,id,'cash',actor),/Proforma and booking totals disagree/);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM payments').get().n,0);
     assert.throws(()=>transitionBooking(db,id,'checked_out',
-      {actor,acknowledge_balance:true}),/Proforma and booking totals disagree/);
+      {actor,acknowledge_balance:true,businessDate:'2027-03-03'}),/Proforma and booking totals disagree/);
     assert.equal(db.prepare('SELECT status FROM bookings WHERE id=?').get(id).status,'checked_in');
     assert.equal(db.prepare('SELECT snapshot FROM invoices WHERE id=?').get(old.lastInsertRowid).snapshot,row);
   }finally{db.close();}
