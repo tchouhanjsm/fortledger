@@ -100,8 +100,12 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
     ['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress));
   app.get('/api/system/updates',async(req,res,next)=>{
     try{
-      if(!updateOwnerLocal(req))
-        return res.status(403).json({error:'Update checks require local owner sign-in on this device'});
+      // Read-only download inspection is safe for an authenticated owner on
+      // HTTPS staff LAN; actual install/update requests remain loopback-only.
+      const installerLanRead=process.env.FORTLEDGER_DESKTOP_INSTALLER==='1'&&
+        network?.mode==='lan'&&req.socket.encrypted&&req.actor?.role==='owner';
+      if(!updateOwnerLocal(req)&&!installerLanRead)
+        return res.status(403).json({error:'Update checks require owner sign-in on the hotel computer or trusted staff HTTPS'});
       res.json(await checkUpdates());
     }catch(error){next(error);}
   });
