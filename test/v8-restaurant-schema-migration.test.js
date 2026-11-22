@@ -31,7 +31,7 @@ test('existing v7 hotel lacking restaurant_bill_requests migrates without touchi
     const prior=diagnose({databaseFile:file,authFile:auth,env:{}});
     assert.equal(prior.checks.find(c=>c.name==='Application schema').status,'fail');
     db=openDatabase(file);
-    assert.equal(db.pragma('user_version',{simple:true}),11);
+    assert.equal(db.pragma('user_version',{simple:true}),12);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bill_requests').get().n,0,
       'Do not invent idempotency markers for historical bills');
     assert.deepEqual(db.prepare('SELECT * FROM restaurant_bills WHERE id=?').get(old.id),before);
@@ -47,7 +47,7 @@ test('existing v7 hotel lacking restaurant_bill_requests migrates without touchi
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bills').get().n,2);
     db.close();db=null;
     db=openDatabase(file);
-    assert.equal(db.pragma('user_version',{simple:true}),11);
+    assert.equal(db.pragma('user_version',{simple:true}),12);
     assert.equal(createRestaurantBill(db,body).id,saved.id);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bills').get().n,2);
     const upgraded=diagnose({databaseFile:file,authFile:auth,env:{}});
@@ -120,12 +120,12 @@ test('post-migration corruption is detected on startup before guest billing can 
   let db;
   try{
     db=openDatabase(file);
-    assert.equal(db.pragma('user_version',{simple:true}),11);
+    assert.equal(db.pragma('user_version',{simple:true}),12);
     db.exec('DROP TABLE restaurant_bill_requests');
     db.close();db=null;
     assert.throws(()=>openDatabase(file),/Restaurant billing schema is incomplete/);
     const readOnly=new Database(file,{readonly:true,fileMustExist:true});
-    assert.equal(readOnly.pragma('user_version',{simple:true}),11);
+    assert.equal(readOnly.pragma('user_version',{simple:true}),12);
     readOnly.close();
   }finally{db?.close();fs.rmSync(dir,{recursive:true,force:true});}
 });
