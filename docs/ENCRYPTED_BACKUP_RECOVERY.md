@@ -34,3 +34,7 @@ Both files use independent random salts and nonces, and are authenticated with t
 5. On a **different Windows PC**, the original CurrentUser DPAPI configuration will not decrypt. Re-enter the separately stored backup passphrase, reconfigure the new backup drive and verify historic invoices/guest records before reopening for business.
 
 **Safety boundaries:** The schedule and encrypted-auth pair are software mechanisms, not a guarantee of drive survival or physical off-device recovery. A separate-drive path still needs actual encryption and router/Windows permission checks. Bank card information and identity scans must not be stored in operational note fields. Automatic updates must not skip independent restore proof just because today's backup succeeded.
+
+## Preparing an installer upgrade without waiting for the next daily backup
+
+With a separately protected backup drive already configured, the local owner can open **My Profile → Protected backups → Prepare safe update backup**. This creates a fresh, encrypted SQLite and owner-credential pair and performs a full, isolated restore rehearsal immediately. It is an explicit action, separate from the automatic startup/24-hour schedule. The API is owner-only and local-computer-only; staff phones and cashiers cannot trigger it. It returns no guest data, local paths or backup passphrase. A failed restoration must block the planned installer upgrade; uncertain artifacts are left for operator review, not silently deleted.
