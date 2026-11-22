@@ -25,6 +25,7 @@ import {createStaff,listStaff,updateStaff,updateOwnProfile} from './staff.js';
 import {ROLE_PERMISSIONS} from './access.js';
 import {transitionBooking,assertBookingEditAllowed} from './booking-transitions.js';
 import {dailyCollections} from './daily-collections.js';
+import {restaurantReconciliation} from './restaurant-reconciliation.js';
 import {recordExpense,listExpenses} from './expenses.js';
 import {listHousekeeping,markRoomState} from './housekeeping.js';
 import {createDailyClose,getDailyClose,reviewDailyClose,unreviewedDailyCloses} from './daily-close.js';
@@ -164,6 +165,14 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.get('/api/finance/daily',(req,res,next)=>{
     try{res.json(dailyCollections(db,req.query.date));}
     catch(error){next(error);}
+  });
+  app.get('/api/finance/restaurant/reconciliation.csv',(req,res,next)=>{
+    try{
+      const report=restaurantReconciliation(db,req.query.date);
+      res.setHeader('Content-Type','text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition','attachment; filename="'+report.filename+'"');
+      res.send(report.csv);
+    }catch(error){next(error);}
   });
   app.get('/api/audit/:entity/:id',(req,res,next)=>{
     try{res.json(auditEvents(db,{entityType:req.params.entity,entityId:Number(req.params.id)}));}
