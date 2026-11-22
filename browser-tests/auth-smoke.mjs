@@ -74,7 +74,7 @@ export async function runAuthenticatedBrowserSmoke(browser){
           await page.locator('#update-center-install').click();
           await page.locator('#shizuka-confirm-dialog').waitFor({state:'visible'});
           assert.match(await page.locator('#shizuka-confirm-detail').textContent(),
-            /finish their booking or bill forms/);
+            /have finished their booking or bill forms/);
           await page.keyboard.press('Escape');
           await page.locator('#shizuka-confirm-dialog').waitFor({state:'hidden'});
           assert.equal(db.prepare('SELECT COUNT(*) n FROM bookings').get().n,0);
