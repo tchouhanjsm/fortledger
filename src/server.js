@@ -1,3 +1,4 @@
+import {updateRoomDefinition} from './room-definition.js';
 import express from 'express';
 import path from 'node:path';
 import https from 'node:https';
@@ -283,11 +284,7 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
       const name=String(req.body.name||'').trim();
       const category=String(req.body.category||'').trim();
       if (!name || !category || name.length>80 || category.length>80) throw new Error('Name and category required (max 80 characters)');
-      const room=db.prepare('SELECT id,category FROM rooms WHERE id=?').get(id);
-      if (!room) return res.status(404).json({error:'Room not found'});
-      if (room.category !== category && db.prepare('SELECT 1 FROM bookings LIMIT 1').get()) throw new Error('Room categories cannot be changed after bookings exist in this foundation release');
-      db.prepare('UPDATE rooms SET name=?,category=? WHERE id=?').run(name,category,id);
-      res.json({ok:true});
+      res.json(updateRoomDefinition(db,id,{name,category},req.actor));
     } catch(e) {next(e);}
   });
 
