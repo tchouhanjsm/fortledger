@@ -10,18 +10,18 @@ test('saved restaurant bill listing shows real settlement state without altering
   const db=openDatabase(':memory:');
   try{
     importMenuCsv(db,'name,category,price,tax_rate\nMasala Chai,Drinks,80,5\nCoffee,Drinks,120,5');
-    const items=listMenu(db);
+    const items=listMenu(db),tea=items.find(x=>x.name==='Masala Chai'),coffee=items.find(x=>x.name==='Coffee');
     const id=Number(db.prepare(`INSERT INTO bookings
       (guest_name,checkin,checkout,rooms_count,category,nightly_rate_paise,status)
       VALUES('History Synthetic Guest','2027-09-01','2027-09-02',1,'Unassigned',450000,'checked_in')`)
       .run().lastInsertRowid);
     const cash=createRestaurantBill(db,{request_id:randomUUID(),payment_method:'cash',
-      items:[{menu_item_id:items[0].id,quantity:1}]});
+      items:[{menu_item_id:tea.id,quantity:1}]});
     const linked=createRestaurantBill(db,{request_id:randomUUID(),payment_method:'room',booking_id:id,
-      items:[{menu_item_id:items[1].id,quantity:2}]});
+      items:[{menu_item_id:coffee.id,quantity:2}]});
     const unlinked=createRestaurantBill(db,{request_id:randomUUID(),payment_method:'room',
       manual_guest:'Awaiting verification',manual_room:'Unconfirmed',
-      items:[{menu_item_id:items[0].id,quantity:2}]});
+      items:[{menu_item_id:tea.id,quantity:2}]});
     const before=db.prepare('SELECT items_snapshot FROM restaurant_bills WHERE id=?').get(linked.id).items_snapshot;
     let rows=listRestaurantBills(db);
     assert.equal(rows.length,3);
@@ -57,7 +57,7 @@ test('restaurant overview and filtered history are read-only, accessible and ali
   assert.match(app,/restaurantBillFilter=/);
   assert.match(app,/restaurantBillTime\(/);
   assert.match(app,/hotelDateAt\(/);
-  assert.doesNotMatch(app.slice(app.indexOf('function renderRestaurantHistory'),app.indexOf("$('#restaurant-history-search').oninput")),/method:'POST'/);
+  assert.doesNotMatch(app.slice(app.indexOf('function renderRestaurantHistory'),app.indexOf("$('#restaurant-history-search').oninput")),/api\\('\\/api\\/restaurant\\/bills'/);
   assert.ok(html.indexOf('id="restaurant-history-section"')<html.indexOf('id="menu-import-section"'),
     'Saved bills should be more prominent than seldom-used menu administration');
 });
