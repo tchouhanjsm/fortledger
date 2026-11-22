@@ -2,6 +2,20 @@
 
 **Stage:** initial alpha setup with synthetic/test data only. Statutory final GST invoice and hardware certification are not complete. This guide is for Windows 10/11 with PowerShell 5.1 or later, one local computer, and **Node.js 22.x**.
 
+## Quick path: new Windows installation (no previous hotel records)
+
+1. Install **Git for Windows** and **Node.js 22.x**, then open a fresh PowerShell window.
+2. Run `git clone https://github.com/tchouhanjsm/fortledger.git C:\\FortLedger\\app` (or a folder you own), then open `C:\\FortLedger\\app` in File Explorer.
+3. **Double-click `Install FortLedger.cmd`**. It checks the trusted Git origin, runs pinned dependencies and Node tests, and prompts you to create the local owner password. It also offers external encrypted backup setup; choose a folder on a separate protected drive, not the live `C:` drive.
+4. **Double-click `Start FortLedger.cmd`**. Keep the server window open. Go to `http://127.0.0.1:3000` and sign in as `owner`. A truly new installation creates its initial seven-room ledger on first startup.
+5. **Double-click `Diagnose FortLedger.cmd`** after first startup and review the warnings. A fresh encrypted snapshot is scheduled on startup if backup settings are valid. Independently test recovery before using real guest details.
+
+Create Windows desktop shortcuts to `Start FortLedger.cmd`, `Update FortLedger.cmd`, `Diagnose FortLedger.cmd` and `Configure FortLedger Backups.cmd` for ongoing use. These files stay in your checked-out Git folder and are updated with application code.
+
+**Already have guest bookings on your Mac?** Do **not** run fresh owner setup and start creating empty Windows records. First secure a **consistent SQLite snapshot plus the existing `admin-auth.json`** and use the separate reviewed transfer runbook; live `*-wal` or `*-shm` files must never be manually copied. The `.flbk` encrypted SQLite artifact alone does **not** contain your owner password file.
+
+**Encryption and recovery:** The one-time backup wizard stores the external backup folder and a Windows **CurrentUser DPAPI-encrypted passphrase** in `%LOCALAPPDATA%\\FortLedger\\backup-settings.json`. Startup and update scripts unlock it only for the same Windows account. The backup files remain separately AES-GCM encrypted. The backup passphrase must also be recorded **outside this PC**; DPAPI settings are not transferable to a replacement Windows machine. Do not regard same-user DPAPI as protection from malware already running as that user.
+
 ## 1. Install software, once
 - Install **Git for Windows** from https://git-scm.com/install/windows .
 - Install **Node.js 22.x LTS Windows x64 MSI** from https://nodejs.org/en/download/archive/v22 . Choose the appropriate architecture for your computer. Keep **Add to PATH** enabled. Other Node major versions are not yet validated with the repo's current `better-sqlite3` dependency.
@@ -34,7 +48,7 @@ If Windows denies permission under `C:\`, use a folder you own, e.g. `$HOME\Fort
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows-setup.ps1
 ```
 
-The script verifies Node 22, creates `%LOCALAPPDATA%\FortLedger\data`, runs reproducible `npm ci --no-audit --no-fund` and `npm test`, and prompts for a **local 12+ character admin password** only if one does not exist.
+The script checks the official Git remote and `main` branch, verifies Node 22 and that no server is running, creates `%LOCALAPPDATA%\\FortLedger\\data`, runs reproducible `npm ci --no-audit --no-fund` and `npm test`, and prompts for a **local 12+ character admin password** only if a new installation has no existing credentials. It refuses to replace a lost existing owner password. It offers to configure a separately protected encrypted backup drive.
 
 A committed `package-lock.json` is now present. The setup and update scripts use `npm ci` to install the tested dependency versions. If an older checkout has an untracked local lockfile, preserve it outside the repository before a reviewed first update; the updater now refuses such conflicts.
 
@@ -44,7 +58,7 @@ A committed `package-lock.json` is now present. The setup and update scripts use
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows-start.ps1
 ```
 
-Keep this terminal open. On the **same computer only**, open **http://127.0.0.1:3000** in a browser, log in and verify the seven rooms. Press **Ctrl+C** in the PowerShell window to shut down the app.
+Keep this terminal open. On the **same computer only**, open **http://127.0.0.1:3000** in a browser, log in and verify the seven rooms. Press **Ctrl+C** in the PowerShell window to shut down the app. A double-click `Start FortLedger.cmd` shortcut opens this same supervised server. The first startup unlocks your saved Windows-user DPAPI backup settings (when configured), allowing the protected backup scheduler and verified updater to work without entering the passphrase at every launch.
 
 **Important:** Always launch via `windows-start.ps1`, not bare `npm start`, because the launcher sets the persistent Windows data location. Bare `npm start` without the environment variable may instead create another empty database inside the app folder.
 
@@ -92,7 +106,7 @@ On startup the Node application adds compatible missing SQLite tables/columns as
 
 ## 6. Disaster recovery / separate-drive backups
 
-The pre-update backup protects upgrades, but **not a complete hard-drive failure** because by default it resides under the same Windows profile. For actual operations, set a separate encrypted-backup directory (for example, an external `E:\FortLedgerBackups` drive) and a long, separately stored backup passphrase. FortLedger supports startup and every-24-hours encrypted snapshots **while the app is running**. Do not put that passphrase in Git or in a shared `.ps1` file. See the README's encrypted-backup section. Perform a test restore onto a second folder/computer before relying on backups.
+The pre-update backup protects upgrades, but **not a complete hard-drive failure** because by default it resides under the same Windows profile. For actual operations, use **`Configure FortLedger Backups.cmd`** and select a folder on a separately protected drive or share (for example, `E:\\FortLedgerBackups`). This stores the secret via Windows CurrentUser DPAPI outside Git and restores it at the next normal launch; keep a separate, independent record of the 16+ character backup passphrase for disaster recovery. FortLedger supports startup and every-24-hours encrypted snapshots **while the app is running**. Do not put that passphrase in Git or in a shared `.ps1` file. See the README's encrypted-backup section. Perform a test restore onto a second folder/computer before relying on backups.
 
 ### Important current limits
 - No MSI installer, Windows background service, **silent update**, signed release-tag verification or production rollout has been built yet. The supervised launcher is an alpha process manager with an owner-confirmed browser handoff; a manual desktop shortcut is the fallback. Real Windows end-to-end update and replacement-device restore must be physically tested before relying on it. No subscription is required.
