@@ -197,19 +197,44 @@ export function createRestaurantBill(db,input,actor=null){
   })();
 }
 
-/** Explicit linking is the only route from a manual pending charge to a guest folio. */
-export function linkManualRoomCharge(db,billId,bookingId){
+/** A manual room charge must never attach to a different guest silently.
+ * Exact matching is conservative; genuine spelling differences require
+ * explicit owner/manager review and an attributable reason. */
+export function linkManualRoomCharge(db,billId,bookingId,{actor,override=false,reason=''}={}){
   if(!Number.isSafeInteger(billId)||billId<1||!Number.isSafeInteger(bookingId)||bookingId<1)
     throw new Error('Invalid charge or booking ID');
+  if(!actor||!Number.isSafeInteger(actor.id)||actor.id<0||
+     typeof actor.username!=='string'||!actor.username||typeof actor.role!=='string')
+    throw new Error('Authenticated staff actor required to link a room charge');
+  if(typeof reason!=='string'||reason.length>300)
+    throw new Error('Invalid room-charge review reason');
+  if(typeof override!=='boolean')throw new Error('Invalid manual charge override');
   return db.transaction(()=>{
     const bill=db.prepare('SELECT id,payment_method,booking_id,manual_room,manual_guest FROM restaurant_bills WHERE id=?').get(billId);
     if(!bill||bill.payment_method!=='room')throw new Error('Pending room charge not found');
     if(bill.booking_id!==null)throw new Error('Room charge is already linked');
-    const guest=db.prepare("SELECT id,guest_name,status FROM bookings WHERE id=?").get(bookingId);
+    const guest=db.prepare("SELECT id,guest_name,status,room_id FROM bookings WHERE id=?").get(bookingId);
     if(!guest||guest.status!=='checked_in')throw new Error('Choose an active checked-in booking');
-    // Operator confirms match; automatic name/room matching is intentionally prohibited.
+    const assignedRooms=db.prepare(`SELECT DISTINCT r.name FROM rooms r WHERE r.id IN
+      (SELECT room_id FROM booking_room_allocations WHERE booking_id=?
+       UNION SELECT room_id FROM bookings WHERE id=? AND room_id IS NOT NULL)
+      ORDER BY r.name`).all(bookingId,bookingId).map(r=>r.name);
+    const canonical=value=>String(value||'').normalize('NFKC').trim().replace(/\\s+/g,' ').toLowerCase();
+    const guestMatches=canonical(bill.manual_guest)===canonical(guest.guest_name);
+    const roomMatches=assignedRooms.some(name=>canonical(name)===canonical(bill.manual_room));
+    const mismatch=!guestMatches||!roomMatches;
+    if(mismatch&&(!override||!['owner','manager'].includes(actor.role)||reason.trim().length<10))
+      throw new Error('Manual room or guest does not match this booking; owner/manager override with a review reason (at least 10 characters) required');
+    if(!mismatch&&override)throw new Error('Override is unnecessary; match the original room and guest');
     db.prepare("UPDATE restaurant_bills SET booking_id=?,linked_at=datetime('now') WHERE id=? AND booking_id IS NULL")
       .run(bookingId,billId);
-    return {id:billId,booking_id:bookingId,guest_name:guest.guest_name,linked:true};
+    recordAudit(db,actor,'restaurant_bill.linked','restaurant_bill',billId,{
+      booking_id:bookingId,original_room:bill.manual_room,original_guest:bill.manual_guest,
+      matched_guest:guest.guest_name,assigned_rooms:assignedRooms,
+      guest_matches:guestMatches,room_matches:roomMatches,
+      override:mismatch,reason:reason.trim()
+    });
+    return {id:billId,booking_id:bookingId,guest_name:guest.guest_name,
+      linked:true,override:mismatch};
   })();
 }

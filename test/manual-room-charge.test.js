@@ -6,6 +6,8 @@ import {fileURLToPath} from 'node:url';
 import {openDatabase} from '../src/database.js';
 import {importMenuCsv,listMenu,createRestaurantBill,linkManualRoomCharge,listRestaurantBills} from '../src/restaurant.js';
 import {getGuestFolio} from '../src/folio.js';
+import {auditEvents} from '../src/financial-audit.js';
+const owner={id:0,username:'owner',role:'owner'};
 
 test('unmatched manual restaurant charge cannot enter guest folio before verified linking',()=>{
   const db=openDatabase(':memory:');
@@ -21,16 +23,23 @@ test('unmatched manual restaurant charge cannot enter guest folio before verifie
     const bookingId=Number(db.prepare(`INSERT INTO bookings(guest_name,checkin,checkout,rooms_count,category,nightly_rate_paise,status)
       VALUES('Synthetic A','2026-12-01','2026-12-02',1,'Unassigned',450000,'reserved')`).run().lastInsertRowid);
     assert.equal(getGuestFolio(db,bookingId).bills.length,0);
-    assert.throws(()=>linkManualRoomCharge(db,bill.id,bookingId),/checked-in/);
+    assert.throws(()=>linkManualRoomCharge(db,bill.id,bookingId,{actor:owner}),/checked-in/);
+    db.prepare("UPDATE rooms SET name='Tent 2' WHERE id=2").run();
+    db.prepare('INSERT INTO booking_room_allocations(booking_id,room_id) VALUES(?,2)').run(bookingId);
     db.prepare("UPDATE bookings SET status='checked_in' WHERE id=?").run(bookingId);
-    const linked=linkManualRoomCharge(db,bill.id,bookingId);
+    const linked=linkManualRoomCharge(db,bill.id,bookingId,{actor:owner});
     assert.equal(linked.booking_id,bookingId);
     assert.equal(getGuestFolio(db,bookingId).bills.length,1);
     assert.equal(getGuestFolio(db,bookingId).restaurant_due_paise,24000);
-    assert.throws(()=>linkManualRoomCharge(db,bill.id,bookingId),/already linked/);
+    assert.throws(()=>linkManualRoomCharge(db,bill.id,bookingId,{actor:owner}),/already linked/);
     assert.equal(db.prepare('SELECT count(*) AS n FROM restaurant_bills').get().n,1);
     const original=db.prepare('SELECT manual_room,manual_guest FROM restaurant_bills WHERE id=?').get(bill.id);
     assert.deepEqual(original,{manual_room:'Tent 2',manual_guest:'Synthetic A'});
+    const audit=auditEvents(db,{entityType:'restaurant_bill',entityId:bill.id});
+    assert.equal(audit.length,1);
+    assert.equal(audit[0].action,'restaurant_bill.linked');
+    assert.equal(audit[0].actor_username,'owner');
+    assert.equal(audit[0].details.override,false);
   }finally{db.close();}
 });
 test('manual room entry cannot silently create a room charge without identifying guest and room',()=>{
