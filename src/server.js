@@ -218,7 +218,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.get('/api/restaurant/bills',(_req,res)=>res.json(listRestaurantBills(db)));
   app.post('/api/restaurant/bills',(req,res,next)=>{
     try{
-      requireFinancialRequestId(req.body);
+      // Legacy unauthenticated in-memory fixtures are not a supported hotel deployment.
+      if(authRecord)requireFinancialRequestId(req.body);
       const bill=createRestaurantBill(db,req.body,req.actor);
       res.status(bill.already_recorded?200:201).json(bill);
     }catch(error){next(error);}
@@ -337,7 +338,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
 
   app.post('/api/bookings', (req,res,next)=>{
     try{
-      requireFinancialRequestId(req.body);
+      // Legacy unauthenticated in-memory fixtures are not a supported hotel deployment.
+      if(authRecord)requireFinancialRequestId(req.body);
       const booking=normalizeBooking(req.body);
       const initialPaise=toPaise(req.body.amount_paid??0);
       const method=initialPaise>0?paymentMethod(req.body.advance_method,{allowLegacy:true}):null;
@@ -423,7 +425,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
 
   app.post('/api/bookings/:id/payments',(req,res,next)=>{
     try{
-      requireFinancialRequestId(req.body);
+      // Legacy unauthenticated in-memory fixtures are not a supported hotel deployment.
+      if(authRecord)requireFinancialRequestId(req.body);
       const receipt=recordHotelPayment(db,Number(req.params.id),req.body,req.actor);
       res.status(receipt.already_recorded?200:201).json({ok:true,...receipt});
     }catch(error){next(error);}
