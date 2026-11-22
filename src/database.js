@@ -19,7 +19,6 @@ import {ensureGuestSchema} from './guests.js';
 import {ensureBookingCreateSchema} from './booking-create.js';
 import {ensureFolioSettlementRequestSchema} from './folio.js';
 import {ensureAccommodationAdjustmentSchema} from './accommodation-adjustments.js';
-import {normalizeOperationalNotes} from './booking-notes.js';
 
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
