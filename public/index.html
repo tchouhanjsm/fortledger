@@ -278,6 +278,15 @@
       </form>
       <p id="profile-password-message" role="alert"></p>
     </details>
+    <section id="backup-center" class="update-center" aria-labelledby="backup-center-title" hidden>
+      <h3 id="backup-center-title">Protected backups</h3>
+      <p class="muted">An encrypted database backup is created when the app starts and every 24 hours while it stays running, if a backup drive is configured. The last 30 files are retained. Keep the drive protected and store the recovery passphrase independently.</p>
+      <div class="update-center-actions">
+        <button type="button" id="backup-center-check" class="secondary">Verify latest backup</button>
+        <p id="backup-center-state" role="status" aria-live="polite">Not verified in this session.</p>
+      </div>
+      <p class="muted">A successful database check does not replace off-device recovery testing. Original owner credentials must also be protected separately.</p>
+    </section>
     <section id="update-center" class="update-center" aria-labelledby="update-center-title" hidden>
       <h3 id="update-center-title">Application updates</h3>
       <p class="muted">Check the installed FortLedger update method. This page never changes hotel data.</p>
