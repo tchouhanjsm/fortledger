@@ -285,10 +285,10 @@ try{
         await route.continue();
       });
       await fileControl.setInputFiles({name:'first.csv',mimeType:'text/csv',
-        buffer:Buffer.from('name,category,price,tax_rate\\nOld Stale Menu,Hot Drinks,75,5')});
+        buffer:Buffer.from('name,category,price,tax_rate\nOld Stale Menu,Hot Drinks,75,5')});
       await page.locator('#preview-menu').click();
       await fileControl.setInputFiles({name:'second.csv',mimeType:'text/csv',
-        buffer:Buffer.from('name,category,price,tax_rate\\nMasala Chai,Hot Drinks,90,5\\nNew Juice,Drinks,60,5')});
+        buffer:Buffer.from('name,category,price,tax_rate\nMasala Chai,Hot Drinks,90,5\nNew Juice,Drinks,60,5')});
       await page.waitForTimeout(650);
       assert.equal(await page.locator('#import-menu').isDisabled(),true);
       assert.equal(await page.locator('#menu-import-review-controls').isVisible(),false);
@@ -296,7 +296,7 @@ try{
       try{
         await page.waitForFunction(()=>
           document.querySelector('#menu-import-message')?.textContent?.includes('rows inspected'),
-          {timeout:5000});
+          undefined,{timeout:5000});
       }catch(error){
         const message=await page.locator('#menu-import-message').textContent();
         throw new Error('Second menu preview did not complete: '+message+' / '+error.message);
