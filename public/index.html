@@ -289,6 +289,17 @@
       </form>
       <p id="profile-password-message" role="alert"></p>
     </details>
+    <section id="release-status-panel" class="update-center" aria-labelledby="release-status-title" hidden>
+      <h3 id="release-status-title">Release readiness · NOT RELEASED</h3>
+      <p class="muted">This local alpha cannot certify itself. View machine diagnostics and the six real-world checks required before operational release.</p>
+      <div class="update-center-actions">
+        <button type="button" id="release-status-check" class="secondary">Review release readiness</button>
+        <p id="release-status-message" role="status" aria-live="polite">Not checked in this session.</p>
+      </div>
+      <p id="release-status-machine" class="muted"></p>
+      <ul id="release-status-items" class="release-status-items"></ul>
+      <p class="muted">This is a read-only view. Actual printer paper, replacement-device recovery, guest Wi-Fi isolation, staff device acceptance and GST sign-off must be verified independently. The checklist never issues a tax invoice or installs an update.</p>
+    </section>
     <section id="backup-center" class="update-center" aria-labelledby="backup-center-title" hidden>
       <h3 id="backup-center-title">Protected backups</h3>
       <p class="muted">An encrypted database backup is created when the app starts and every 24 hours while it stays running, if a backup drive is configured. The last 30 files are retained. Keep the drive protected and store the recovery passphrase independently.</p>
