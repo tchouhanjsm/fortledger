@@ -81,9 +81,10 @@ try {
   $env:FORTLEDGER_BACKUP_DIR=$null
   $env:FORTLEDGER_BACKUP_PASSPHRASE=$null
   $ok=Import-FortLedgerBackupSettings -SettingsFile $file -DataDirectory $data
-  if(-not $ok -or $env:FORTLEDGER_BACKUP_DIR -ne $dir -or
+  $directoryMatch=((Get-Item -LiteralPath $env:FORTLEDGER_BACKUP_DIR).FullName -eq
+    (Get-Item -LiteralPath $dir).FullName)
+  if(-not $ok -or -not $directoryMatch -or
     $env:FORTLEDGER_BACKUP_PASSPHRASE -ne $pass) {
-    $directoryMatch=($env:FORTLEDGER_BACKUP_DIR -eq $dir)
     $passphraseMatch=($env:FORTLEDGER_BACKUP_PASSPHRASE -ceq $pass)
     $length=($env:FORTLEDGER_BACKUP_PASSPHRASE+'').Length
     throw "DPAPI reload mismatch (loaded=$ok; directory-match=$directoryMatch; secret-match=$passphraseMatch; decrypted-length=$length; expected-length=$($pass.Length))"
