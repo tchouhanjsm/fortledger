@@ -134,6 +134,14 @@ export function openDatabase(filename = databasePath()) {
     // Additive v7 support table: existing v7 installations also need tombstones
     // without modifying historical booking or payment records.
     ensureBookingCreateSchema(db);
+    // Fail on startup, not while accepting a guest's bill, if a later manual
+    // schema change or damaged file removed the idempotency ledger after v8.
+    // Do not silently reconstruct historic request markers that no longer exist.
+    try{
+      db.prepare('SELECT request_id,bill_id,fingerprint,response_json,created_at FROM restaurant_bill_requests LIMIT 0').all();
+    }catch{
+      throw new Error('Restaurant billing schema is incomplete. Stop FortLedger, run npm run doctor, and restore a verified backup or apply the reviewed v8 migration before recording bills');
+    }
     // Preserve the established repair for legacy direct room_id records on reopen.
     // This is idempotent DML, not a schema migration.
     db.exec('INSERT OR IGNORE INTO booking_room_allocations(booking_id,room_id) SELECT id,room_id FROM bookings WHERE room_id IS NOT NULL');
