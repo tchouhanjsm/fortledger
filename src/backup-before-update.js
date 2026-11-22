@@ -27,7 +27,23 @@ export async function backupBeforeUpdate(destinationDir,{source=databasePath(),a
     const target=path.join(folder,'fortledger.sqlite');
     await db.backup(target);
     db.close();db=null;
+    // SQLite backups of WAL-mode source files can themselves retain WAL mode
+    // (and validation/opening may create -wal/-shm companions). Finalize ONLY
+    // the isolated backup: checkpoint and switch it to a standalone DELETE
+    // journal file, then close before validating/copying it to another device.
+    // Never delete or edit the live hotel's WAL files.
+    let snapshot;
+    try{
+      snapshot=new Database(target);
+      snapshot.pragma('wal_checkpoint(TRUNCATE)');
+      const mode=snapshot.pragma('journal_mode = DELETE',{simple:true});
+      if(mode!=='delete')throw new Error('Could not finalize standalone SQLite snapshot');
+    }finally{snapshot?.close();}
+    if(fs.existsSync(target+'-wal')||fs.existsSync(target+'-shm'))
+      throw new Error('SQLite snapshot has active WAL companion files; cannot safely transfer');
     const detail=validateBackup(target);
+    if(fs.existsSync(target+'-wal')||fs.existsSync(target+'-shm'))
+      throw new Error('Snapshot validation left WAL companion files; cannot claim standalone backup');
     if(fs.existsSync(auth))fs.copyFileSync(auth,path.join(folder,'admin-auth.json'),fs.constants.COPYFILE_EXCL);
     fs.writeFileSync(path.join(folder,'RECOVERY.txt'),
       'FortLedger pre-update backup. Keep this directory private.\n'+
