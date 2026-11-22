@@ -51,7 +51,8 @@ test('booking-to-checkout regression keeps folio, bill replay, room readiness an
     const duplicate=await call('/api/bookings/'+id+'/folio/settle-combined','POST',{method:'cash'});
     assert.equal(duplicate.status,400);
     assert.match(duplicate.value.error,/No outstanding amount/);
-    const checkout=await call('/api/bookings/'+id+'/status','PATCH',{status:'checked_out'});
+    const checkout=await call('/api/bookings/'+id+'/status','PATCH',{status:'checked_out',
+      date_override:true,reason:'Confirmed early departure of guest'});
     assert.equal(checkout.status,200);
     assert.equal((await call('/api/housekeeping')).value[0].status,'dirty');
     day='2027-02-11';
