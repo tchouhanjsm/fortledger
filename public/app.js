@@ -1003,6 +1003,10 @@ async function load(){
   $('#staff-admin').hidden=currentUser.role!=='owner';
   $('#update-center').hidden=!can('system.update');
   $('#backup-center').hidden=!can('system.update');
+  // Off-device encrypted backup preparation is deliberately a local owner
+  // operation; never offer it to staff phones or private-LAN sessions.
+  $('#backup-upgrade-preparation').hidden=!can('system.update')||
+    currentUser.role!=='owner'||!['127.0.0.1','localhost'].includes(window.location.hostname);
   refreshOwnerUpdateNotice();
   $('#guest-create').hidden=!can('guests.write');
   const settingsSave=$('#business-form').querySelector('[type=submit]');
@@ -1125,6 +1129,30 @@ async function renderProfile(){
     }
   }
 }
+$('#backup-center-prepare').onclick=async()=>{
+  if(currentUser?.role!=='owner'||!can('system.update')||
+    !['127.0.0.1','localhost'].includes(window.location.hostname))return;
+  const button=$('#backup-center-prepare'),message=$('#backup-center-prepare-state');
+  button.disabled=true;
+  message.dataset.state='checking';
+  message.textContent='Creating an external encrypted backup and testing a complete recovery…';
+  try{
+    const result=await api('/api/system/backup-prepare',{
+      method:'POST',body:JSON.stringify({})
+    });
+    if(result.state!=='prepared'||result.isolated_restore_verified!==true||
+       result.owner_credential_recoverable!==true)
+      throw new Error('Protected backup verification was not confirmed');
+    message.dataset.state='prepared';
+    message.textContent=result.detail;
+    // Deliberate and read-only: show the newly created backup's health.
+    $('#backup-center-check').click();
+  }catch(error){
+    message.dataset.state='failed';
+    message.textContent='Cannot prepare an update: '+error.message+
+      ' Your existing hotel data was not reset. Do not run the installer yet.';
+  }finally{button.disabled=false;}
+};
 $('#backup-center-check').onclick=async()=>{
   if(!can('system.update'))return;
   const button=$('#backup-center-check'),state=$('#backup-center-state');
