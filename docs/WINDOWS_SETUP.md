@@ -1,5 +1,7 @@
 # FortLedger on Windows — initial installation, startup, and safe updates
 
+> **For hotel receptionists:** use the newer [Windows desktop installer](WINDOWS_DESKTOP_INSTALLER.md), which bundles Node and uses one FortLedger desktop icon. The Git/Node/PowerShell steps below are the **developer/legacy checkout path**, not needed for regular staff. The two installation types have different update mechanisms; do not mix them.
+
 **Stage:** initial alpha setup with synthetic/test data only. Statutory final GST invoice and hardware certification are not complete. This guide is for Windows 10/11 with PowerShell 5.1 or later, one local computer, and **Node.js 22.x**.
 
 ## Quick path: new Windows installation (no previous hotel records)

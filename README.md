@@ -4,6 +4,10 @@
 
 **Release status: ACTIVE ALPHA — NOT RELEASED.** Designed to run on the hotel Mac with Node.js 22+, Express, SQLite, a built-in browser interface and no paid cloud dependency. Never put genuine guest/financial data into a new installation until device, security, financial and restore acceptance is signed off. This repository does **not** store your runtime database, hotel passwords, signed invoices or actual backups.
 
+## Windows staff: download installer and click FortLedger
+
+For nontechnical hotel staff, use the **Windows desktop installer**: the owner downloads the unsigned alpha `FortLedger-Setup-*.exe` from a verified [Windows Installer workflow](https://github.com/tchouhanjsm/fortledger/actions/workflows/windows-installer.yml), installs it once, and staff thereafter click the **FortLedger** desktop icon to start the local browser app. The package bundles Node.js and production dependencies and does not require Git, npm or terminal commands on the PC. A native Windows tray icon provides an Open option and a graceful **Close FortLedger safely** command. Original records are never bundled into or removed by the installer. See [installer and staff guide](docs/WINDOWS_DESKTOP_INSTALLER.md). The executable is **unsigned alpha**, not production-certified.
+
 ## Start and update on the Mac
 
 On first use, from the existing project folder:

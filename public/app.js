@@ -1106,7 +1106,7 @@ $('#update-center-check').onclick=async()=>{
   if(!can('system.update'))return;
   const button=$('#update-center-check'),message=$('#update-center-state');
   const versions=$('#update-center-versions');
-  button.disabled=true;message.textContent='Checking GitHub main…';
+  button.disabled=true;message.textContent='Checking installation status…';
   versions.textContent='';
   approvedUpdateSha=null;
   $('#update-center-readiness').hidden=true;
@@ -1117,9 +1117,11 @@ $('#update-center-check').onclick=async()=>{
     message.textContent=state.message;
     message.dataset.state=state.state;
     const short=sha=>/^[a-f0-9]{12}$/i.test(sha||'')?sha:'Unavailable';
-    versions.textContent='Installed: '+short(state.current)+
-      ' · GitHub main: '+short(state.remote);
-    $('#update-center-windows').hidden=state.platform!=='windows';
+    const installerManaged=state.state==='installer_managed';
+    versions.textContent=installerManaged?'Windows desktop installer distribution':(
+      'Installed: '+short(state.current)+' · GitHub main: '+short(state.remote));
+    $('#update-center-desktop').hidden=!installerManaged;
+    $('#update-center-windows').hidden=state.platform!=='windows'||installerManaged;
     $('#update-center-mac').hidden=state.platform!=='mac';
     if(state.platform==='windows'&&state.state==='new_revision'){
       const readiness=await api('/api/system/updates/readiness');

@@ -80,20 +80,22 @@ export function scheduleEncryptedBackups(db,env=process.env,{intervalMs=24*60*60
     return null;
   }
   assertPassphrase(passphrase);
-  let running=false;
-  async function run(){
-    if(running)return;
-    running=true;
-    try{
-      const result=await createEncryptedBackup(db,directory,passphrase);
-      logger.info('Encrypted SQLite backup created:',path.basename(result.file));
-    }catch(error){logger.error('Encrypted backup failed:',error.message);}
-    finally{running=false;}
+  let pending=null;
+  function run(){
+    // Only one SQLite snapshot at a time; shutdown can await its completion.
+    if(pending)return pending;
+    pending=(async()=>{
+      try{
+        const result=await createEncryptedBackup(db,directory,passphrase);
+        logger.info('Encrypted SQLite backup created:',path.basename(result.file));
+      }catch(error){logger.error('Encrypted backup failed:',error.message);}
+    })().finally(()=>{pending=null;});
+    return pending;
   }
   // Protect against loss of today's data: create a snapshot at application startup,
   // then once every 24 hours while the application remains running.
   void run();
   const handle=setInterval(()=>{void run();},intervalMs);
   handle.unref();
-  return {stop:()=>clearInterval(handle),run};
+  return {stop:()=>clearInterval(handle),run,idle:()=>pending??Promise.resolve()};
 }
