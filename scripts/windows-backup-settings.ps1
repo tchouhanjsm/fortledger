@@ -59,9 +59,17 @@ function Save-FortLedgerBackupSettings {
   $destination=Assert-FortLedgerBackupSeparation -Directory $Directory -DataDirectory $DataDirectory -AppRoot $AppRoot
   $plain=Convert-FortLedgerSecureText $Passphrase
   if ($plain.Length -lt 16) { throw 'Encrypted backup passphrase must be at least 16 characters.' }
+  # Windows CurrentUser DPAPI through .NET, not a dependency on a PowerShell
+  # Security module which can be unavailable on constrained Windows runners.
+  $bytes=[Text.Encoding]::UTF8.GetBytes($plain)
   $plain=$null
-  # No -Key parameter: Windows DPAPI binds encrypted material to THIS user.
-  $sealed=ConvertFrom-SecureString -SecureString $Passphrase
+  try {
+    $sealed=[Convert]::ToBase64String(
+      [Security.Cryptography.ProtectedData]::Protect(
+        $bytes,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser))
+  } finally {
+    [Array]::Clear($bytes,0,$bytes.Length)
+  }
   $folder=Split-Path -Parent $SettingsFile
   if (-not (Test-Path -LiteralPath $folder)) {
     New-Item -ItemType Directory -Path $folder -Force | Out-Null
@@ -98,12 +106,18 @@ function Import-FortLedgerBackupSettings {
       throw 'Invalid encrypted backup settings format.'
     }
     $folder=Assert-FortLedgerBackupSeparation -Directory $stored.directory -DataDirectory $DataDirectory -AppRoot $AppRoot
-    $secure=ConvertTo-SecureString -String $stored.passphrase_dpapi -ErrorAction Stop
-    $secret=Convert-FortLedgerSecureText $secure
-    if ($secret.Length -lt 16) { throw 'Backup passphrase configuration is invalid.' }
-    $env:FORTLEDGER_BACKUP_DIR=$folder
-    $env:FORTLEDGER_BACKUP_PASSPHRASE=$secret
-    $secret=$null
+    $protected=[Convert]::FromBase64String([string]$stored.passphrase_dpapi)
+    $unsealed=[Security.Cryptography.ProtectedData]::Unprotect(
+      $protected,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)
+    try {
+      $secret=[Text.Encoding]::UTF8.GetString($unsealed)
+      if ($secret.Length -lt 16) { throw 'Backup passphrase configuration is invalid.' }
+      $env:FORTLEDGER_BACKUP_DIR=$folder
+      $env:FORTLEDGER_BACKUP_PASSPHRASE=$secret
+      $secret=$null
+    } finally {
+      [Array]::Clear($unsealed,0,$unsealed.Length)
+    }
     return $true
   }catch{
     throw 'Protected backup configuration cannot be unlocked on this Windows account or drive. Reconfigure locally; do not overwrite a working backup.'
