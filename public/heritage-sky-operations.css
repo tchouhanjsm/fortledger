@@ -124,3 +124,10 @@ main,.sidebar{max-width:100%;overflow-x:clip}
   #restaurant .pos-history-tools{width:100%}
   #restaurant #restaurant-history-search{flex:1 1 160px;min-width:0}
 }
+
+/* Reception-first navigation: primary four stages, secondary exceptions. */
+.booking-quick-queues .booking-queue-secondary{border-style:dashed;color:var(--hs-muted)}
+.booking-quick-queues .booking-queue-secondary[aria-pressed="true"]{border-style:solid;color:#fff}
+.booking-row .booking-next-action{display:block;margin:7px 0 0;font-size:11px;line-height:1.45;color:var(--hs-muted);max-width:230px}
+.booking-row .booking-next-action:focus-visible{outline:3px solid var(--hs-focus)}
+@media(max-width:700px){.booking-row .booking-next-action{max-width:none}}
