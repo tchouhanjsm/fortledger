@@ -1,3 +1,5 @@
+import {getBusinessSettings} from './business-settings.js';
+import {HOTEL_TIME_ZONE} from './hotel-clock.js';
 import net from 'node:net';
 
 export function validatePrinterAddress(host,port=9100){
@@ -10,15 +12,30 @@ export function validatePrinterAddress(host,port=9100){
 }
 const clean=s=>String(s??'').normalize('NFKD').replace(/[^\x20-\x7e]/g,'?');
 const money=amount=>'INR '+(amount/100).toFixed(2);
+/** SQLite event instants are stored as UTC without a trailing Z. */
+export function receiptLocalTime(createdAt){
+  const raw=String(createdAt||'');
+  if(!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw))
+    throw new Error('Invalid saved restaurant receipt timestamp');
+  const utc=new Date(raw.replace(' ','T')+'Z');
+  if(!Number.isFinite(utc.getTime()))throw new Error('Invalid saved restaurant receipt timestamp');
+  const parts=new Intl.DateTimeFormat('en-GB',{
+    timeZone:HOTEL_TIME_ZONE,year:'numeric',month:'2-digit',day:'2-digit',
+    hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+  }).formatToParts(utc);
+  const d=Object.fromEntries(parts.filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+  return d.year+'-'+d.month+'-'+d.day+' '+d.hour+':'+d.minute+' IST';
+}
+
 function aligned(a,b,width){
   const right=clean(b).slice(0,width);
   return clean(a).slice(0,Math.max(1,width-right.length-1)).padEnd(Math.max(1,width-right.length-1),' ')+' '+right+'\n';
 }
-export function buildReceipt(bill,width=42){
+export function buildReceipt(bill,width=42,{hotel_name='Garh Jaisal'}={}){
   if(![32,42,48].includes(width))throw new Error('Unsupported paper width');
   const entries=JSON.parse(bill.items_snapshot);
-  const lines=['GARH JAISAL\n','RESTAURANT RECEIPT - NOT A TAX INVOICE\n',
-    '-'.repeat(width)+'\n','Receipt #'+bill.id+'\n','Saved '+bill.created_at+' UTC\n',
+  const lines=[clean(hotel_name).slice(0,width)+'\n','RESTAURANT RECEIPT - NOT A TAX INVOICE\n',
+    '-'.repeat(width)+'\n','Receipt #'+bill.id+'\n','Saved '+receiptLocalTime(bill.created_at)+'\n',
     'Payment: '+clean(bill.payment_method).toUpperCase()+'\n','-'.repeat(width)+'\n'];
   for(const item of entries){
     lines.push(clean(item.name).slice(0,width)+'\n');
@@ -78,7 +95,7 @@ export async function printSavedBill(db,id,options,{send=sendToPrinter,reprint=f
       SET state='sending', attempts=attempts+1,last_error='',updated_at=datetime('now')`).run(id);
   })();
   try{
-    await send(buildReceipt(bill),options);
+    await send(buildReceipt(bill,42,getBusinessSettings(db)),options);
     db.prepare(`UPDATE restaurant_print_jobs SET state='sent_unverified', updated_at=datetime('now')
       WHERE restaurant_bill_id=?`).run(id);
     return {...getPrintStatus(db,id),notice:'Bytes sent; physical paper output is unverified'};
