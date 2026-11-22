@@ -1435,11 +1435,28 @@ async function linkPendingCharge(bill){
   if(entered===null)return;
   const booking=active.find(b=>String(b.id)===entered.trim());
   if(!booking){alert('Select a valid checked-in booking ID.');return;}
+  const canonical=value=>String(value||'').normalize('NFKC').trim().replace(/\\s+/g,' ').toLowerCase();
+  const roomNames=String(booking.assigned_room||'').split(',').map(canonical);
+  const mismatch=canonical(bill.manual_guest)!==canonical(booking.guest_name)||
+    !roomNames.includes(canonical(bill.manual_room));
+  let reason='';
+  if(mismatch){
+    if(!['owner','manager'].includes(currentUser?.role)){
+      alert('The original room or guest differs from this booking. Ask the owner or manager to review and link this charge.');
+      return;
+    }
+    reason=prompt('Room/guest mismatch. Original: '+bill.manual_guest+' / '+bill.manual_room+
+      '\\nChosen: '+booking.guest_name+' / '+(booking.assigned_room||'Unassigned')+
+      '\\nEnter the reason for the owner/manager override (at least 10 characters):');
+    if(reason===null)return;
+    if(reason.trim().length<10){alert('Provide a review reason of at least 10 characters.');return;}
+  }
   if(!confirm('Link food bill #'+bill.id+' to '+booking.guest_name+
-    '? This will add the unpaid charge to their folio.'))return;
+    (mismatch?' with a recorded mismatch override':' after matching guest and room')+
+    '? This adds the unpaid charge to their folio.'))return;
   try{
     await api('/api/restaurant/bills/'+bill.id+'/link-booking',{
-      method:'POST',body:JSON.stringify({booking_id:booking.id})
+      method:'POST',body:JSON.stringify({booking_id:booking.id,override:mismatch,reason:reason.trim()})
     });
     await load();
     alert('Restaurant bill linked to the selected guest for settlement.');
