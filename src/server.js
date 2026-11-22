@@ -84,7 +84,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.use('/api',gate.protect);
   app.post('/api/auth/logout',gate.logout);
   app.use('/api',gate.authorize);
-  app.get('/api/me',(req,res)=>res.json({...req.actor,permissions:ROLE_PERMISSIONS[req.actor.role]||[]}));
+  app.get('/api/me',(req,res)=>res.json({...req.actor,permissions:ROLE_PERMISSIONS[req.actor.role]||[],
+    desktop_installer:process.env.FORTLEDGER_DESKTOP_INSTALLER==='1'}));
   app.get('/api/system/backup-status',(_req,res)=>res.json(backupFreshness()));
   // Explicit owner command: decrypt the latest off-device snapshot into a
   // private scratch folder. Never expose paths, passphrases or guest details.
