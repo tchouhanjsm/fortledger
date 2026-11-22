@@ -152,3 +152,16 @@
   #restaurant .pos-category{padding:10px 12px}
   #restaurant .cart-actions{gap:5px}
 }
+
+/* Unsaved food bill review. The menu remains accessible for adding items. */
+#restaurant .restaurant-review{margin:16px 0;padding:16px;border:1px solid #b9cfc0;border-radius:12px;background:#f3f7f3}
+#restaurant .restaurant-review[hidden]{display:none}
+#restaurant .restaurant-review h3{margin:0 0 7px}
+#restaurant .restaurant-review .menu-item{min-height:43px}
+#restaurant .restaurant-review .menu-item>strong{text-align:right;white-space:nowrap}
+#restaurant .restaurant-review-total{font-weight:700}
+#restaurant .restaurant-bill-actions{display:flex;gap:10px;flex-wrap:wrap}
+#restaurant .restaurant-bill-actions button{min-height:48px;flex:1 1 180px}
+#restaurant .restaurant-bill-actions button[hidden]{display:none}
+#restaurant .cart-actions button[aria-label^="Remove "]{white-space:nowrap}
+@media(max-width:480px){#restaurant .cart-actions{flex-wrap:wrap;justify-content:end}#restaurant .restaurant-review{padding:12px}}
