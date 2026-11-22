@@ -25,7 +25,7 @@
   column-gap:var(--sh-space-6);row-gap:var(--sh-space-2);
 }
 #bookings > .panel-head > :first-child{grid-area:intro;min-width:0}
-#booking-quick-queues{grid-area:queues;min-width:0;width:100%;margin:0}
+#booking-quick-queues{grid-area:queues;min-width:0;width:100%;margin:0;flex-wrap:wrap;overflow-x:visible}
 .booking-filters{
   grid-area:filters;display:grid;
   grid-template-columns:minmax(100px,1fr) minmax(110px,1.2fr) minmax(125px,1.2fr) auto;
@@ -43,6 +43,7 @@
   .today-room-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
   .booking-filters{width:100%}
 }
+@media(max-width:700px){#booking-quick-queues{flex-wrap:nowrap;overflow-x:auto}}
 @media(max-width:600px){.booking-filters{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:390px){.today-room-cards{grid-template-columns:1fr}}
 
