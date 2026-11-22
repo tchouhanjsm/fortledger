@@ -3,17 +3,24 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {openDatabase} from '../src/database.js';
 import {createApp} from '../src/server.js';
+import {createPasswordRecord} from '../src/auth.js';
 import {importMenuCsv,listMenu} from '../src/restaurant.js';
 
 test('public booking/payment/restaurant POSTs require stable client IDs and replay unchanged intents exactly once',async()=>{
   const db=openDatabase(':memory:');
   importMenuCsv(db,'name,category,price,tax_rate\nTea,Drinks,150,5');
-  const server=createApp(db).listen(0,'127.0.0.1');
+  const server=createApp(db,{authRecord:createPasswordRecord('synthetic-auth-financial-ids-strong')}).listen(0,'127.0.0.1');
   await new Promise(resolve=>server.once('listening',resolve));
   const root='http://127.0.0.1:'+server.address().port;
+  const login=await fetch(root+'/api/auth/login',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      username:'owner',password:'synthetic-auth-financial-ids-strong'
+    })});
+  assert.equal(login.status,200);
+  const cookie=login.headers.get('set-cookie').split(';')[0];
   const post=async(path,body)=>{
     const res=await fetch(root+path,{method:'POST',
-      headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      headers:{'Content-Type':'application/json',Cookie:cookie},body:JSON.stringify(body)});
     return {status:res.status,payload:await res.json()};
   };
   try{
