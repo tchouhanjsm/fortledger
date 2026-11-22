@@ -19,5 +19,7 @@ test('only existing sync script can change application files after protective ba
   assert.match(update,/backup-before-update\.js/);
   assert.match(update,/merge --ff-only origin\/main/);
   assert.match(update,/npm\.cmd test/);
-  assert.match(update,/Tracked app files have local changes/);
+  assert.match(update,/status --porcelain=v1 --untracked-files=all/);
+  assert.match(update,/tracked or untracked changes/);
+  assert.match(update,/npm\.cmd ci --no-audit --no-fund/);
 });
