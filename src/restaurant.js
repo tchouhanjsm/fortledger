@@ -1,5 +1,5 @@
 import { toPaise } from './finance.js';
-import {createHash} from 'node:crypto';
+import {createHash,createHmac} from 'node:crypto';
 import {ensurePrintSchema} from './printer.js';
 import {recordAudit} from './financial-audit.js';
 export function ensureRestaurantSchema(db){
@@ -106,13 +106,61 @@ export function parseMenuCsv(csv){
   }
   return items;
 }
-export function importMenuCsv(db,csv){
+// Preview the EXACT change the import will make against the complete current
+// menu, including inactive rows. SQL COLLATE NOCASE mirrors import identity.
+export function planMenuImport(db,csv,{signingKey}={}){
+  const items=parseMenuCsv(csv);
+  const current=db.prepare('SELECT id,name,category,price_paise,tax_rate,active FROM menu_items ORDER BY id').all();
+  const match=db.prepare('SELECT id,name,category,price_paise,tax_rate,active FROM menu_items WHERE name=? COLLATE NOCASE AND category=? COLLATE NOCASE');
+  const summary={new:0,updated:0,unchanged:0,suspicious:0};
+  const preview=items.map((item,i)=>{
+    const matches=match.all(item.name,item.category);
+    if(matches.length>1)throw new Error('CSV row '+(i+2)+': existing menu has ambiguous case-duplicate item '+item.name+'; resolve the duplicate before importing');
+    const prior=matches[0]||null;
+    const tax_changed=prior!==null&&prior.tax_rate!==item.tax_rate;
+    const price_delta_paise=prior===null?0:item.price_paise-prior.price_paise;
+    const unusual_price=prior!==null&&Math.abs(price_delta_paise)>=5000&&
+      (prior.price_paise===0||Math.abs(price_delta_paise)*100>=prior.price_paise*30);
+    const suspicious=Boolean(prior&&(tax_changed||unusual_price));
+    const change=prior===null?'new':suspicious?'suspicious':
+      (price_delta_paise!==0||prior.tax_rate!==item.tax_rate||prior.active!==1?'updated':'unchanged');
+    summary[change]++;
+    const concern=tax_changed?'GST rate changed; accountant review may be required':
+      unusual_price?'Large price difference (30% or more, and at least ₹50)':'';
+    return {...item,row_number:i+2,change,existing_id:prior?.id??null,
+      old_price_paise:prior?.price_paise??null,old_tax_rate:prior?.tax_rate??null,
+      price_delta_paise,reactivates:prior?.active===0,concern};
+  });
+  const category_counts=Object.fromEntries([...new Set(items.map(x=>x.category))]
+    .sort((a,b)=>a.localeCompare(b)).map(category=>[
+      category,items.filter(x=>x.category===category).length]));
+  const tax_rates=[...new Set(items.map(x=>x.tax_rate))].sort((a,b)=>a-b);
+  // A per-running-server signing key prevents callers from fabricating approval
+  // of unreviewed bytes. Including ALL menu rows prevents stale multi-user writes.
+  const preview_token=signingKey?createHmac('sha256',signingKey)
+    .update(JSON.stringify({csv,menu:current})).digest('hex'):null;
+  return {count:items.length,preview,summary,category_counts,tax_rates,preview_token};
+}
+export function importMenuCsv(db,csv,options={}){
   const normalized=parseMenuCsv(csv);
+  let result={imported:normalized.length};
   db.transaction(()=>{
+    if(options.require_preview){
+      if(typeof options.preview_token!=='string'||!options.preview_token)
+        throw new Error('Preview this exact CSV before importing');
+      if(!options.signingKey)throw new Error('Missing menu preview verification key');
+      const plan=planMenuImport(db,csv,{signingKey:options.signingKey});
+      if(plan.preview_token!==options.preview_token)
+        throw new Error('Menu or selected CSV changed after preview; check the file and review again before importing');
+      if(options.confirm_import!==true)
+        throw new Error('Confirm the reviewed import changes before saving');
+      if(plan.summary.suspicious>0&&options.approve_suspicious!==true)
+        throw new Error('Suspicious menu price or GST changes require explicit review and confirmation');
+      result={imported:normalized.length,summary:plan.summary};
+    }
     // Keep existing stable menu IDs (historic bill snapshots refer to them).
-    // An existing mixed-case spelling is the same menu item, but a legacy DB
-    // containing two such rows is ambiguous and requires operator resolution.
-    const matched=db.prepare(`SELECT id FROM menu_items
+    // SQLite NOCASE is the source of truth for matching, also used in preview.
+    const matched=db.prepare(`SELECT id,price_paise,tax_rate,active FROM menu_items
       WHERE name=? COLLATE NOCASE AND category=? COLLATE NOCASE`);
     const update=db.prepare(`UPDATE menu_items SET price_paise=?,tax_rate=?,active=1 WHERE id=?`);
     const insert=db.prepare(`INSERT INTO menu_items(name,category,price_paise,tax_rate,active)
@@ -120,11 +168,14 @@ export function importMenuCsv(db,csv){
     for(const item of normalized){
       const rows=matched.all(item.name,item.category);
       if(rows.length>1)throw new Error('Multiple existing menu items differ only by capitalization; resolve duplicate menu items before importing '+item.name);
-      if(rows.length)update.run(item.price_paise,item.tax_rate,rows[0].id);
-      else insert.run(item);
+      if(rows.length){
+        const prior=rows[0];
+        if(prior.price_paise!==item.price_paise||prior.tax_rate!==item.tax_rate||prior.active!==1)
+          update.run(item.price_paise,item.tax_rate,prior.id);
+      }else insert.run(item);
     }
   })();
-  return {imported:normalized.length};
+  return result;
 }
 export function listMenu(db){return db.prepare('SELECT * FROM menu_items WHERE active=1 ORDER BY category,name').all();}
 export function listRestaurantBills(db){
