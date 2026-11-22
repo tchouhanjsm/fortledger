@@ -1148,7 +1148,8 @@ $('#update-center-check').onclick=async()=>{
   if(!can('system.update'))return;
   const button=$('#update-center-check'),message=$('#update-center-state');
   const versions=$('#update-center-versions');
-  button.disabled=true;message.textContent='Checking installation status…';
+  button.disabled=true;message.dataset.state='checking';
+  message.textContent='Checking installation status…';
   versions.textContent='';
   approvedUpdateSha=null;installerDownloadUrl=null;
   $('#update-center-download').hidden=true;
