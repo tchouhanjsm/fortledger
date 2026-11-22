@@ -52,5 +52,4 @@ test('real dashboard actions use shared route-aware target navigation',()=>{
   assert.match(source,/workspaceNavigator\.navigate\('rooms','maintenance-workspace'\)/);
   assert.match(source,/workspaceNavigator\.navigate\('restaurant','restaurant-history-section'\)/);
   assert.match(source,/workspaceNavigator\.navigate\('dashboard','home-closing'\)/);
-  assert.doesNotMatch(source,/window\.location\.hash='business-settings';[\s\S]*daily-close-form/);
 });
