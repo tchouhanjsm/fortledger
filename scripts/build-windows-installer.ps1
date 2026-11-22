@@ -59,6 +59,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Inno installer build failed.' }
 $file=Join-Path $destination ('FortLedger-Setup-'+$Version+'-win-x64.exe')
 if (-not (Test-Path -LiteralPath $file)) { throw 'Installer executable missing after compilation.' }
 $hash=(Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash
+Write-Host 'Verifying actual installer/uninstaller and desktop icon creation...' -ForegroundColor Cyan
+& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'windows-installer-install-smoke.ps1') -Installer $file
+if ($LASTEXITCODE -ne 0) { throw 'Inno installer integration verification failed.' }
 Write-Host ('INSTALLER BUILT: '+$file) -ForegroundColor Green
 Write-Host ('SHA256: '+$hash)
 Write-Host 'UNSIGNED ALPHA: physical Windows installation, SmartScreen and real restore acceptance remain required.' -ForegroundColor Yellow
