@@ -293,8 +293,14 @@ try{
       assert.equal(await page.locator('#import-menu').isDisabled(),true);
       assert.equal(await page.locator('#menu-import-review-controls').isVisible(),false);
       await page.locator('#preview-menu').click();
-      await page.waitForFunction(()=>
-        document.querySelector('#menu-import-message')?.textContent?.includes('rows inspected'));
+      try{
+        await page.waitForFunction(()=>
+          document.querySelector('#menu-import-message')?.textContent?.includes('rows inspected'),
+          {timeout:5000});
+      }catch(error){
+        const message=await page.locator('#menu-import-message').textContent();
+        throw new Error('Second menu preview did not complete: '+message+' / '+error.message);
+      }
       assert.equal(await page.locator('#menu-import-review-controls').isVisible(),true);
       assert.equal(await page.locator('#menu-import-preview tbody tr').count(),2);
       assert.equal(await page.locator('#menu-import-preview').getByText('Old Stale Menu').count(),0);
