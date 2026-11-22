@@ -3,6 +3,7 @@ import {VIEWS,viewForHash} from './navigation.js';
 import {createWorkspaceNavigator} from './workspace-navigation.js';
 import {createConfirmAction} from './ui-dialog.js';
 import {matchesWorkQueue,bookingNextActionCue} from './booking-work-queue.js';
+import {BOOKING_CARD_BATCH,bookingCardPage} from './booking-card-page.js';
 import {bookingDraftError} from './booking-editor-guards.js';
 import {todayAttention} from './today-attention.js';
 import {prepareDailyClosing} from './daily-close-preparation.js';
@@ -131,6 +132,7 @@ async function api(url,options={}){
   return data;
 }
 function setMessage(message){const node=$('#form-error');node.textContent=message;}
+let bookingCardVisibleCount=BOOKING_CARD_BATCH,lastBookingFilterKey='';
 function renderBookings(){
   const q=$('#search').value.trim().toLowerCase(),list=$('#booking-list');list.replaceChildren();
   const statusFilter=$('#booking-status-filter')?.value||'all';
@@ -139,18 +141,29 @@ function renderBookings(){
     button.setAttribute('aria-pressed',String(button.dataset.bookingQueue===workFilter));
   }
   const today=hotelToday();
+  const filterKey=JSON.stringify([q,statusFilter,workFilter]);
+  if(filterKey!==lastBookingFilterKey){
+    bookingCardVisibleCount=BOOKING_CARD_BATCH;
+    lastBookingFilterKey=filterKey;
+  }
   const filtered=bookings.filter(b=>
     (statusFilter==='all'||b.status===statusFilter)&&
     matchesWorkQueue(b,workFilter,today)&&
     [String(b.id),b.guest_name,b.company_name,b.category,b.assigned_room||'']
       .some(v=>String(v||'').toLowerCase().includes(q)));
+  const page=bookingCardPage(filtered,bookingCardVisibleCount);
   const count=$('#booking-results-count');
-  count.textContent=filtered.length+' of '+bookings.length+' bookings shown'+
+  count.textContent=page.shown+' of '+filtered.length+' matching bookings shown'+
+    (filtered.length!==bookings.length?' · '+bookings.length+' saved total':'')+
     (workFilter!=='all'?' · hotel date '+today:'');
+  const loadMore=$('#booking-list-more');
+  loadMore.hidden=!page.hasMore;
+  loadMore.textContent='Show '+Math.min(BOOKING_CARD_BATCH,page.remaining)+
+    ' more bookings ('+page.remaining+' remaining)';
   if(!filtered.length)list.append(label('p',
     bookings.length?'No bookings match these filters. Clear filters to view the ledger.':
       'No bookings yet. Create your first reservation.','muted'));
-  for(const b of filtered){
+  for(const b of page.items){
     const row=label('div',undefined,'booking-row');
     const guest=label('div');guest.append(label('strong',b.guest_name),label('small',[b.company_name,b.category,b.assigned_room].filter(Boolean).join(' · ')));
     if(b.pickup_notes||b.stay_notes){
@@ -289,6 +302,12 @@ function renderBookings(){
   $('#stat-bookings').textContent=bookings.filter(b=>b.status!=='cancelled').length;
   $('#stat-due').textContent=money(bookings.filter(b=>b.status!=='cancelled').reduce((total,b)=>total+b.due_paise,0));
 }
+// Incrementally expand only visible DOM cards; every record remains in memory
+// for full search, availability, calendar, payments and invoice views.
+$('#booking-list-more').onclick=()=>{
+  bookingCardVisibleCount+=BOOKING_CARD_BATCH;
+  renderBookings();
+};
 function renderCalendar(){
   if(calendarMode==='month'){renderMonth();return;}
   $('#calendar-week').hidden=false;$('#calendar-month').hidden=true;
