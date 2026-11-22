@@ -305,7 +305,7 @@
 </section>
   <section id="roadmap" class="footnote">See the <a href="https://github.com/tchouhanjsm/fortledger/blob/main/docs/PROJECT_BLUEPRINT.md">project blueprint</a> and <a href="https://github.com/tchouhanjsm/fortledger/blob/main/docs/DEVELOPMENT_LOG.md">development log</a> for release blockers.</section>
 </main>
-<dialog id="booking-dialog"><form id="booking-form"><div class="dialog-heading"><div><span class="eyebrow">NEW RESERVATION</span><h2 id="dialog-title">Add a booking</h2></div><button type="button" id="close-dialog" class="icon-btn" aria-label="Close">×</button></div><div class="form-grid"><label class="wide">Returning guest (optional)<select id="booking-guest-profile" name="guest_id"><option value="">No linked guest profile</option></select></label><label class="wide">Guest / group name<input name="guest_name" required maxlength="150" placeholder="e.g. Awaita"></label><label class="wide">Company name (optional)<input name="company_name" maxlength="150"></label><label>Check-in<input type="date" name="checkin" required></label><label>Check-out<input type="date" name="checkout" required></label><label>Rooms booked<input type="number" name="rooms_count" min="1" max="7" value="1" required></label><label>Meal plan<select name="meal_plan"><option>CP</option><option>CPAI</option><option>MAP</option><option>MAPI</option><option>EP</option><option>AP</option></select></label><label>Category<select name="category" id="category-select" required></select></label><label class="wide">Physical rooms (optional; assign some or all)<div id="room-assignment-list" class="room-choices"></div></label><label>Rate per room/night (₹, GST inclusive)<input type="number" name="nightly_rate" min="0" step="0.01" required placeholder="4500"></label><label>Advance received (₹)<input id="initial-advance" type="number" name="amount_paid" min="0" step="0.01" value="0"></label><label>Advance payment method<select id="advance-method" name="advance_method">
+<dialog id="booking-dialog" aria-labelledby="dialog-title"><form id="booking-form"><div class="dialog-heading"><div><span class="eyebrow">NEW RESERVATION</span><h2 id="dialog-title">Add a booking</h2></div><button type="button" id="close-dialog" class="icon-btn" aria-label="Close">×</button></div><div class="form-grid"><label class="wide">Returning guest (optional)<select id="booking-guest-profile" name="guest_id"><option value="">No linked guest profile</option></select></label><label class="wide">Guest / group name<input name="guest_name" required maxlength="150" placeholder="e.g. Awaita"></label><label class="wide">Company name (optional)<input name="company_name" maxlength="150"></label><label>Check-in<input type="date" name="checkin" required></label><label>Check-out<input type="date" name="checkout" required></label><label>Rooms booked<input type="number" name="rooms_count" min="1" max="7" value="1" required></label><label>Meal plan<select name="meal_plan"><option>CP</option><option>CPAI</option><option>MAP</option><option>MAPI</option><option>EP</option><option>AP</option></select></label><label>Category<select name="category" id="category-select" required></select></label><label class="wide">Physical rooms (optional; assign some or all)<div id="room-assignment-list" class="room-choices"></div></label><label>Rate per room/night (₹, GST inclusive)<input type="number" name="nightly_rate" min="0" step="0.01" required placeholder="4500"></label><label>Advance received (₹)<input id="initial-advance" type="number" name="amount_paid" min="0" step="0.01" value="0"></label><label>Advance payment method<select id="advance-method" name="advance_method">
   <option value="">Select if advance received</option>
   <option value="cash">Cash</option><option value="upi">UPI</option>
   <option value="card">Card</option><option value="bank">Bank transfer</option>
@@ -333,8 +333,8 @@
     </div>
   </form>
 </dialog>
-<dialog id="invoice-dialog"><form id="invoice-form">
-  <div class="dialog-heading"><div><span class="eyebrow">PROFORMA INVOICE</span><h2>Review and issue</h2></div><button id="close-invoice" type="button" class="icon-btn" aria-label="Close">×</button></div>
+<dialog id="invoice-dialog" aria-labelledby="invoice-dialog-title"><form id="invoice-form">
+  <div class="dialog-heading"><div><span class="eyebrow">PROFORMA INVOICE</span><h2 id="invoice-dialog-title">Review and issue</h2></div><button id="close-invoice" type="button" class="icon-btn" aria-label="Close">×</button></div>
   <p class="muted">Edit accommodation lines before issuing. Saved proformas are immutable.</p>
   <div class="form-grid">
     <label class="wide">Guest / group name<input name="guest_name" required maxlength="150"></label>
@@ -346,7 +346,7 @@
   <div id="invoice-totals" class="form-preview"></div><p id="invoice-error" role="alert"></p>
   <div class="dialog-actions"><button id="cancel-invoice" type="button" class="secondary">Cancel</button><button type="submit" class="primary">Issue proforma PDF</button></div>
   </form></dialog>
-<dialog id="folio-dialog"><div class="dialog-heading"><div><span class="eyebrow">GUEST FOLIO</span><h2 id="folio-name">Guest settlement</h2></div><button id="close-folio" type="button" class="icon-btn" aria-label="Close">×</button></div>
+<dialog id="folio-dialog" aria-labelledby="folio-name"><div class="dialog-heading"><div><span class="eyebrow">GUEST FOLIO</span><h2 id="folio-name">Guest settlement</h2></div><button id="close-folio" type="button" class="icon-btn" aria-label="Close">×</button></div>
   <div id="folio-summary" class="form-preview"></div>
   <section aria-label="Accommodation adjustments">
     <h3>Accommodation adjustments</h3>
@@ -369,8 +369,8 @@
   <div class="dialog-actions"><button id="folio-combined" class="primary">Settle all outstanding</button></div>
   <p class="muted">Each restaurant room bill can also be settled individually above. This is a payment record, not a tax invoice.</p>
 </dialog>
-<dialog id="tax-draft-dialog"><form id="tax-draft-form">
-  <div class="dialog-heading"><div><span class="eyebrow">LEGAL REVIEW PREVIEW</span><h2>Tax invoice draft</h2></div>
+<dialog id="tax-draft-dialog" aria-labelledby="tax-draft-title"><form id="tax-draft-form">
+  <div class="dialog-heading"><div><span class="eyebrow">LEGAL REVIEW PREVIEW</span><h2 id="tax-draft-title">Tax invoice draft</h2></div>
     <button id="close-tax-draft" type="button" class="icon-btn" aria-label="Close">×</button></div>
   <p class="muted">Prepare a preview from the saved proforma. No statutory invoice number is issued; the PDF is prominently marked as a draft.</p>
   <div class="form-grid">
@@ -384,6 +384,14 @@
   <p id="tax-draft-message" role="alert"></p>
   <div class="dialog-actions"><button type="button" class="secondary" id="cancel-tax-draft">Cancel</button><button type="submit" class="primary">Generate draft PDF</button></div>
 </form></dialog>
+<dialog id="shizuka-confirm-dialog" aria-labelledby="shizuka-confirm-title" aria-describedby="shizuka-confirm-detail">
+  <h2 id="shizuka-confirm-title">Confirm action</h2>
+  <p id="shizuka-confirm-detail"></p>
+  <div class="dialog-actions">
+    <button id="shizuka-confirm-cancel" type="button" class="secondary">Keep unchanged</button>
+    <button id="shizuka-confirm-approve" type="button" class="primary">Confirm</button>
+  </div>
+</dialog>
 <nav id="mobile-shortcuts" aria-label="Mobile shortcuts" hidden>
   <a href="#dashboard" data-view="dashboard">Today</a>
   <a href="#bookings" data-view="bookings">Bookings</a>
