@@ -165,3 +165,68 @@
 #restaurant .restaurant-bill-actions button[hidden]{display:none}
 #restaurant .cart-actions button[aria-label^="Remove "]{white-space:nowrap}
 @media(max-width:480px){#restaurant .cart-actions{flex-wrap:wrap;justify-content:end}#restaurant .restaurant-review{padding:12px}}
+
+/* Restaurant billing workspace: primary draft, calm financial overview and
+   readable immutable receipt history. Uses system fonts and local CSS only. */
+#restaurant .restaurant-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0 12px}
+#restaurant .restaurant-overview>div{display:flex;flex-direction:column;gap:6px;min-width:0;border:1px solid #e0e8df;background:#f8faf8;padding:16px;border-radius:13px}
+#restaurant .restaurant-overview-label{font-size:12px;font-weight:650;color:#50665a}
+#restaurant .restaurant-overview strong{font-size:clamp(19px,2vw,26px);line-height:1.15;letter-spacing:-.03em;color:#1b4332;font-variant-numeric:tabular-nums}
+#restaurant .restaurant-overview small{color:#738478;font-size:11px;line-height:1.35}
+#restaurant .restaurant-jump-links{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 22px;padding:4px 0}
+#restaurant .restaurant-jump-links button{border-radius:20px;min-height:42px;padding:8px 16px}
+#restaurant .restaurant-section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;scroll-margin-top:24px}
+#restaurant .restaurant-section-heading h3{font-size:16px;margin:0 0 5px}
+#restaurant .restaurant-section-heading p{margin:0;font-size:12px}
+#restaurant .restaurant-step{font-size:12px;font-weight:650;white-space:nowrap;color:#38674e}
+#restaurant .restaurant-pane-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px}
+#restaurant .restaurant-pane-heading h3{margin:0}
+#restaurant .pos-menu-panel{border:1px solid #dfe8df;border-radius:14px;padding:18px;background:#fff;min-width:0}
+#restaurant .restaurant-flex{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start;gap:18px}
+#restaurant .pos-bill-panel{box-shadow:0 7px 25px rgba(21,54,37,.055)}
+#restaurant .restaurant-history-section{border-top:1px solid #e6ece6;margin:26px 0 0;padding-top:22px;scroll-margin-top:20px}
+#restaurant .pos-history-head{display:flex;align-items:end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+#restaurant .pos-history-head h3{font-size:16px;margin-bottom:5px}
+#restaurant .pos-history-head p{margin:0}
+#restaurant .pos-history-tools{flex:0 1 310px}
+#restaurant #restaurant-history-search{min-height:44px;width:100%;border:1px solid #cbd9cf;border-radius:9px;padding:10px 13px}
+#restaurant .restaurant-history-filters{display:flex;flex-wrap:wrap;gap:8px;margin:15px 0}
+#restaurant .restaurant-history-filters button{border-radius:999px;font-size:12px;min-height:40px}
+#restaurant .restaurant-history-filters button[aria-pressed="true"]{background:#234c38;border-color:#234c38;color:#fff}
+#restaurant #restaurant-history{display:grid;gap:10px;margin:12px 0 14px}
+#restaurant .restaurant-history-card{padding:15px 17px;border:1px solid #dde8df;border-radius:12px;background:#fff}
+#restaurant .restaurant-history-main{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+#restaurant .restaurant-history-identity{display:grid;gap:4px;flex:1 1 140px}
+#restaurant .restaurant-history-identity strong{font-size:14px}
+#restaurant .restaurant-history-identity small{font-size:11px;color:#617367}
+#restaurant .restaurant-history-status{font-weight:650;font-size:11px;padding:6px 9px;border-radius:99px;background:#edf4ef;color:#28573b}
+#restaurant .restaurant-history-status[data-status="unpaid"]{background:#fff5df;color:#825b19}
+#restaurant .restaurant-history-status[data-status="unmatched"]{background:#fff1e9;color:#894b25}
+#restaurant .restaurant-history-amount{font-size:17px;font-variant-numeric:tabular-nums}
+#restaurant .restaurant-history-target{font-size:12px;color:#566d5c;margin:9px 0 3px}
+#restaurant .restaurant-history-details{margin-top:12px;border-top:1px solid #edf1ec;padding-top:10px}
+#restaurant .restaurant-history-details summary{font-size:12px;font-weight:650;cursor:pointer;min-height:32px}
+#restaurant .restaurant-history-items{display:grid;gap:10px;padding:12px 0 4px}
+#restaurant .restaurant-history-item{display:flex;justify-content:space-between;gap:12px;font-size:12px}
+#restaurant .restaurant-history-item strong{white-space:nowrap;font-variant-numeric:tabular-nums}
+#restaurant .restaurant-history-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#restaurant .restaurant-history-actions button{min-height:42px;font-size:12px}
+#restaurant #restaurant-history-more{margin:4px 0 12px;min-height:44px}
+#restaurant .menu-import{margin:24px 0 0}
+@media(max-width:900px){
+  #restaurant .restaurant-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #restaurant .restaurant-flex{grid-template-columns:minmax(0,1fr)}
+  #restaurant .pos-bill-panel{position:static}
+  #restaurant #menu-items{max-height:420px}
+}
+@media(max-width:480px){
+  #restaurant .restaurant-overview>div{padding:12px}
+  #restaurant .restaurant-section-heading{align-items:start;flex-direction:column;gap:5px}
+  #restaurant .restaurant-step{white-space:normal}
+  #restaurant .restaurant-pane-heading{flex-wrap:wrap}
+  #restaurant .pos-menu-panel{padding:12px}
+  #restaurant .restaurant-history-card{padding:12px}
+  #restaurant .restaurant-history-status{order:3}
+  #restaurant .restaurant-jump-links button{flex:1 1 100px;padding:8px}
+  #restaurant .restaurant-history-actions button{flex:1 1 120px}
+}

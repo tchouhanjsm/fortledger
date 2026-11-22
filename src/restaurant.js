@@ -127,7 +127,13 @@ export function importMenuCsv(db,csv){
   return {imported:normalized.length};
 }
 export function listMenu(db){return db.prepare('SELECT * FROM menu_items WHERE active=1 ORDER BY category,name').all();}
-export function listRestaurantBills(db){return db.prepare('SELECT * FROM restaurant_bills ORDER BY id DESC').all().map(x=>({...x,items:JSON.parse(x.items_snapshot)}));}
+export function listRestaurantBills(db){
+  // Read-only settlement state: never infer payment from room assignment alone.
+  return db.prepare(`SELECT b.*,s.method AS settlement_method,s.created_at AS settled_at
+    FROM restaurant_bills b LEFT JOIN restaurant_settlements s
+      ON s.restaurant_bill_id=b.id ORDER BY b.id DESC`)
+    .all().map(x=>({...x,items:JSON.parse(x.items_snapshot)}));
+}
 export function restaurantBillRequest(db,requestId){
   if(typeof requestId!=='string'||!/^[A-Za-z0-9_-]{16,80}$/.test(requestId))
     throw new Error('Invalid restaurant bill request ID');

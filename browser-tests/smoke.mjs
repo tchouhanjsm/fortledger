@@ -246,6 +246,24 @@ try{
       const receiptLink=page.locator('#restaurant-message a').filter({hasText:'Open saved receipt #1'});
       await receiptLink.waitFor({state:'visible'});
       assert.match(await receiptLink.getAttribute('href'),/\/api\/restaurant\/bills\/1\/receipt/);
+      // New restaurant workspace remains readable in a real 1440px browser:
+      // collected means an actually recorded payment, never an unpaid room bill.
+      assert.equal(await page.locator('#restaurant-today-bills').textContent(),
+        '1',"A current synthetic cash bill should appear in today's IST overview");
+      assert.match(await page.locator('#restaurant-today-collected').textContent(),/80\.00/);
+      assert.equal(await page.locator('#restaurant-room-unpaid').textContent(),'0');
+      assert.equal(await page.locator('#restaurant-room-unmatched').textContent(),'0');
+      await page.locator('[data-bill-filter="unpaid"]').click();
+      assert.match(await page.locator('#restaurant-history-count').textContent(),/0 of 1 saved bills/);
+      await page.locator('[data-bill-filter="paid"]').click();
+      assert.match(await page.locator('#restaurant-history-count').textContent(),/1 of 1 saved bills/);
+      assert.match(await page.locator('.restaurant-history-status').textContent(),/Paid/);
+      await page.locator('.restaurant-history-details summary').click();
+      assert.match(await page.locator('.restaurant-history-item').textContent(),/Masala Chai/);
+      await page.locator('[data-bill-filter="all"]').click();
+      await page.locator('#restaurant-history-search').fill('Masala Chai');
+      assert.match(await page.locator('#restaurant-history-count').textContent(),/1 of 1 saved bills/);
+      await page.locator('#restaurant-history-search').fill('');
       await page.locator('#restaurant-history-search').fill('999999');
       assert.equal(await page.locator('#restaurant-history-count').textContent(),'0 of 1 saved bills matching search');
       await page.locator('#restaurant-history-search').fill('1');
