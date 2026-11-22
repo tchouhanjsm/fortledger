@@ -210,6 +210,25 @@ try{
       assert.equal(await page.locator('#cart-count').textContent(),'2 items');
       await page.locator('#cart-items').getByRole('button',{name:'Remove one Masala Chai'}).click();
       assert.equal(await page.locator('#cart-count').textContent(),'1 item');
+      assert.equal(await page.locator('#save-restaurant-bill').isVisible(),false);
+      await page.locator('#review-restaurant-bill').click();
+      await page.locator('#restaurant-review').waitFor({state:'visible'});
+      assert.match(await page.locator('#restaurant-review-total').textContent(),/80\.00/);
+      assert.equal(db.prepare('SELECT COUNT(*) n FROM restaurant_bills').get().n,0,
+        'Review is an unsaved draft');
+      // A real cashier can remove or add menu items and change quantity
+      // while reviewing, and no payment is posted until final confirmation.
+      await page.locator('#cart-items').getByRole('button',{name:'Remove Masala Chai from bill'}).click();
+      assert.equal(await page.locator('#save-restaurant-bill').isDisabled(),true);
+      await page.locator('#menu-items').getByRole('button',{name:'Add Masala Chai to bill'}).first().click();
+      await page.locator('#cart-items').getByRole('button',{name:'Add one Masala Chai'}).click();
+      assert.match(await page.locator('#restaurant-review-total').textContent(),/160\.00/);
+      await page.locator('#cart-items').getByRole('button',{name:'Remove one Masala Chai'}).click();
+      assert.match(await page.locator('#restaurant-review-total').textContent(),/80\.00/);
+      await page.locator('#edit-restaurant-bill').click();
+      assert.equal(await page.locator('#restaurant-review').isVisible(),false);
+      assert.equal(db.prepare('SELECT COUNT(*) n FROM restaurant_bills').get().n,0);
+      await page.locator('#review-restaurant-bill').click();
       let submissions=0;
       await page.route('**/api/restaurant/bills',async route=>{
         if(route.request().method()!=='POST')return route.continue();

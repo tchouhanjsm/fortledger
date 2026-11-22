@@ -1400,6 +1400,10 @@ function renderMenu(){
     const add=label('button','+ Add','secondary');add.type='button';
     add.setAttribute('aria-label','Add '+item.name+' to bill');
     add.onclick=()=>{
+      if(pendingRestaurantBill){
+        $('#restaurant-message').textContent='The previous bill save has an uncertain outcome. Retry the original request before editing or starting another bill.';
+        return;
+      }
       const existing=cart.find(x=>x.menu_item_id===item.id);
       if(existing){if(existing.quantity>=100)return;existing.quantity++;}
       else cart.push({menu_item_id:item.id,quantity:1});
@@ -1410,6 +1414,58 @@ function renderMenu(){
   }
   if(!list.children.length)list.append(label('p',menu.length?'No matching menu items. Clear the search or select All items.':'No menu items found. Import a CSV to start.','muted'));
 }
+let restaurantReviewOpen=false;
+function restaurantBillDraft(){
+  const method=$('#restaurant-method').value;
+  if(!cart.length||cart.length>50)throw new Error('Add 1–50 menu lines before saving');
+  const items=cart.map(x=>({menu_item_id:x.menu_item_id,quantity:x.quantity}));
+  const manual=method==='room'&&$('#restaurant-guest').value==='manual';
+  const body={payment_method:method,items,
+    booking_id:method==='room'&&!manual?Number($('#restaurant-guest').value):undefined};
+  if(manual){
+    body.manual_room=$('#manual-room-number').value.trim();
+    body.manual_guest=$('#manual-room-guest').value.trim();
+    if(!body.manual_room||!body.manual_guest)throw new Error('Enter room identifier and guest name for manual review.');
+  }
+  if(method==='room'&&!manual&&!body.booking_id)
+    throw new Error('Choose a checked-in guest or manual entry.');
+  return body;
+}
+function renderRestaurantReview(){
+  const review=$('#restaurant-review');
+  review.hidden=!restaurantReviewOpen;
+  $('#review-restaurant-bill').hidden=restaurantReviewOpen;
+  $('#edit-restaurant-bill').hidden=!restaurantReviewOpen;
+  $('#save-restaurant-bill').hidden=!restaurantReviewOpen;
+  $('#save-restaurant-bill').disabled=!cart.length||restaurantBillSubmitting;
+  if(!restaurantReviewOpen)return;
+  const list=$('#restaurant-review-items');list.replaceChildren();
+  let total=0,tax=0;
+  for(const entry of cart){
+    const item=menu.find(x=>x.id===entry.menu_item_id);
+    if(!item)continue;
+    const line=item.price_paise*entry.quantity;
+    const taxable=Math.round(line*100/(100+item.tax_rate));
+    total+=line;tax+=line-taxable;
+    const row=label('div',undefined,'menu-item');
+    const detail=label('div');
+    detail.append(label('strong',item.name+' × '+entry.quantity),
+      label('small',money(item.price_paise)+' per item · '+item.tax_rate+'% included tax'));
+    row.append(detail,label('strong',money(line)));
+    list.append(row);
+  }
+  const method=$('#restaurant-method').value;
+  const choice=$('#restaurant-guest');
+  const recipient=method==='room'?(choice.value==='manual'?
+    $('#manual-room-guest').value.trim()+' / '+$('#manual-room-number').value.trim():
+    choice.selectedOptions[0]?.textContent||'No checked-in guest'):'Walk-in bill';
+  $('#restaurant-review-payment').textContent=
+    'Payment: '+(method==='room'?'Charge to room':'Record '+method.toUpperCase()+' received')+
+    ' · '+recipient;
+  $('#restaurant-review-total').textContent=
+    'Bill total '+money(total)+' · Inclusive tax '+money(tax)+
+    ' · '+cart.reduce((n,x)=>n+x.quantity,0)+' items';
+}
 function renderCart(){
   const list=$('#cart-items');list.replaceChildren();
   for(const entry of cart){
@@ -1418,14 +1474,22 @@ function renderCart(){
     const text=label('span',item.name+' · '+money(item.price_paise));
     const controls=label('div',undefined,'cart-actions');
     const minus=label('button','−','secondary');minus.type='button';
+    minus.disabled=Boolean(pendingRestaurantBill);
     minus.setAttribute('aria-label','Remove one '+item.name);
-    minus.onclick=()=>{entry.quantity--;if(entry.quantity<1)cart=cart.filter(x=>x!==entry);renderCart();};
+    minus.onclick=()=>{if(pendingRestaurantBill)return;entry.quantity--;if(entry.quantity<1)cart=cart.filter(x=>x!==entry);renderCart();};
     const count=label('strong',String(entry.quantity));count.setAttribute('aria-label',entry.quantity+' portions');
     const plus=label('button','+','secondary');plus.type='button';
     plus.setAttribute('aria-label','Add one '+item.name);
-    plus.disabled=entry.quantity>=100;
-    plus.onclick=()=>{if(entry.quantity<100)entry.quantity++;renderCart();};
-    controls.append(minus,count,plus);row.append(text,controls);list.append(row);
+    plus.disabled=entry.quantity>=100||Boolean(pendingRestaurantBill);
+    plus.onclick=()=>{if(pendingRestaurantBill)return;if(entry.quantity<100)entry.quantity++;renderCart();};
+    const remove=label('button','Remove','secondary');remove.type='button';
+    remove.disabled=Boolean(pendingRestaurantBill);
+    remove.setAttribute('aria-label','Remove '+item.name+' from bill');
+    remove.onclick=()=>{
+      if(pendingRestaurantBill)return;
+      cart=cart.filter(x=>x!==entry);renderCart();
+    };
+    controls.append(minus,count,plus,remove);row.append(text,controls);list.append(row);
   }
   if(!cart.length)list.append(label('p','Select a menu item to begin.','muted'));
   const total=cart.reduce((sum,x)=>sum+(menu.find(y=>y.id===x.menu_item_id)?.price_paise||0)*x.quantity,0);
@@ -1433,6 +1497,7 @@ function renderCart(){
   $('#cart-count').textContent=quantity+' item'+(quantity===1?'':'s');
   $('#clear-restaurant-cart').disabled=!cart.length||Boolean(pendingRestaurantBill);
   $('#cart-total').textContent='Total (inclusive) '+money(total);
+  renderRestaurantReview();
 }
 let restaurantHistoryLimit=15;
 function showRestaurantReceipt(id){
@@ -1527,19 +1592,40 @@ async function linkPendingCharge(bill){
   }catch(error){alert(error.message);}
 }
 $('#menu-search').oninput=renderMenu;
+$('#review-restaurant-bill').onclick=()=>{
+  if(pendingRestaurantBill){
+    $('#restaurant-message').textContent='Previous save not confirmed; retry the unchanged bill instead of reviewing a new one.';
+    return;
+  }
+  try{restaurantBillDraft();}
+  catch(error){$('#restaurant-message').textContent=error.message;return;}
+  restaurantReviewOpen=true;
+  $('#restaurant-message').textContent='Review and edit the items above. Confirm & save only when the final bill is correct.';
+  renderRestaurantReview();
+  $('#restaurant-review').scrollIntoView({block:'nearest'});
+};
+$('#edit-restaurant-bill').onclick=()=>{
+  if(pendingRestaurantBill)return;
+  restaurantReviewOpen=false;
+  renderRestaurantReview();
+  $('#restaurant-message').textContent='Draft remains unsaved. Add or remove items, then review it again.';
+};
 $('#clear-restaurant-cart').onclick=()=>{
   if(pendingRestaurantBill){
     $('#restaurant-message').textContent='An earlier bill submission is not confirmed. Review saved bills and retry the original request before starting another bill.';
     return;
   }
   if(!cart.length||!confirm('Clear this unsaved bill?'))return;
-  cart=[];renderCart();$('#restaurant-message').textContent='Unsaved bill cleared.';
+  cart=[];restaurantReviewOpen=false;renderCart();$('#restaurant-message').textContent='Unsaved bill cleared.';
 };
 $('#restaurant-method').onchange=()=>{
   $('#room-charge-choice').hidden=$('#restaurant-method').value!=='room';
   updateManualRoomFields();
+  renderRestaurantReview();
 };
-$('#restaurant-guest').onchange=updateManualRoomFields;
+$('#restaurant-guest').onchange=()=>{updateManualRoomFields();renderRestaurantReview();};
+$('#manual-room-number').oninput=renderRestaurantReview;
+$('#manual-room-guest').oninput=renderRestaurantReview;
 // Keep the same immutable intent and UUID after an uncertain response. Never
 // create a second financial record while the original attempt is unresolved.
 let pendingRestaurantBill=null,restaurantBillSubmitting=false;
@@ -1547,24 +1633,19 @@ $('#save-restaurant-bill').onclick=async()=>{
   const button=$('#save-restaurant-bill'),message=$('#restaurant-message');
   if(restaurantBillSubmitting)return;
   if(!pendingRestaurantBill){
-    const method=$('#restaurant-method').value;
-    if(!cart.length){message.textContent='Add at least one item.';return;}
-    const manual=method==='room'&&$('#restaurant-guest').value==='manual';
-    const body={payment_method:method,items:cart.map(x=>({...x})),
-      booking_id:method==='room'&&!manual?Number($('#restaurant-guest').value):undefined};
-    if(manual){
-      body.manual_room=$('#manual-room-number').value.trim();
-      body.manual_guest=$('#manual-room-guest').value.trim();
-      if(!body.manual_room||!body.manual_guest){
-        message.textContent='Enter room identifier and guest name for manual review.';return;
-      }
+    if(!restaurantReviewOpen){
+      message.textContent='Review the draft before committing a financial bill.';
+      return;
     }
-    if(method==='room'&&!manual&&!body.booking_id){
-      message.textContent='Choose a checked-in guest or manual entry.';return;
-    }
-    if(!confirm('Save this restaurant bill? Recording cash, UPI or card means staff have manually confirmed receipt of payment.'))return;
+    let body;
+    try{body=restaurantBillDraft();}
+    catch(error){message.textContent=error.message;return;}
+    if(!confirm('Confirm and permanently save this reviewed bill for '+money(cart.reduce((sum,x)=>
+      sum+(menu.find(y=>y.id===x.menu_item_id)?.price_paise||0)*x.quantity,0))+
+      '? Cash/UPI/card means payment has been manually confirmed. Saved bills cannot be edited or deleted.'))return;
     body.request_id=crypto.randomUUID();
     pendingRestaurantBill=body;
+    renderCart();
   }else if(!confirm('A previous bill submission was not confirmed. Check the saved bills first. Retry the EXACT original bill with the same request ID? Changes to the current cart will not be submitted.')){
     return;
   }
@@ -1594,7 +1675,9 @@ $('#save-restaurant-bill').onclick=async()=>{
       }
     }
     pendingRestaurantBill=null;
+    restaurantReviewOpen=false;
     cart=[];
+    renderCart();
     message.replaceChildren();
     message.append(document.createTextNode('Bill #'+saved.id+' saved once. Payment was recorded manually; FortLedger did not verify a bank transfer. '));
     const link=label('a','Open saved receipt #'+saved.id);
