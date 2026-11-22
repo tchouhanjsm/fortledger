@@ -58,8 +58,19 @@ export function settleRoomBill(db,bookingId,billId,method,actor=null){
     return {restaurant_bill_id:billId,settled_paise:bill.total_paise,method,settlement_group:group};
   })();
 }
-export function settleCombined(db,bookingId,method,actor=null){
+export function settleCombined(db,bookingId,method,actor=null,{
+  accommodation_method=method,bank_reference=''
+}={}){
+  // Restaurant settlement remains cash/UPI/card. Accommodation can use an
+  // independently reconciled bank transfer, with a mandatory human reference.
   validMethod(method);
+  if(!['cash','upi','card','bank'].includes(accommodation_method))
+    throw new Error('Choose an accommodation settlement method');
+  if(typeof bank_reference!=='string'||bank_reference.length>100)
+    throw new Error('Invalid bank transfer reference');
+  const reference=bank_reference.trim();
+  if(accommodation_method==='bank'&&!/^[A-Za-z0-9/_ .-]{5,80}$/.test(reference))
+    throw new Error('Bank transfer needs a reference (5–80 characters) for reconciliation');
   return db.transaction(()=>{
     const folio=getGuestFolio(db,bookingId);
     if(folio.status==='cancelled')throw new Error('Cancelled booking cannot be settled');
@@ -69,9 +80,11 @@ export function settleCombined(db,bookingId,method,actor=null){
     const amount=folio.accommodation.due_paise;
     if(amount>0){
       const payment=db.prepare('INSERT INTO payments(booking_id,amount_paise,note,method) VALUES(?,?,?,?)')
-        .run(bookingId,amount,'Combined checkout settlement '+group,method);
+        .run(bookingId,amount,'Combined checkout settlement '+group+
+          (accommodation_method==='bank'?' · Bank ref: '+reference:''),accommodation_method);
       if(actor)recordAudit(db,actor,'payment.recorded','payment',Number(payment.lastInsertRowid),
-        {booking_id:bookingId,amount_paise:amount,method,settlement_group:group});
+        {booking_id:bookingId,amount_paise:amount,method:accommodation_method,settlement_group:group,
+          ...(accommodation_method==='bank'?{bank_reference:reference}:{})});
     }
     let count=0;
     const insert=db.prepare(`INSERT INTO restaurant_settlements(restaurant_bill_id,method,settlement_group)
@@ -81,7 +94,7 @@ export function settleCombined(db,bookingId,method,actor=null){
       if(actor)recordAudit(db,actor,'settlement.recorded','restaurant_settlement',bill.id,
         {booking_id:bookingId,amount_paise:bill.total_paise,method,settlement_group:group});
     }
-    return {booking_id:bookingId,settlement_group:group,method,
+    return {booking_id:bookingId,settlement_group:group,method,accommodation_method,
       accommodation_paid_paise:amount,restaurant_paid_paise:folio.restaurant_due_paise,
       total_paid_paise:folio.combined_due_paise,restaurant_bills_settled:count};
   })();

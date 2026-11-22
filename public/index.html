@@ -294,7 +294,9 @@
 <dialog id="folio-dialog"><div class="dialog-heading"><div><span class="eyebrow">GUEST FOLIO</span><h2 id="folio-name">Guest settlement</h2></div><button id="close-folio" type="button" class="icon-btn" aria-label="Close">×</button></div>
   <div id="folio-summary" class="form-preview"></div>
   <div id="folio-room-bills"></div>
-  <label class="restaurant-field">Payment method<select id="folio-method"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></label>
+  <label class="restaurant-field">Food room-charge payment method<select id="folio-method"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></label>
+  <label class="restaurant-field">Accommodation payment method<select id="folio-accommodation-method"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option><option value="bank">Bank transfer</option></select></label>
+  <label class="restaurant-field" id="folio-bank-reference-field" hidden>Bank transfer reference<input id="folio-bank-reference" maxlength="80" autocomplete="off" placeholder="UTR / transaction reference"></label>
   <p id="folio-message" role="status"></p>
   <div class="dialog-actions"><button id="folio-combined" class="primary">Settle all outstanding</button></div>
   <p class="muted">Each restaurant room bill can also be settled individually above. This is a payment record, not a tax invoice.</p>

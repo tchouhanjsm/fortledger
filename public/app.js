@@ -1640,13 +1640,20 @@ async function refreshFolio(){
   $('#folio-combined').disabled=data.combined_due_paise===0||data.status==='cancelled';
   $('#folio-combined').textContent='Settle all outstanding · '+money(data.combined_due_paise);
 }
+$('#folio-accommodation-method').onchange=()=>{
+  $('#folio-bank-reference-field').hidden=$('#folio-accommodation-method').value!=='bank';
+};
 $('#close-folio').onclick=()=>$('#folio-dialog').close();
 $('#folio-combined').onclick=async()=>{
   const message=$('#folio-message');
   if(!confirm('Record full accommodation and unpaid restaurant balance as paid?'))return;
   const button=$('#folio-combined');button.disabled=true;
   try{
-    await api('/api/bookings/'+activeFolioBooking+'/folio/settle-combined',{method:'POST',body:JSON.stringify({method:$('#folio-method').value})});
+    await api('/api/bookings/'+activeFolioBooking+'/folio/settle-combined',{method:'POST',body:JSON.stringify({
+      method:$('#folio-method').value,
+      accommodation_method:$('#folio-accommodation-method').value,
+      bank_reference:$('#folio-bank-reference').value.trim()
+    })});
     message.textContent='Combined payment saved. No duplicate charges recorded.';
     await load();await refreshFolio();
   }catch(e){message.textContent=e.message;button.disabled=false;}
