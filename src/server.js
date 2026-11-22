@@ -170,11 +170,22 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
     try{res.json(getGuestFolio(db,Number(req.params.id)));}catch(error){next(error);}
   });
   app.post('/api/bookings/:id/folio/settle-combined',(req,res,next)=>{
-    try{res.status(201).json(settleCombined(db,Number(req.params.id),req.body.method,req.actor,
-      {accommodation_method:req.body.accommodation_method??req.body.method,bank_reference:req.body.bank_reference??''}));}catch(error){next(error);}
+    try{
+      if(authRecord)requireFinancialRequestId(req.body);
+      const result=settleCombined(db,Number(req.params.id),req.body.method,req.actor,{
+        accommodation_method:req.body.accommodation_method??req.body.method,
+        bank_reference:req.body.bank_reference??'',request_id:req.body.request_id
+      });
+      res.status(result.already_recorded?200:201).json(result);
+    }catch(error){next(error);}
   });
   app.post('/api/bookings/:id/folio/room-bills/:billId/settle',(req,res,next)=>{
-    try{res.status(201).json(settleRoomBill(db,Number(req.params.id),Number(req.params.billId),req.body.method,req.actor));}catch(error){next(error);}
+    try{
+      if(authRecord)requireFinancialRequestId(req.body);
+      const result=settleRoomBill(db,Number(req.params.id),Number(req.params.billId),
+        req.body.method,req.actor,{request_id:req.body.request_id});
+      res.status(result.already_recorded?200:201).json(result);
+    }catch(error){next(error);}
   });
   app.get('/api/restaurant/checked-in',(_req,res)=>{
     res.json(db.prepare("SELECT id,guest_name,category,status FROM bookings WHERE status='checked_in' ORDER BY guest_name").all());
