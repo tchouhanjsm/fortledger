@@ -13,7 +13,7 @@ export function prepareDailyClosing(report){
     const line={method};
     for(const field of cols){
       const value=source[field];
-      if(!Number.isSafeInteger(value)||value<0)
+      if(!Number.isSafeInteger(value)||(field!=='net_collected_paise'&&value<0))
         throw new Error('Invalid amount for '+method+' / '+field);
       line[field]=value;
       totals[field]+=value;
