@@ -1,0 +1,66 @@
+; FortLedger per-user installer. No Git/Node/PowerShell commands for staff.
+; Build inputs are staged by scripts/build-windows-installer.ps1 on Windows CI.
+#ifndef AppVersion
+  #define AppVersion "0.1.0.1"
+#endif
+
+[Setup]
+AppId={{F75885D2-D5D8-40F2-A9F6-A5B988A43E6C}
+AppName=FortLedger
+AppVersion={#AppVersion}
+AppVerName=FortLedger {#AppVersion} (Alpha)
+AppPublisher=Garh Jaisal
+AppPublisherURL=https://github.com/tchouhanjsm/fortledger
+DefaultDirName={localappdata}\Programs\FortLedger
+DefaultGroupName=FortLedger
+PrivilegesRequired=lowest
+ArchitecturesAllowed=x64compatible
+OutputDir=..\dist\installer
+OutputBaseFilename=FortLedger-Setup-{#AppVersion}-win-x64
+Compression=lzma2
+SolidCompression=yes
+WizardStyle=modern
+DisableProgramGroupPage=yes
+UsePreviousAppDir=yes
+SetupIconFile=..\dist\windows\app\fortledger.ico
+UninstallDisplayIcon={app}\FortLedger.exe
+CloseApplications=no
+RestartApplications=no
+ChangesAssociations=no
+DisableWelcomePage=no
+AllowNoIcons=no
+CreateUninstallRegKey=yes
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Files]
+Source: "..\dist\windows\app\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\scripts\windows-installer-guard.ps1"; Flags: dontcopy
+
+[Icons]
+Name: "{autoprograms}\FortLedger"; Filename: "{app}\FortLedger.exe"; WorkingDir: "{app}"; Comment: "Open the local hotel application"
+Name: "{autodesktop}\FortLedger"; Filename: "{app}\FortLedger.exe"; WorkingDir: "{app}"; Comment: "Start FortLedger and open the hotel login"
+
+[Run]
+Filename: "{app}\FortLedger.exe"; Description: "Open FortLedger"; Flags: nowait postinstall skipifsilent
+
+[Code]
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  Code: Integer;
+  Parameters: String;
+begin
+  Result := '';
+  ExtractTemporaryFile('windows-installer-guard.ps1');
+  Parameters := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' +
+    ExpandConstant('{tmp}\windows-installer-guard.ps1') + '" -InstallDirectory "' +
+    ExpandConstant('{app}') + '"';
+  if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+              Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
+  begin
+    Result := 'Installation stopped before changing program files. Close the running app, ' +
+      'verify both hotel data/owner credentials, and confirm a recent recoverable encrypted ' +
+      'backup on a separate drive when updating an existing desktop installation.';
+  end;
+end;
