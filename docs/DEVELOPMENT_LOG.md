@@ -317,6 +317,14 @@ All five increments completed in this development session were reviewed and merg
 - The route serializes repeated clicks and is awaited by the graceful desktop tray/supervisor shutdown so SQLite is not closed while the backup is in progress. The current installer still requires closed operations and a recent separately protected backup before program files can be changed; the operation does **not** run unsigned downloaded executables or perform migrations.
 - Synthetic regression and authenticated owner/staff permission tests cover refusal paths and restore integrity. Physical external-drive and new-PC acceptance remain mandatory.
 
+## 2026-11-22 — V3 Kaizen Phase 0/1: PR deduplication and read-only shift handover
+- Audited live main and PRs #110–#128 against the seven-room operating constraints. Closed overlapping unmerged PR #126; merged #127 remains the single owner-update-notice implementation.
+- Added a compact, permission-scoped shift-handover disclosure to the existing Dashboard using already fetched data. Source event IDs, plain-language explanations and existing work-queue links reduce manual lookups.
+- Arrival, overdue departure, near-term incomplete allocation, housekeeping/room blocks, urgent maintenance, unmatched restaurant charges, relevant pickup/stay notes, closing reviews and backup concerns are computed read-only with stable duplicate keys.
+- No database migration, scheduled task, financial write, note data duplication, automatic acknowledgment or customer communication. Staff still confirm changes in existing audited workflows.
+- Synthetic regression tests cover role isolation, event deduplication, source-state refresh, IST date boundaries and unchanged records. CI result and physical acceptance must be checked separately before merging.
+- Decision/limits: docs/KAIZEN_V3_AUDIT.md. Performance and real-device claims remain unverified; follow-on closing preparation, exceptions and profile benchmarks are proposed as separately reviewable PRs.
+
 ## 2026-11-22 — V3 Kaizen performance measurement foundation
 - Added disposable in-memory seven-room workloads with 28 vs 700 synthetic historical reservations, measuring local end-to-end read-only API p50/p95/max and a booking-date SQLite EXPLAIN query plan.
 - Ubuntu CI publishes informational measurements without imposing ungrounded latency thresholds. No production database, cloud API, guest records, financial event writes or persistent files are used.
