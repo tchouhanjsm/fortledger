@@ -34,6 +34,13 @@ import {createBookingSafely} from './booking-create.js';
 import {deleteUnusedBooking,deleteUnusedGuest} from './entry-deletion.js';
 import {requireConfiguredHost,localListenerSettings,readLanTlsCredentials} from './network-policy.js';
 
+/** Financial POSTs require a caller-supplied stable request identity.
+ * Generating a new key in the server would make lost-response retries unsafe. */
+function requireFinancialRequestId(body){
+  if(!body||typeof body.request_id!=='string'||
+    !/^[A-Za-z0-9_-]{16,80}$/.test(body.request_id))
+    throw new Error('Unique request_id (16–80 safe characters) required for financial POST; reuse unchanged ID on retry');
+}
 export function createApp(db,{authRecord=null,authFile=null,network=null,businessDate=null}={}) {
   if(network?.mode==='lan'&&!authRecord)throw new Error('LAN access requires configured authentication');
   const app = express();
@@ -219,6 +226,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.get('/api/restaurant/bills',(_req,res)=>res.json(listRestaurantBills(db)));
   app.post('/api/restaurant/bills',(req,res,next)=>{
     try{
+      // Legacy unauthenticated in-memory fixtures are not a supported hotel deployment.
+      if(authRecord)requireFinancialRequestId(req.body);
       const bill=createRestaurantBill(db,req.body,req.actor);
       res.status(bill.already_recorded?200:201).json(bill);
     }catch(error){next(error);}
@@ -333,6 +342,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
 
   app.post('/api/bookings', (req,res,next)=>{
     try{
+      // Legacy unauthenticated in-memory fixtures are not a supported hotel deployment.
+      if(authRecord)requireFinancialRequestId(req.body);
       const booking=normalizeBooking(req.body);
       const initialPaise=toPaise(req.body.amount_paid??0);
       const method=initialPaise>0?paymentMethod(req.body.advance_method,{allowLegacy:true}):null;
@@ -418,6 +429,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
 
   app.post('/api/bookings/:id/payments',(req,res,next)=>{
     try{
+      // Legacy unauthenticated in-memory fixtures are not a supported hotel deployment.
+      if(authRecord)requireFinancialRequestId(req.body);
       const receipt=recordHotelPayment(db,Number(req.params.id),req.body,req.actor);
       res.status(receipt.already_recorded?200:201).json({ok:true,...receipt});
     }catch(error){next(error);}
