@@ -71,6 +71,10 @@ export async function runAuthenticatedBrowserSmoke(browser){
             // Real 390px keyboard/touch journey, not just a direct HTTP toggle.
             await page.goto(base+'/#restaurant');
             await page.locator('#restaurant').waitFor({state:'visible'});
+            // A draft prepared before the manager pauses an item remains visible,
+            // removable and cannot silently become an incorrect zero-value bill.
+            const menuItemId=listMenu(db)[0].id;
+            await page.getByRole('button',{name:'Add Synthetic Chai to bill'}).click();
             await page.locator('#menu-import-section > summary').click();
             await page.locator('#menu-availability-section > summary').click();
             await page.waitForFunction(()=>document.querySelector('#menu-availability-items .menu-availability-row button'));
@@ -80,6 +84,12 @@ export async function runAuthenticatedBrowserSmoke(browser){
             await page.getByRole('button',{name:'Make available: Synthetic Chai'}).waitFor();
             assert.equal((await context.request.get(base+'/api/restaurant/menu').then(r=>r.json())).length,0);
             assert.equal(await page.locator('#menu-items .menu-item').count(),0);
+            assert.equal(await page.locator('#cart-count').textContent(),'1 item');
+            assert.match(await page.locator('#cart-total').textContent(),/Bill needs review/);
+            const removeUnavailable=page.getByRole('button',{name:'Remove unavailable menu item #'+menuItemId});
+            assert.equal(await removeUnavailable.isVisible(),true);
+            await removeUnavailable.click();
+            assert.equal(await page.locator('#cart-count').textContent(),'0 items');
             assert.equal(await page.getByRole('button',{name:'Make available: Synthetic Chai'}).isEnabled(),true);
             page.once('dialog',dialog=>dialog.accept());
             await page.getByRole('button',{name:'Make available: Synthetic Chai'}).click();
