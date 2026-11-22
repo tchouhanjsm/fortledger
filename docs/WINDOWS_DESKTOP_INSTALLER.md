@@ -22,7 +22,7 @@ For an **existing Mac hotel**, migrate the consistent SQLite snapshot **and** or
 
 ## Installing a newer version
 
-The **installer-managed** build does not have a Git checkout, so its in-app Update Center honestly reports installer-managed updates rather than offering Git fast-forwards. The developer's Windows supervisor belongs to the separate Git-based installation and is **not** used by this package.
+The **installer-managed** build does not have a Git checkout. Its owner-only Update Center checks the official GitHub Windows Installer workflow for a **newer successful `main` push**, requires Linux/Windows/Chromium CI for the **same commit**, and verifies that a genuine unexpired installer artifact exists. When it finds one, the owner sees **Download verified Windows update**. This button opens the official GitHub artifact download, not an installer executable or a command runner. It never silently restarts active hotel operations. The developer's Git supervisor belongs to a separate Git-based installation and is **not** used by this package. Older installed builds without an embedded build number can still see a candidate, but must be reviewed as an unknown version.
 
 For a desktop upgrade:
 
@@ -38,3 +38,11 @@ For a desktop upgrade:
 The builder runs on GitHub's Windows runner, bundles exactly the installed Node 22 executable, production-only npm dependencies including native Windows SQLite, public assets and app source, and compiles a small .NET Framework 4 Windows Forms launcher. It runs packaged first-run, login and graceful-exit smoke tests before Inno Setup creates a per-user Windows x64 installer. The GitHub workflow retains the `.exe` artifact for 30 days.
 
 **No code-signing certificate is configured.** Windows SmartScreen may flag the unsigned executable. Staff should not bypass unexpected security warnings or download installers from untrusted senders: the owner must verify the release source and SHA-256 and decide deployment. No actual Windows PC, printer, backup drive, staff Wi-Fi or accountant GST review is certified by GitHub CI. This remains **ACTIVE ALPHA — NOT RELEASED**.
+
+## Backup health and update acceptance
+
+Automatic encrypted backups use the separately protected directory selected in **Configure encrypted backups** from the Windows tray. With valid CurrentUser-DPAPI settings available to the installed Windows account, the app makes a snapshot at startup and every 24 hours while the app is running, keeping the latest 30 files; backups do **not** run when the program is closed. Keep the external drive connected. The standalone `.flbk` files contain the SQLite ledger and staff account hashes in SQLite, **not the separate owner `admin-auth.json`**; protect an independently encrypted copy of that file too, and keep the passphrase offline.
+
+The owner can now open **My Profile → Protected backups → Verify latest backup**. This explicitly decrypts the newest `.flbk` into disposable private storage and checks the seven-room SQLite structure. The result never exposes a private path, passphrase or guest name. A successful local test is not an off-device restore, and the `independent_drive` result checks drive roots, not encryption/recoverability. Rehearse a full replacement-device restore before permitting a live hotel upgrade.
+
+The **Download verified Windows update** action appears only when the official artifact and exact-main-commit checks succeed, and only for an authenticated owner on the local PC. After downloading, finish forms, safely stop the tray application, verify backups and run the new `.exe` with the existing installer guard. **A push alone is not a software release**; a fully tested build with a retained artifact is required. The EXE is still unsigned alpha; this is a safe notification+download workflow, **not an unattended one-click install**.
