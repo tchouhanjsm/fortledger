@@ -47,3 +47,5 @@ Parallel **business safety** priorities remain: audited saved-bill correction/cr
 Source audit and Node tests are reproducible. CI can save **after-change** Chromium screenshots using synthetic hotel data, but no verified before-change screenshots exist yet. Record these gaps explicitly. Screenshot pixels alone are not WCAG certification. All PRs must pass Linux, Windows and Chromium before merging. FortLedger remains ACTIVE ALPHA — NOT RELEASED.
 
 Screenshot notes: screenshot collection crops to the configured CSS viewport width and scrolls to the top; an intentionally horizontally scrollable calendar remains usable inside its own region. Artifact capture is an inspection aid, not evidence that visual mismatches are all eliminated.
+
+Follow-up visual inspection of the real synthetic Chromium reservation-panel PNG found the final desktop queue chip cut off. Desktop work queues now wrap instead of concealing filters horizontally; narrow mobile retains intentional, labeled horizontal scrolling.
