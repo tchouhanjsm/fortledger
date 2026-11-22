@@ -28,6 +28,10 @@ if ((Test-Path -LiteralPath $persistentDatabase -PathType Leaf) -and
     -not (Test-Path -LiteralPath $authPath -PathType Leaf)) {
   throw 'Existing hotel database found without its original administrator credentials. STOP and recover admin-auth.json instead of creating a new password.'
 }
+if ((Test-Path -LiteralPath $authPath -PathType Leaf) -and
+    -not (Test-Path -LiteralPath $persistentDatabase -PathType Leaf)) {
+  throw 'Existing administrator credentials found without a hotel database. STOP: verify the original ledger path or first-start status. Never initialize a replacement ledger blindly.'
+}
 # Install exactly the tested dependency tree in the committed package-lock.json.
 $nodeVersion = (& node --version)
 if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch '^v22\.') {
