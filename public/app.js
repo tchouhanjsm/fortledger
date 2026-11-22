@@ -129,6 +129,12 @@ function renderBookings(){
   for(const b of filtered){
     const row=label('div',undefined,'booking-row');
     const guest=label('div');guest.append(label('strong',b.guest_name),label('small',[b.company_name,b.category,b.assigned_room].filter(Boolean).join(' · ')));
+    if(b.pickup_notes||b.stay_notes){
+      const noteHint=label('small',(b.pickup_notes?'Pickup noted':'')+
+        (b.pickup_notes&&b.stay_notes?' · ':'')+(b.stay_notes?'Stay notes':''),
+        'booking-note-indicator');
+      guest.append(noteHint);
+    }
     const dates=label('div');dates.append(label('strong',fmtDay(b.checkin)+' → '+fmtDay(b.checkout)),label('small',b.rooms_count+' room(s) · '+b.nights+' night(s) · '+b.meal_plan));
     const stage=label('div');const status=label('select');status.setAttribute('aria-label','Booking status for '+b.guest_name);
     const possible={reserved:['reserved','checked_in','cancelled'],checked_in:['checked_in','checked_out'],
@@ -230,7 +236,10 @@ function renderBookings(){
     const moreTitle=label('summary','More actions');
     moreTitle.setAttribute('aria-label','More actions for booking #'+b.id);
     const moreItems=label('div',undefined,'booking-more-actions');
-    moreItems.append(history,refundButton,proforma);
+    const notesButton=label('button',(b.pickup_notes||b.stay_notes)?'View / edit notes':'Add pickup / stay notes','secondary');
+    notesButton.type='button';
+    notesButton.onclick=()=>openBookingNotes(b);
+    moreItems.append(notesButton,history,refundButton,proforma);
     if(can('entries.delete')){
       const remove=label('button','Delete entry','secondary');remove.type='button';
       remove.setAttribute('aria-label','Delete unused booking #'+b.id);
@@ -1269,6 +1278,7 @@ function openNew(){
   delete f.dataset.pendingRequestId;
   refreshGuestPicker('');
   $('#dialog-title').textContent='Add a booking';$('#booking-submit').textContent='Save booking';
+  $('#booking-extras').open=false;
   $('#initial-advance').disabled=false;$('#initial-advance').closest('label').hidden=false;
   $('#advance-method').disabled=false;$('#advance-method').closest('label').hidden=false;
   setMessage('');updateRoomOptions();updatePreview();captureBookingBaseline();$('#booking-dialog').showModal();
@@ -1278,11 +1288,12 @@ function openEdit(b){
   const form=$('#booking-form');form.reset();
   delete form.dataset.pendingRequestId;
   refreshGuestPicker(b.guest_id||'');
-  ['guest_name','company_name','checkin','checkout','rooms_count','meal_plan','nightly_rate'].forEach(k=>{
+  ['guest_name','company_name','checkin','checkout','rooms_count','meal_plan','nightly_rate','pickup_notes','stay_notes'].forEach(k=>{
     const field=form.elements.namedItem(k);
-    field.value=k==='nightly_rate'?(b.nightly_rate_paise/100):b[k];
+    field.value=k==='nightly_rate'?(b.nightly_rate_paise/100):(b[k]??'');
   });
   $('#category-select').value=b.category;updateRoomOptions(b.room_ids||[]);
+  $('#booking-extras').open=Boolean(b.pickup_notes||b.stay_notes);
   $('#dialog-title').textContent='Edit booking';$('#booking-submit').textContent='Save changes';
   $('#initial-advance').disabled=true;$('#initial-advance').closest('label').hidden=true;
   $('#advance-method').disabled=true;$('#advance-method').closest('label').hidden=true;
@@ -1298,6 +1309,48 @@ function updatePreview(){
     nights+' night(s) · Total '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(gross)+' · Due '+new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(Math.max(0,gross-advance)):
     'Enter valid dates, room count and GST-inclusive rate.';
 }
+/* Operational notes stay editable after invoice issuance; the financial
+   contract and saved proforma remain untouched. */
+let notesBookingId=null,notesSaveBusy=false;
+function openBookingNotes(booking){
+  notesBookingId=booking.id;
+  const form=$('#booking-notes-form');
+  form.elements.namedItem('pickup_notes').value=booking.pickup_notes||'';
+  form.elements.namedItem('stay_notes').value=booking.stay_notes||'';
+  $('#booking-notes-title').textContent='Booking #'+booking.id+' · Operational notes';
+  $('#booking-notes-guest').textContent=booking.guest_name+' · '+fmtDay(booking.checkin)+' – '+fmtDay(booking.checkout);
+  $('#booking-notes-message').textContent='';
+  $('#booking-notes-save').hidden=!can('bookings.write');
+  for(const field of form.querySelectorAll('textarea'))field.readOnly=!can('bookings.write');
+  $('#booking-notes-dialog').showModal();
+}
+$('#booking-notes-cancel').onclick=()=>{if(!notesSaveBusy)$('#booking-notes-dialog').close();};
+$('#booking-notes-close').onclick=()=>{if(!notesSaveBusy)$('#booking-notes-dialog').close();};
+$('#booking-notes-dialog').addEventListener('cancel',event=>{
+  if(notesSaveBusy)event.preventDefault();
+});
+$('#booking-notes-form').onsubmit=async event=>{
+  event.preventDefault();
+  if(notesSaveBusy||!can('bookings.write')||!notesBookingId)return;
+  notesSaveBusy=true;
+  const form=event.currentTarget;
+  const button=$('#booking-notes-save');
+  button.disabled=true;
+  try{
+    await api('/api/bookings/'+notesBookingId+'/operational-notes',{
+      method:'PATCH',body:JSON.stringify({
+        pickup_notes:form.elements.namedItem('pickup_notes').value,
+        stay_notes:form.elements.namedItem('stay_notes').value
+      })
+    });
+    $('#booking-notes-message').textContent='Notes saved. Booking prices and original invoices were not changed.';
+    await load();
+    $('#booking-notes-dialog').close();
+  }catch(error){
+    $('#booking-notes-message').textContent='Notes save not confirmed: '+error.message+
+      '. Refresh the ledger before retrying if the connection was interrupted.';
+  }finally{notesSaveBusy=false;button.disabled=false;}
+};
 /* The booking payment ledger supports idempotent request IDs.
    Keep the same ID when a network error leaves the outcome uncertain. */
 let paymentBookingId=null;
