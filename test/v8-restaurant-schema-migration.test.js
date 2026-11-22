@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {createApp} from '../src/server.js';
 import Database from 'better-sqlite3';
 import {openDatabase} from '../src/database.js';
 import {importMenuCsv,listMenu,createRestaurantBill,restaurantBillRequest} from '../src/restaurant.js';
@@ -75,4 +76,40 @@ test('v7 restaurant migration is atomic on a corrupt legacy schema and never adv
     assert.equal(inspect.prepare('SELECT COUNT(*) AS n FROM menu_items').get().n,1);
     inspect.close();
   }finally{db?.close();fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('real HTTP bill creation succeeds on upgraded v7 hotel and preserves exactly-once writes',async()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'fortledger-v7-api-'));
+  const file=path.join(dir,'hotel.sqlite');
+  let db,server;
+  try{
+    db=openDatabase(file);
+    importMenuCsv(db,'name,category,price,tax_rate\\nTea,Drinks,95,5');
+    db.exec('DROP TABLE restaurant_bill_requests');
+    db.pragma('user_version = 7');
+    db.close();db=null;
+    db=openDatabase(file);
+    server=createApp(db).listen(0,'127.0.0.1');
+    await new Promise(resolve=>server.once('listening',resolve));
+    const root='http://127.0.0.1:'+server.address().port;
+    const request_id=randomUUID();
+    const body={request_id,payment_method:'upi',
+      items:[{menu_item_id:listMenu(db)[0].id,quantity:1}]};
+    const post=()=>fetch(root+'/api/restaurant/bills',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const first=await post();
+    assert.equal(first.status,201);
+    const initial=await first.json();
+    const retry=await post();
+    assert.equal(retry.status,200);
+    assert.equal((await retry.json()).id,initial.id);
+    const lookup=await fetch(root+'/api/restaurant/bills/request/'+request_id);
+    assert.deepEqual(await lookup.json(),{recorded:true,id:initial.id});
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bills').get().n,1);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bill_requests').get().n,1);
+  }finally{
+    if(server)await new Promise(resolve=>server.close(resolve));
+    db?.close();
+    fs.rmSync(dir,{recursive:true,force:true});
+  }
 });
