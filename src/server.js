@@ -18,6 +18,7 @@ import { streamProformaPdf } from './invoice-pdf.js';
 import { getBusinessSettings,updateBusinessSettings } from './business-settings.js';
 import {importMenuCsv,parseMenuCsv,listMenu,createRestaurantBill,restaurantBillRequest,listRestaurantBills,linkManualRoomCharge} from './restaurant.js';
 import {getGuestFolio,settleRoomBill,settleCombined} from './folio.js';
+import {adjustedAccommodation,recordAccommodationAdjustment} from './accommodation-adjustments.js';
 import { NET_PAYMENTS_SQL, paymentHistory,recordRefund } from './payment-ledger.js';
 import {createStaff,listStaff,updateStaff,updateOwnProfile} from './staff.js';
 import {ROLE_PERMISSIONS} from './access.js';
@@ -168,6 +169,12 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   });
   app.get('/api/bookings/:id/folio',(req,res,next)=>{
     try{res.json(getGuestFolio(db,Number(req.params.id)));}catch(error){next(error);}
+  });
+  app.post('/api/bookings/:id/folio/adjustments',(req,res,next)=>{
+    try{
+      const result=recordAccommodationAdjustment(db,Number(req.params.id),req.body,req.actor);
+      res.status(result.already_recorded?200:201).json(result);
+    }catch(error){next(error);}
   });
   app.post('/api/bookings/:id/folio/settle-combined',(req,res,next)=>{
     try{
@@ -333,7 +340,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
     res.json(items.map(b=>{
       const assigned=allocated.get(b.id)||[];
       return {...b,room_ids:assigned.map(x=>x.room_id),
-        assigned_room:assigned.length?assigned.map(x=>x.name).join(', '):null,...bookingTotals(b)};
+        assigned_room:assigned.length?assigned.map(x=>x.name).join(', '):null,
+        ...adjustedAccommodation(db,b,bookingTotals(b))};
     }).filter(b=>!q||[b.guest_name,b.company_name,b.category,b.assigned_room||''].some(x=>x.toLowerCase().includes(q))));
   });
 
