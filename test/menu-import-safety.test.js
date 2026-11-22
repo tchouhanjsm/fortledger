@@ -112,7 +112,7 @@ test('HTTP import cannot bypass exact preview, explicit confirmation or changed-
 test('dashboard warning targets actual closing form and unmatched bill filter',()=>{
   const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
   const attention=app.slice(app.indexOf('function renderTodayAttention'),app.indexOf('function renderDashboard'));
-  assert.match(attention,/window\.location\.hash='dashboard'/);
+  assert.match(attention,/workspaceNavigator\.navigate\('dashboard','home-closing'\)/);
   assert.match(attention,/\$\('#home-closing'\)\.open=true/);
   assert.match(attention,/restaurantBillFilter='unmatched'/);
   assert.doesNotMatch(attention,/daily-close-form[\s\S]*window\.location\.hash='business-settings'/);

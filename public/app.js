@@ -1,5 +1,6 @@
 import {occupiedRoomCount,monthGrid} from './calendar-utils.js';
 import {VIEWS,viewForHash} from './navigation.js';
+import {createWorkspaceNavigator} from './workspace-navigation.js';
 import {matchesWorkQueue} from './booking-work-queue.js';
 import {bookingDraftError} from './booking-editor-guards.js';
 import {todayAttention} from './today-attention.js';
@@ -8,6 +9,9 @@ const $ = selector => document.querySelector(selector);
 let currentUser=null;
 const can=permission=>Boolean(currentUser&&(currentUser.permissions.includes('*')||currentUser.permissions.includes(permission)));
 const VIEW_ACCESS={dashboard:'profile.read',bookings:'bookings.read',rooms:'rooms.read',guests:'guests.read',invoices:'invoices.read',restaurant:'restaurant.read','business-settings':'settings.read',profile:'profile.read'};
+const workspaceNavigator=createWorkspaceNavigator({win:window,doc:document,
+  render:applyWorkspaceView,views:VIEWS,
+  canVisit:view=>!currentUser||can(VIEW_ACCESS[view])});
 function applyWorkspaceView(){
   let view=viewForHash(window.location.hash);
   if(currentUser&&!can(VIEW_ACCESS[view]))view=can('bookings.read')?'bookings':can('restaurant.read')?'restaurant':'profile';
@@ -28,6 +32,7 @@ function applyWorkspaceView(){
   }
   updateMobileNavigation(view);
   window.scrollTo(0,0);
+  workspaceNavigator.afterRender(view);
 }
 function updateMobileNavigation(view){
   const quick=$('#mobile-shortcuts'),more=$('#mobile-more-panel'),toggle=$('#mobile-more-toggle');
@@ -581,14 +586,12 @@ function openFilteredBookingQueue(filter){
   $('#booking-status-filter').value='all';
   $('#search').value='';
   renderBookings();
-  window.location.hash='bookings';
-  document.getElementById('bookings')?.scrollIntoView({block:'start'});
+  workspaceNavigator.navigate('bookings','bookings');
 }
 function openRoomAttention(){
   roomReadinessFilter='attention';
   renderRooms();
-  window.location.hash='rooms';
-  document.getElementById('rooms')?.scrollIntoView({block:'start'});
+  workspaceNavigator.navigate('rooms','rooms');
 }
 function renderTodayAttention(today){
   const panel=$('#today-attention'),items=$('#today-attention-items');
@@ -603,15 +606,13 @@ function renderTodayAttention(today){
     ['unassigned',count.unassigned,'Reservations awaiting room assignment','bookings.read',()=>openFilteredBookingQueue('unassigned')],
     ['rooms',count.rooms,'Rooms needing cleaning or out of service','rooms.read',openRoomAttention],
     ['urgentMaintenance',count.urgentMaintenance,'Urgent unresolved maintenance','maintenance.read',()=>{
-      window.location.hash='rooms';
-      document.getElementById('maintenance-workspace')?.scrollIntoView({block:'start'});
+      workspaceNavigator.navigate('rooms','maintenance-workspace');
     }],
     ['unmatched',count.unmatched,'Restaurant room charges awaiting guest verification','restaurant.read',()=>{
-      window.location.hash='restaurant';
       restaurantBillFilter='unmatched';
       restaurantHistoryLimit=15;
       renderRestaurantHistory();
-      document.getElementById('restaurant-history-section')?.scrollIntoView({block:'start'});
+      workspaceNavigator.navigate('restaurant','restaurant-history-section');
     }]
   ];
   const shown=tasks.filter(([,n,,permission])=>n>0&&can(permission));
@@ -642,12 +643,11 @@ function renderTodayAttention(today){
       label('span','Daily closings need discrepancy review'));
     warning.setAttribute('aria-label','Open financial closing review for '+closeAttention[0].business_date);
     warning.onclick=()=>{
-      window.location.hash='dashboard';
       $('#home-closing').open=true;
       const date=$('#daily-close-form').elements.namedItem('business_date');
       date.value=closeAttention[0].business_date;
       void renderDailyClose();
-      $('#home-closing').scrollIntoView({block:'start'});
+      workspaceNavigator.navigate('dashboard','home-closing');
     };
     items.append(warning);
   }
