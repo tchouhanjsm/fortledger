@@ -1,7 +1,7 @@
 import {toPaise} from './finance.js';
 const METHODS=['cash','upi','card','bank','unrecorded'];
 export const AUDIT_ENTITY_TYPES=Object.freeze(['booking','payment','refund','restaurant_bill',
-  'restaurant_settlement','expense','housekeeping','daily_close','maintenance','guest']);
+  'restaurant_settlement','expense','housekeeping','daily_close','maintenance','guest','room']);
 export function ensureFinancialAuditSchema(db){
   const columns=new Set(db.pragma('table_info(payments)').map(x=>x.name));
   if(!columns.has('method'))
