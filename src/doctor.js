@@ -34,7 +34,8 @@ export function diagnose({
       const tableNames=new Set(db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(x=>x.name));
       const required=['rooms','bookings','payments','payment_refunds','invoices','tax_invoice_drafts',
         'restaurant_bills','restaurant_bill_requests','booking_create_requests',
-        'restaurant_settlements','restaurant_print_jobs','hotel_brand_assets'];
+        'restaurant_settlements','restaurant_print_jobs','hotel_brand_assets',
+        'folio_settlement_requests','entity_id_counters'];
       const missing=required.filter(name=>!tableNames.has(name));
       add('Application schema',missing.length?'fail':'pass',missing.length?'Missing tables: '+missing.join(', '):'Expected tables present');
       if(tableNames.has('rooms')){
