@@ -249,7 +249,7 @@ try{
       // New restaurant workspace remains readable in a real 1440px browser:
       // collected means an actually recorded payment, never an unpaid room bill.
       assert.equal(await page.locator('#restaurant-today-bills').textContent(),
-        '1','A current synthetic cash bill should appear in today's IST overview');
+        '1',"A current synthetic cash bill should appear in today's IST overview");
       assert.match(await page.locator('#restaurant-today-collected').textContent(),/80\.00/);
       assert.equal(await page.locator('#restaurant-room-unpaid').textContent(),'0');
       assert.equal(await page.locator('#restaurant-room-unmatched').textContent(),'0');
