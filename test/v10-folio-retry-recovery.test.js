@@ -86,7 +86,7 @@ test('v9 disk backup upgrades transactionally and preserves all historical folio
     db.pragma('user_version = 9');
     db.close();db=null;
     db=openDatabase(file);
-    assert.equal(db.pragma('user_version',{simple:true}),11);
+    assert.equal(db.pragma('user_version',{simple:true}),12);
     assert.equal(db.prepare('SELECT COUNT(*) n FROM payments').get().n,oldPayments);
     assert.equal(db.prepare('SELECT COUNT(*) n FROM restaurant_settlements').get().n,1);
     assert.equal(db.prepare('SELECT COUNT(*) n FROM folio_settlement_requests').get().n,0);

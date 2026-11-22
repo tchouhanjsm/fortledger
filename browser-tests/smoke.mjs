@@ -176,6 +176,11 @@ try{
       await page.locator('#booking-form [name="checkout"]').fill('2027-01-12');
       await page.locator('#booking-form [name="nightly_rate"]').fill('4500');
       await page.locator('#booking-form [name="amount_paid"]').fill('0');
+      assert.equal(await page.locator('#booking-extras').getAttribute('open'),null,
+        'Optional pickup section stays collapsed in a new reservation');
+      await page.locator('#booking-extras > summary').click();
+      await page.locator('#booking-form [name="pickup_notes"]').fill('Synthetic station pickup 18:30');
+      await page.locator('#booking-form [name="stay_notes"]').fill('Synthetic quiet arrival');
       const preview=await page.locator('#form-total').textContent();
       assert.match(preview,/2 night\(s\)/);
       await page.locator('#booking-submit').click();
@@ -187,7 +192,24 @@ try{
 
       const bookingRow=page.locator('.booking-row').filter({hasText:'Synthetic Browser Guest'});
       assert.equal(await bookingRow.count(),1);
+      assert.match(await bookingRow.textContent(),/Pickup noted.*Stay notes/);
       await bookingRow.getByText('More actions',{exact:true}).click();
+      await bookingRow.getByRole('button',{name:'View / edit notes'}).click();
+      await page.locator('#booking-notes-dialog').waitFor({state:'visible'});
+      assert.equal(await page.locator('#booking-notes-form [name="pickup_notes"]').inputValue(),
+        'Synthetic station pickup 18:30');
+      await page.locator('#booking-notes-form [name="pickup_notes"]').fill('Synthetic station pickup changed to 19:15');
+      await page.locator('#booking-notes-save').click();
+      await page.locator('#booking-notes-dialog').waitFor({state:'hidden'});
+      assert.equal(db.prepare('SELECT pickup_notes FROM bookings WHERE guest_name=?').get('Synthetic Browser Guest').pickup_notes,
+        'Synthetic station pickup changed to 19:15');
+      await bookingRow.getByText('More actions',{exact:true}).click();
+      await bookingRow.getByRole('button',{name:'View / edit notes'}).click();
+      await page.locator('#booking-notes-dialog').waitFor({state:'visible'});
+      assert.equal(await page.locator('#booking-notes-form [name="stay_notes"]').inputValue(),
+        'Synthetic quiet arrival');
+      await page.locator('#booking-notes-cancel').click();
+      await page.locator('#booking-notes-dialog').waitFor({state:'hidden'});
       assert.equal(await bookingRow.getByRole('button',{name:'Payments'}).isVisible(),true);
       await bookingRow.getByRole('button',{name:'+ Payment'}).click();
       await page.locator('#booking-payment-dialog').waitFor({state:'visible'});
@@ -243,6 +265,22 @@ try{
       await page.locator('#invoice-dialog').waitFor({state:'hidden'});
       await page.locator('#invoice-list .invoice-row').first().waitFor({state:'visible'});
       assert.equal(db.prepare('SELECT COUNT(*) AS n FROM invoices').get().n,1);
+      const issuedSnapshot=db.prepare('SELECT snapshot FROM invoices LIMIT 1').get().snapshot;
+      // Even when contract editing is locked, pickup notes are operational.
+      await page.evaluate(()=>{window.location.hash='bookings';});
+      await page.locator('#bookings').waitFor({state:'visible'});
+      const issuedRow=page.locator('.booking-row').filter({hasText:'Synthetic Browser Guest'});
+      assert.equal(await issuedRow.getByRole('button',{name:'Edit',exact:true}).isEnabled(),false);
+      await issuedRow.getByText('More actions',{exact:true}).click();
+      await issuedRow.getByRole('button',{name:'View / edit notes'}).click();
+      await page.locator('#booking-notes-form [name="stay_notes"]').fill('New synthetic instruction after proforma');
+      await page.locator('#booking-notes-save').click();
+      await page.locator('#booking-notes-dialog').waitFor({state:'hidden'});
+      assert.equal(db.prepare('SELECT snapshot FROM invoices LIMIT 1').get().snapshot,issuedSnapshot);
+      assert.equal(db.prepare('SELECT stay_notes FROM bookings WHERE guest_name=?').get('Synthetic Browser Guest').stay_notes,
+        'New synthetic instruction after proforma');
+      await page.evaluate(()=>{window.location.hash='invoices';});
+      await page.locator('#invoices').waitFor({state:'visible'});
       await page.locator('#invoice-list .invoice-row').first().getByRole('button',{name:'Tax draft'}).click();
       await page.locator('#tax-draft-dialog').waitFor({state:'visible'});
       assert.match(await page.locator('#tax-draft-dialog').textContent(),/No statutory invoice number is issued/);

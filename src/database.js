@@ -26,7 +26,7 @@ export function openDatabase(filename = databasePath()) {
   try {
     db.pragma('foreign_keys = ON');
     const current = db.pragma('user_version', {simple:true});
-    if(current > 11)throw new Error('Database schema '+current+' is newer than this FortLedger version (11); update the app before opening it');
+    if(current > 12)throw new Error('Database schema '+current+' is newer than this FortLedger version (12); update the app before opening it');
     if(current < 0)throw new Error('Invalid database schema version');
     // Version 0 includes all legacy pre-versioned FortLedger installations.
     // A single SQLite transaction makes the baseline upgrade all-or-nothing.
@@ -168,6 +168,23 @@ export function openDatabase(filename = databasePath()) {
       db.prepare('SELECT id,booking_id,amount_paise,kind,reason,reference,request_id,actor_username,created_at FROM accommodation_adjustments LIMIT 0').all();
     }catch{
       throw new Error('Accommodation adjustment ledger is missing or incompatible; restore a verified backup');
+    }
+    // Version 12: optional private pickup and stay notes. No price, payment,
+    // invoice or booking status value is changed by the additive migration.
+    if(current<12)db.transaction(()=>{
+      const columns=db.pragma('table_info(bookings)').map(row=>row.name);
+      if(!columns.includes('pickup_notes'))
+        db.exec("ALTER TABLE bookings ADD COLUMN pickup_notes TEXT NOT NULL DEFAULT ''");
+      if(!columns.includes('stay_notes'))
+        db.exec("ALTER TABLE bookings ADD COLUMN stay_notes TEXT NOT NULL DEFAULT ''");
+      if(db.pragma('foreign_key_check').length)
+        throw new Error('Booking notes migration rejected: foreign key violations');
+      db.pragma('user_version = 12');
+    })();
+    try{
+      db.prepare('SELECT id,pickup_notes,stay_notes FROM bookings LIMIT 0').all();
+    }catch{
+      throw new Error('Booking notes schema missing or incompatible; restore a verified backup');
     }
     // Fail closed if a v9 database's identity allocation table was removed.
     for(const type of ['booking','guest']){

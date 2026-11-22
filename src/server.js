@@ -35,6 +35,7 @@ import {createMaintenanceIssue,resolveMaintenanceIssue,listMaintenance,blockedRo
 import {saveGuest,listGuests,guestStays,validateGuestLink} from './guests.js';
 import {paymentMethod,recordAudit,auditEvents,recordHotelPayment} from './financial-audit.js';
 import {createBookingSafely} from './booking-create.js';
+import {normalizeOperationalNotes,updateOperationalNotes} from './booking-notes.js';
 import {deleteUnusedBooking,deleteUnusedGuest} from './entry-deletion.js';
 import {requireConfiguredHost,localListenerSettings,readLanTlsCredentials} from './network-policy.js';
 
@@ -404,6 +405,12 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
     }catch(error){next(error);}
   });
 
+  // Unlike contract edits, pickup/arrival notes remain editable after a proforma
+  // is issued. This endpoint cannot alter room holds, prices or money.
+  app.patch('/api/bookings/:id/operational-notes',(req,res,next)=>{
+    try{res.json(updateOperationalNotes(db,Number(req.params.id),req.body,req.actor));}
+    catch(error){next(error);}
+  });
   app.delete('/api/bookings/:id',(req,res,next)=>{
     try{res.json(deleteUnusedBooking(db,Number(req.params.id),req.actor));}
     catch(error){next(error);}
@@ -418,8 +425,10 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
       if (!previous) return res.status(404).json({error:'Booking not found'});
       assertBookingEditAllowed(db,id,previous);
       const b=normalizeBooking(req.body);
-      // Old clients that omit guest_id keep their existing explicit link.
+      // Older clients must not accidentally erase stored links or notes.
       if(req.body.guest_id===undefined)b.guest_id=previous.guest_id;
+      if(req.body.pickup_notes===undefined)b.pickup_notes=previous.pickup_notes;
+      if(req.body.stay_notes===undefined)b.stay_notes=previous.stay_notes;
       validateGuestLink(db,b.guest_id);
       const {room_ids,...sqlBooking}=b;
       db.transaction(()=>{
@@ -429,7 +438,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
         for(const roomId of b.room_ids)allocate.run(id,roomId);
         db.prepare(`UPDATE bookings SET guest_name=@guest_name,company_name=@company_name,checkin=@checkin,
           checkout=@checkout,rooms_count=@rooms_count,room_id=@room_id,category=@category,
-          meal_plan=@meal_plan,nightly_rate_paise=@nightly_rate_paise,guest_id=@guest_id WHERE id=@id`).run({...sqlBooking,id});
+          meal_plan=@meal_plan,nightly_rate_paise=@nightly_rate_paise,guest_id=@guest_id,
+          pickup_notes=@pickup_notes,stay_notes=@stay_notes WHERE id=@id`).run({...sqlBooking,id});
         recordAudit(db,req.actor,'booking.updated','booking',id,
           {previous:{checkin:previous.checkin,checkout:previous.checkout,rooms_count:previous.rooms_count,
             nightly_rate_paise:previous.nightly_rate_paise},
@@ -523,7 +533,7 @@ function normalizeBooking(input) {
   if(room_ids.length>rooms_count||new Set(room_ids).size!==room_ids.length||
      room_ids.some(id=>!Number.isInteger(id)||id<1))throw new Error('Invalid assigned room selection');
   return {guest_name,company_name,checkin,checkout,rooms_count,room_id,room_ids,category,guest_id,meal_plan,
-    nightly_rate_paise:toPaise(input.nightly_rate)};
+    ...normalizeOperationalNotes(input),nightly_rate_paise:toPaise(input.nightly_rate)};
 }
 
 if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {

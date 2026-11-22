@@ -334,7 +334,37 @@
   <option value="">Select if advance received</option>
   <option value="cash">Cash</option><option value="upi">UPI</option>
   <option value="card">Card</option><option value="bank">Bank transfer</option>
-</select></label></div><div id="form-total" class="form-preview">Enter dates and rate to calculate total.</div><p id="form-error" role="alert"></p><div class="dialog-actions"><button type="button" id="cancel-dialog" class="secondary">Cancel</button><button type="submit" id="booking-submit" class="primary">Save booking</button></div></form></dialog>
+</select></label></div>
+  <details id="booking-extras" class="booking-extras">
+    <summary>Pickup & stay notes <span class="muted">(optional)</span></summary>
+    <div class="form-grid">
+      <label class="wide">Pickup / arrival details
+        <textarea name="pickup_notes" rows="3" maxlength="500" placeholder="For example: train arrival, pickup point, expected time, driver coordination"></textarea>
+      </label>
+      <label class="wide">Other stay instructions
+        <textarea name="stay_notes" rows="3" maxlength="1000" placeholder="For example: early arrival, accessibility request, special arrangements"></textarea>
+      </label>
+    </div>
+    <p class="muted">Internal operational notes for authorized hotel staff. They do not change pricing, issue invoices or arrange transport automatically. Avoid identity documents or sensitive payment details.</p>
+  </details>
+  <div id="form-total" class="form-preview">Enter dates and rate to calculate total.</div><p id="form-error" role="alert"></p><div class="dialog-actions"><button type="button" id="cancel-dialog" class="secondary">Cancel</button><button type="submit" id="booking-submit" class="primary">Save booking</button></div></form></dialog>
+<dialog id="booking-notes-dialog" aria-labelledby="booking-notes-title">
+  <form id="booking-notes-form">
+    <div class="dialog-heading"><div><span class="eyebrow">ARRIVAL & STAY</span><h2 id="booking-notes-title">Operational notes</h2></div><button type="button" class="icon-btn" id="booking-notes-close" aria-label="Close notes">×</button></div>
+    <p id="booking-notes-guest" class="muted"></p>
+    <p class="muted">Internal-only notes, editable without changing a signed proforma, booking amount, or payment. Nothing is sent to a pickup provider.</p>
+    <div class="form-grid">
+      <label class="wide">Pickup / arrival details
+        <textarea name="pickup_notes" maxlength="500" rows="3" placeholder="Pickup point, arrival time, transport coordination"></textarea>
+      </label>
+      <label class="wide">Other stay instructions
+        <textarea name="stay_notes" maxlength="1000" rows="3" placeholder="Any additional operational details"></textarea>
+      </label>
+    </div>
+    <p id="booking-notes-message" role="status" aria-live="polite"></p>
+    <div class="dialog-actions"><button type="button" id="booking-notes-cancel" class="secondary">Close</button><button type="submit" id="booking-notes-save" class="primary">Save notes</button></div>
+  </form>
+</dialog>
 <dialog id="booking-payment-dialog" aria-labelledby="payment-title">
   <form id="booking-payment-form">
     <div class="dialog-heading"><div><span class="eyebrow">BOOKING RECEIPT</span>

@@ -118,3 +118,8 @@ A lightweight owner/manager report calculates booking occupancy, gross ADR and g
 - Provide a guarded one-double-click Windows desktop launcher that only runs after the operator closes the live app and verifies a recent independently protected encrypted backup. The launcher uses the existing backup/restore, safe Git fast-forward, lockfile and test contracts, then starts the original Windows persistent-data launcher.
 - No auto-install from a browser or silent mid-transaction update. A future native updater must supervise process shutdown, preserve restore state, authenticate the operator, pin a verified release and fail closed on errors; do not introduce it as a quick web POST endpoint.
 - Physical Mac remains on the existing manual preflight path. Older installations cannot self-update to a feature they do not yet contain; one manually verified bootstrap sync is always required.
+
+## Optional booking notes decision — 2026-11-22
+- Allow optional internal Pickup/arrival details and Other stay instructions under a collapsed Booking editor section. Keep the primary reservation workflow clean and unchanged when blank.
+- Permit authorized staff to correct these notes after issuing a proforma, using a distinct auditable *nonfinancial* endpoint; do not allow changing invoice snapshots, amounts, payment methods or room allocation through it.
+- No transport dispatch, fare collection or automatic messaging; sensitive guest document/payment data must not be stored in generic free-text notes. Refer to docs/BOOKING_OPERATIONAL_NOTES.md.

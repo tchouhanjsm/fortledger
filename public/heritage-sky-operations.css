@@ -162,3 +162,16 @@ main,.sidebar{max-width:100%;overflow-x:clip}
 .menu-availability-detail small{color:var(--hs-muted);line-height:1.45;font-variant-numeric:tabular-nums}
 #menu-availability-message{font-size:12px;line-height:1.5}
 @media(max-width:520px){.menu-availability-row{align-items:stretch;flex-direction:column}.menu-availability-row button{align-self:flex-start}}
+
+/* Optional arrival and operational notes, not a billing workflow. */
+.booking-extras{margin-top:var(--sh-space-4);border:1px solid var(--hs-border);border-radius:var(--hs-control-radius);background:var(--hs-surface);padding:0 var(--sh-space-4)}
+.booking-extras summary{display:flex;align-items:center;gap:var(--sh-space-2);cursor:pointer;min-height:44px;font-size:14px;font-weight:650;color:var(--hs-ink)}
+.booking-extras summary:focus-visible{outline:3px solid var(--hs-focus);outline-offset:2px}
+.booking-extras .form-grid{margin-top:var(--sh-space-3)}
+.booking-extras textarea,#booking-notes-form textarea{width:100%;min-height:84px;resize:vertical;padding:10px 12px;line-height:1.5;font:inherit;font-size:14px;border:1px solid #cbd4dd;border-radius:var(--hs-control-radius);background:var(--hs-surface);color:var(--hs-ink)}
+.booking-extras p{font-size:12px;line-height:1.5;margin:var(--sh-space-3) 0}
+.booking-note-indicator{display:block!important;color:var(--sh-moss)!important;font-size:12px!important;font-weight:650;margin-top:5px}
+#booking-notes-dialog{width:min(570px,calc(100vw - 28px));max-width:100%;padding:clamp(16px,3vw,28px)}
+#booking-notes-form .form-grid{margin:var(--sh-space-4) 0}
+#booking-notes-form textarea:read-only{background:var(--sh-washi)}
+#booking-notes-message:not(:empty){font-size:13px;line-height:1.5;padding:var(--sh-space-3);border:1px solid var(--hs-border);border-radius:var(--hs-control-radius)}
