@@ -4,6 +4,7 @@ import {randomBytes} from 'node:crypto';
 import path from 'node:path';
 import https from 'node:https';
 import {backupFreshness} from './backup-freshness.js';
+import {verifyLocalBackupHealth} from './backup-health.js';
 import {updateStatus} from './update-status.js';
 import {inspectUpdateReadiness,createSupervisedUpdateIpc} from './update-readiness.js';
 import { fileURLToPath } from 'node:url';
@@ -47,7 +48,7 @@ function requireFinancialRequestId(body){
     !/^[A-Za-z0-9_-]{16,80}$/.test(body.request_id))
     throw new Error('Unique request_id (16–80 safe characters) required for financial POST; reuse unchanged ID on retry');
 }
-export function createApp(db,{authRecord=null,authFile=null,network=null,businessDate=null,checkUpdates=updateStatus,updateService=null}={}) {
+export function createApp(db,{authRecord=null,authFile=null,network=null,businessDate=null,checkUpdates=updateStatus,updateService=null,checkBackupHealth=verifyLocalBackupHealth}={}) {
   if(network?.mode==='lan'&&!authRecord)throw new Error('LAN access requires configured authentication');
   const app = express();
   const menuPreviewKey=randomBytes(32); // invalidated safely on every server restart
@@ -85,6 +86,13 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.use('/api',gate.authorize);
   app.get('/api/me',(req,res)=>res.json({...req.actor,permissions:ROLE_PERMISSIONS[req.actor.role]||[]}));
   app.get('/api/system/backup-status',(_req,res)=>res.json(backupFreshness()));
+  // Explicit owner command: decrypt the latest off-device snapshot into a
+  // private scratch folder. Never expose paths, passphrases or guest details.
+  app.get('/api/system/backup-verify',(req,res,next)=>{
+    if(req.actor?.role!=='owner')
+      return res.status(403).json({error:'Owner verification required'});
+    try{res.json(checkBackupHealth());}catch(error){next(error);}
+  });
   // Read-only inspection only. Never let a browser request execute a Git merge,
   // npm installation, data migration, process restart, or a remote network command.
   const updateOwnerLocal=req=>Boolean(authRecord&&network?.mode!=='lan'&&
