@@ -21,6 +21,17 @@ foreach($name in @('windows-backup-settings.ps1','windows-configure-backups.ps1'
 }
 $nodeBinary=(Get-Command node.exe -ErrorAction Stop).Source
 Copy-Item -LiteralPath $nodeBinary -Destination (Join-Path $stage 'node.exe')
+# Build identity is embedded outside the hotel data tree. Installer version
+# comes from the CI run counter, never from the local Git checkout.
+if ($env:GITHUB_SHA -and $env:GITHUB_SHA -match '^[a-fA-F0-9]{40}$' -and
+    $env:GITHUB_RUN_NUMBER -match '^[0-9]+$') {
+  $build=@{sha=$env:GITHUB_SHA.ToLowerInvariant();build_number=[int]$env:GITHUB_RUN_NUMBER;
+    version=$Version} | ConvertTo-Json -Compress
+  [IO.File]::WriteAllText((Join-Path $stage 'installer-build.json'),$build,
+    (New-Object Text.UTF8Encoding($false)))
+} else {
+  throw 'Windows installer requires GitHub CI metadata; an unidentifiable build cannot be released.'
+}
 Write-Host 'Installing only production native Windows dependencies into the package...' -ForegroundColor Cyan
 & npm.cmd ci --prefix $stage --omit=dev --no-audit --no-fund
 if ($LASTEXITCODE -ne 0) { throw 'Production dependency installation failed; packaging blocked.' }

@@ -42,6 +42,8 @@ test('installer-managed owner update screen is explicit, read-only and does not 
   process.env.FORTLEDGER_DESKTOP_INSTALLER='1';
   try{
     const state=await updateStatus({platform:'win32',
+      installerStatus:async()=>({platform:'windows',state:'installer_managed',available:false,
+        message:'This Windows installation uses a desktop installer'}),
       run:async()=>{throw Error('Git must not be called in bundled installer');}});
     assert.equal(state.platform,'windows');
     assert.equal(state.state,'installer_managed');
