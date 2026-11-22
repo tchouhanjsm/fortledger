@@ -54,6 +54,14 @@ export async function runAuthenticatedBrowserSmoke(browser){
         const me=await context.request.get(base+'/api/me');
         assert.equal(me.status(),200);
         assert.equal((await me.json()).role,user.role);
+        if(user.role==='owner'){
+          await page.locator('#owner-update-notice').waitFor({state:'visible'});
+          await page.locator('#owner-update-notice').click();
+          await page.waitForURL(base+'/#profile');
+        }else{
+          assert.equal(await page.locator('#owner-update-notice').isVisible(),false,
+            'Only a local owner may receive an update notification');
+        }
         // Update Center must be owner-only and only inspect revisions; even the
         // synthetic 390px browser never executes an updater or changes the DB.
         await page.goto(base+'/#profile');
