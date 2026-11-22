@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {validateBackup} from './restore.js';
+import {authPath} from './data-paths.js';
 
 const MAGIC=Buffer.from('FLBK01');
 const HEADER=6+16+12+16;
@@ -28,7 +29,45 @@ export function decryptBackupBytes(encrypted,passphrase) {
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(payload),decipher.final()]);
 }
-export async function createEncryptedBackup(db,directory,passphrase,{retain=30,now=new Date()}={}){
+function validatedOwnerAuthBytes(file){
+  const raw=fs.readFileSync(file);
+  const record=JSON.parse(raw.toString('utf8'));
+  if(record?.version!==1||typeof record.salt!=='string'||!/^[a-f0-9]{32}$/.test(record.salt)||
+     typeof record.hash!=='string'||!/^[a-f0-9]{128}$/.test(record.hash))
+    throw new Error('Original owner credential record is invalid');
+  return raw;
+}
+export function credentialCompanionPath(encryptedFile){
+  if(typeof encryptedFile!=='string'||!encryptedFile.endsWith('.flbk'))
+    throw new Error('Expected encrypted SQLite backup file');
+  return encryptedFile.slice(0,-5)+'.flba';
+}
+export function verifyEncryptedCredentialCompanion(encryptedFile,passphrase){
+  const candidate=credentialCompanionPath(encryptedFile);
+  if(!fs.existsSync(candidate))return {present:false,verified:false};
+  const raw=decryptBackupBytes(fs.readFileSync(candidate),passphrase);
+  const record=JSON.parse(raw.toString('utf8'));
+  if(record?.version!==1||typeof record.salt!=='string'||!/^[a-f0-9]{32}$/.test(record.salt)||
+     typeof record.hash!=='string'||!/^[a-f0-9]{128}$/.test(record.hash))
+    throw new Error('Encrypted owner credential backup is invalid');
+  return {present:true,verified:true};
+}
+export function decryptEncryptedCredentialCompanion(encryptedFile,targetAuth,passphrase){
+  const companion=credentialCompanionPath(encryptedFile);
+  if(!fs.existsSync(companion))return false; // Older .flbk snapshots remain supported.
+  const target=path.resolve(targetAuth);
+  if(fs.existsSync(target))throw new Error('Owner credentials already exist; refusing overwrite');
+  const raw=decryptBackupBytes(fs.readFileSync(companion),passphrase);
+  const record=JSON.parse(raw.toString('utf8'));
+  if(record?.version!==1||typeof record.salt!=='string'||!/^[a-f0-9]{32}$/.test(record.salt)||
+     typeof record.hash!=='string'||!/^[a-f0-9]{128}$/.test(record.hash))
+    throw new Error('Encrypted owner credential backup is invalid');
+  fs.mkdirSync(path.dirname(target),{recursive:true,mode:0o700});
+  fs.writeFileSync(target,raw,{flag:'wx',mode:0o600});
+  return true;
+}
+
+export async function createEncryptedBackup(db,directory,passphrase,{retain=30,now=new Date(),authFile=null}={}){
   assertPassphrase(passphrase);
   if(!directory||!path.isAbsolute(directory))throw new Error('Backup directory must be an absolute path');
   if(!Number.isInteger(retain)||retain<2||retain>365)throw new Error('Retention must be 2 to 365 backups');
@@ -42,13 +81,35 @@ export async function createEncryptedBackup(db,directory,passphrase,{retain=30,n
     const prefix=now.toISOString().replace(/[:.]/g,'-');
     const filename='fortledger-'+prefix+'-'+randomBytes(4).toString('hex')+'.flbk';
     const target=path.join(directory,filename),temp=target+'.tmp';
+    // A new .flba companion is independently AES-GCM encrypted with its own
+    // fresh salt/nonce. It protects the separate owner hash (not just staff
+    // password hashes in SQLite), without ever exposing it in logs or Git.
+    const companion=credentialCompanionPath(target),authTemp=companion+'.tmp';
+    let installedCompanion=false;
     try{
+      if(authFile){
+        const sealedAuth=encryptBackupBytes(validatedOwnerAuthBytes(authFile),passphrase);
+        fs.writeFileSync(authTemp,sealedAuth,{flag:'wx',mode:0o600});
+        fs.renameSync(authTemp,companion);
+        installedCompanion=true;
+      }
       fs.writeFileSync(temp,encrypted,{flag:'wx',mode:0o600});
-      fs.renameSync(temp,target);
-    }finally{if(fs.existsSync(temp))fs.rmSync(temp,{force:true});}
+      fs.renameSync(temp,target); // Marker of a complete database backup.
+    }catch(error){
+      if(installedCompanion&&!fs.existsSync(target))
+        fs.rmSync(companion,{force:true});
+      throw error;
+    }finally{
+      if(fs.existsSync(temp))fs.rmSync(temp,{force:true});
+      if(fs.existsSync(authTemp))fs.rmSync(authTemp,{force:true});
+    }
     const backups=fs.readdirSync(directory).filter(f=>/^fortledger-.*\.flbk$/.test(f)).sort().reverse();
-    for(const old of backups.slice(retain))fs.rmSync(path.join(directory,old),{force:true});
-    return {file:target,bytes:encrypted.length,retained:Math.min(backups.length,retain)};
+    for(const old of backups.slice(retain)){
+      fs.rmSync(path.join(directory,old),{force:true});
+      fs.rmSync(credentialCompanionPath(path.join(directory,old)),{force:true});
+    }
+    return {file:target,bytes:encrypted.length,retained:Math.min(backups.length,retain),
+      owner_credentials_encrypted:installedCompanion};
   }finally{fs.rmSync(work,{recursive:true,force:true});}
 }
 export function decryptBackupFile(encryptedFile,outputSqlite,passphrase){
@@ -86,7 +147,12 @@ export function scheduleEncryptedBackups(db,env=process.env,{intervalMs=24*60*60
     if(pending)return pending;
     pending=(async()=>{
       try{
-        const result=await createEncryptedBackup(db,directory,passphrase);
+        const owner=authPath(env);
+        const result=await createEncryptedBackup(db,directory,passphrase,
+          {authFile:fs.existsSync(owner)?owner:null});
+        if(!result.owner_credentials_encrypted)
+          logger.warn?.('Encrypted database backup completed without owner credentials. Protect the original admin-auth.json separately.');
+
         logger.info('Encrypted SQLite backup created:',path.basename(result.file));
       }catch(error){logger.error('Encrypted backup failed:',error.message);}
     })().finally(()=>{pending=null;});
