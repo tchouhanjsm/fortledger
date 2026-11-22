@@ -32,6 +32,13 @@ export async function runAuthenticatedBrowserSmoke(browser){
         const anonymous=await context.request.get(base+'/api/me');
         assert.equal(anonymous.status(),401,'No unauthenticated access to hotel records');
         await page.goto(base+'/login.html');
+        // Login must share the same local SHIZUKA design as staff workspaces.
+        assert.equal(await page.evaluate(()=>[...document.styleSheets].some(sheet=>
+          sheet.href?.endsWith('/heritage-sky.css'))),true);
+        assert.equal(await page.locator('body').evaluate(el=>
+          getComputedStyle(el).backgroundColor),'rgb(248, 246, 241)');
+        assert.ok(await page.locator('#login-form input[name="username"]').evaluate(el=>
+          parseFloat(getComputedStyle(el).minHeight)>=44));
         await page.locator('input[name="username"]').fill(user.username);
         await page.locator('input[name="password"]').fill(user.password);
         await page.getByRole('button',{name:'Sign in'}).click();
@@ -79,8 +86,19 @@ export async function runAuthenticatedBrowserSmoke(browser){
             await page.locator('#menu-availability-section > summary').click();
             await page.waitForFunction(()=>document.querySelector('#menu-availability-items .menu-availability-row button'));
             assert.equal(await page.locator('#menu-availability-items .menu-availability-row').count(),1);
-            page.once('dialog',dialog=>dialog.accept());
-            await page.getByRole('button',{name:'Mark unavailable: Synthetic Chai'}).click();
+            const disable=page.getByRole('button',{name:'Mark unavailable: Synthetic Chai'});
+            await disable.click();
+            const confirm=page.getByRole('dialog',{name:'Mark unavailable Synthetic Chai?'});
+            await confirm.waitFor({state:'visible'});
+            assert.equal(await page.evaluate(()=>document.activeElement?.id),
+              'shizuka-confirm-cancel');
+            await page.keyboard.press('Escape');
+            await confirm.waitFor({state:'hidden'});
+            assert.equal((await context.request.get(base+'/api/restaurant/menu').then(r=>r.json())).length,1,
+              'Escape must preserve menu state');
+            await disable.click();
+            await confirm.waitFor({state:'visible'});
+            await page.locator('#shizuka-confirm-approve').click();
             await page.getByRole('button',{name:'Make available: Synthetic Chai'}).waitFor();
             assert.equal((await context.request.get(base+'/api/restaurant/menu').then(r=>r.json())).length,0);
             assert.equal(await page.locator('#menu-items .menu-item').count(),0);
@@ -91,8 +109,9 @@ export async function runAuthenticatedBrowserSmoke(browser){
             await removeUnavailable.click();
             assert.equal(await page.locator('#cart-count').textContent(),'0 items');
             assert.equal(await page.getByRole('button',{name:'Make available: Synthetic Chai'}).isEnabled(),true);
-            page.once('dialog',dialog=>dialog.accept());
             await page.getByRole('button',{name:'Make available: Synthetic Chai'}).click();
+            await page.locator('#shizuka-confirm-dialog').waitFor({state:'visible'});
+            await page.locator('#shizuka-confirm-approve').click();
             await page.getByRole('button',{name:'Mark unavailable: Synthetic Chai'}).waitFor();
             assert.equal((await context.request.get(base+'/api/restaurant/menu').then(r=>r.json())).length,1);
             assert.equal(db.prepare('SELECT COUNT(*) n FROM operation_audit WHERE entity_type=?').get('menu_item').n,2);

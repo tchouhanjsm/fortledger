@@ -270,6 +270,13 @@ try{
       const sum=await page.locator('#cart-total').textContent();
       assert.match(sum,/80\.00/);
       assert.equal(await page.locator('#cart-count').textContent(),'1 item');
+      await page.locator('#clear-restaurant-cart').click();
+      const keepDraft=page.getByRole('dialog',{name:'Clear this draft bill?'});
+      await keepDraft.waitFor({state:'visible'});
+      await page.locator('#shizuka-confirm-cancel').click();
+      await keepDraft.waitFor({state:'hidden'});
+      assert.equal(await page.locator('#cart-count').textContent(),'1 item',
+        'Cancelling must keep the unsaved draft intact');
       await page.locator('#cart-items').getByRole('button',{name:'Add one Masala Chai'}).click();
       assert.equal(await page.locator('#cart-count').textContent(),'2 items');
       await page.locator('#cart-items').getByRole('button',{name:'Remove one Masala Chai'}).click();
