@@ -14,6 +14,7 @@ $profileData=Join-Path $env:LOCALAPPDATA 'FortLedger\data'
 New-Item -ItemType Directory -Path $profileData -Force | Out-Null
 $marker=Join-Path $profileData ('installer-ci-sentinel-'+[guid]::NewGuid().ToString('N')+'.txt')
 [IO.File]::WriteAllText($marker,'synthetic data separation sentinel')
+$createdSynthetic=$false
 try{
   Write-Host 'Installing Inno EXE silently into a disposable directory...' -ForegroundColor Cyan
   $argsToSetup=@('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="'+$target+'"'))
@@ -49,6 +50,7 @@ try{
   $env:FORTLEDGER_DATA_DIR=$profileData
   'synthetic-ci-only-owner-password-123' | & (Join-Path $target 'node.exe') (Join-Path $target 'src\\desktop-first-run.js')
   if ($LASTEXITCODE -ne 0) { throw 'Could not generate isolated synthetic hotel for upgrade guard test.' }
+  $createdSynthetic=$true
   $beforeDb=(Get-FileHash -LiteralPath $live -Algorithm SHA256).Hash
   $beforeAuth=(Get-FileHash -LiteralPath $ownerFile -Algorithm SHA256).Hash
   $upgrade=Start-Process -FilePath $Installer -ArgumentList $argsToSetup -PassThru -Wait
@@ -69,7 +71,7 @@ try{
   Write-Host 'PASS: real installer installed native runtime, desktop/Start Menu icons and preserved profile data on uninstall.' -ForegroundColor Green
 }finally{
   if(Test-Path -LiteralPath $marker){Remove-Item -LiteralPath $marker -Force}
-  if ($env:GITHUB_ACTIONS -eq 'true') {
+  if ($createdSynthetic) {
     foreach($candidate in @((Join-Path $profileData 'fortledger.sqlite'),
         (Join-Path $profileData 'admin-auth.json'))) {
       if(Test-Path -LiteralPath $candidate){Remove-Item -LiteralPath $candidate -Force}
