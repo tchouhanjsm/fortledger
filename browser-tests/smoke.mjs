@@ -210,7 +210,6 @@ try{
         'Synthetic quiet arrival');
       await page.locator('#booking-notes-cancel').click();
       await page.locator('#booking-notes-dialog').waitFor({state:'hidden'});
-      await bookingRow.getByText('More actions',{exact:true}).click();
       assert.equal(await bookingRow.getByRole('button',{name:'Payments'}).isVisible(),true);
       await bookingRow.getByRole('button',{name:'+ Payment'}).click();
       await page.locator('#booking-payment-dialog').waitFor({state:'visible'});
