@@ -113,3 +113,19 @@ test('real HTTP bill creation succeeds on upgraded v7 hotel and preserves exactl
     fs.rmSync(dir,{recursive:true,force:true});
   }
 });
+
+test('post-migration corruption is detected on startup before guest billing can begin',()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'fortledger-v8-guard-'));
+  const file=path.join(dir,'hotel.sqlite');
+  let db;
+  try{
+    db=openDatabase(file);
+    assert.equal(db.pragma('user_version',{simple:true}),8);
+    db.exec('DROP TABLE restaurant_bill_requests');
+    db.close();db=null;
+    assert.throws(()=>openDatabase(file),/Restaurant billing schema is incomplete/);
+    const readOnly=new Database(file,{readonly:true,fileMustExist:true});
+    assert.equal(readOnly.pragma('user_version',{simple:true}),8);
+    readOnly.close();
+  }finally{db?.close();fs.rmSync(dir,{recursive:true,force:true});}
+});
