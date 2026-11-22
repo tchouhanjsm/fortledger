@@ -316,3 +316,9 @@ All five increments completed in this development session were reviewed and merg
 - Implemented an owner-only, local-PC **Prepare safe update backup** operation in My Profile. Creates a fresh paired AES-GCM SQLite and original-owner credential artifact to the configured separate drive and performs a complete isolated restore rehearsal. It refuses same-PC emergency backups, missing drives, missing/invalid owner hash and unverified copies, returning no private paths or secrets.
 - The route serializes repeated clicks and is awaited by the graceful desktop tray/supervisor shutdown so SQLite is not closed while the backup is in progress. The current installer still requires closed operations and a recent separately protected backup before program files can be changed; the operation does **not** run unsigned downloaded executables or perform migrations.
 - Synthetic regression and authenticated owner/staff permission tests cover refusal paths and restore integrity. Physical external-drive and new-PC acceptance remain mandatory.
+
+## 2026-11-22 — V3 Kaizen performance measurement foundation
+- Added disposable in-memory seven-room workloads with 28 vs 700 synthetic historical reservations, measuring local end-to-end read-only API p50/p95/max and a booking-date SQLite EXPLAIN query plan.
+- Ubuntu CI publishes informational measurements without imposing ungrounded latency thresholds. No production database, cloud API, guest records, financial event writes or persistent files are used.
+- Pure quantile validation and source guard tests included. Results do not certify physical Windows/Chromium page navigation, idle CPU, PDF throughput or actual encrypted backup restore.
+- Run npm run perf:baseline; methodology and rollback docs/KAIZEN_V3_PERFORMANCE_BASELINE.md.
