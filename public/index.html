@@ -168,10 +168,22 @@
   </div>
 </section>
 <section id="restaurant" class="panel">
-  <div class="panel-head"><div><h2>New food bill</h2><p>Add items, review and correct the draft, then save and print the final receipt.</p></div></div>
+  <div class="panel-head"><div><h2>Restaurant billing</h2><p>A simple bill-only workspace: prepare, review, save, then print. No kitchen orders.</p></div></div>
+  <div id="restaurant-overview" class="restaurant-overview" aria-label="Restaurant billing overview">
+    <div><span class="restaurant-overview-label">Bills today</span><strong id="restaurant-today-bills">0</strong><small>Hotel business date</small></div>
+    <div><span class="restaurant-overview-label">Collected today</span><strong id="restaurant-today-collected">₹0.00</strong><small>Recorded, not bank-verified</small></div>
+    <div><span class="restaurant-overview-label">Room bills to settle</span><strong id="restaurant-room-unpaid">0</strong><small>Not yet paid</small></div>
+    <div><span class="restaurant-overview-label">Needs guest linking</span><strong id="restaurant-room-unmatched">0</strong><small>Manual room charges</small></div>
+  </div>
+  <nav class="restaurant-jump-links" aria-label="Restaurant workspace">
+    <button type="button" class="secondary" id="restaurant-jump-new">New bill</button>
+    <button type="button" class="secondary" id="restaurant-jump-history">Saved bills</button>
+    <button type="button" class="secondary" id="restaurant-jump-menu">Menu management</button>
+  </nav>
+  <div id="restaurant-editor-anchor" class="restaurant-section-heading"><div><h3>1. Prepare a bill</h3><p class="muted">Search the menu, select quantities, then review the unsaved draft.</p></div><span class="restaurant-step">Draft → Review → Save</span></div>
   <div class="restaurant-flex">
-    <div class="pos-menu-panel"><h3>Menu</h3><input id="menu-search" type="search" placeholder="Search all menu items" aria-label="Search menu"><div id="menu-categories" class="pos-categories" role="group" aria-label="Filter menu by category"></div><p id="menu-result-count" class="muted" aria-live="polite"></p><div id="menu-items"></div></div>
-    <div class="pos-bill-panel"><div class="pos-cart-heading"><h3>Current bill <span id="cart-count" class="pos-count" aria-live="polite">0 items</span></h3><button id="clear-restaurant-cart" type="button" class="secondary" disabled>Clear</button></div><div id="cart-items" class="cart-items"></div><div id="cart-total" class="form-preview" aria-live="polite">₹0.00</div>
+    <div class="pos-menu-panel"><div class="restaurant-pane-heading"><h3>Menu</h3><span class="muted">Tap + Add</span></div><input id="menu-search" type="search" placeholder="Search all menu items" aria-label="Search menu"><div id="menu-categories" class="pos-categories" role="group" aria-label="Filter menu by category"></div><p id="menu-result-count" class="muted" aria-live="polite"></p><div id="menu-items"></div></div>
+    <div class="pos-bill-panel"><div class="pos-cart-heading"><h3>Draft bill <span id="cart-count" class="pos-count" aria-live="polite">0 items</span></h3><button id="clear-restaurant-cart" type="button" class="secondary" disabled>Clear</button></div><div id="cart-items" class="cart-items"></div><div id="cart-total" class="form-preview" aria-live="polite">₹0.00</div>
       <label class="restaurant-field">Payment method<select id="restaurant-method"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option><option value="room">Charge to room</option></select></label>
       <div id="room-charge-choice" hidden>
         <label class="restaurant-field">Checked-in guest or manual entry<select id="restaurant-guest"></select></label>
@@ -196,16 +208,23 @@
       </div>
     </div>
   </div>
-  <details class="menu-import" id="menu-import-section"><summary>Import menu from CSV</summary>
+  <details class="menu-import" id="menu-import-section"><summary>3. Menu management — import or update prices (CSV)</summary>
     <p class="muted">Choose a CSV exported from Excel or Numbers. We recognise Item Name, Category, Price and GST/Tax Rate columns in any order. Prices must include tax.</p>
     <p><a href="/menu-template.csv" download>Download a sample CSV template</a></p>
     <div class="menu-import-actions"><input type="file" id="menu-csv" accept=".csv,text/csv"><button type="button" id="preview-menu" class="secondary">Check file</button><button type="button" id="import-menu" class="primary" disabled>Import verified menu</button></div>
     <p id="menu-import-message" role="status" aria-live="polite"></p>
     <div id="menu-import-preview"></div>
   </details>
-  <div class="pos-history-head"><div><h3>Saved restaurant bills</h3><p class="muted">Find an existing bill and reopen its original receipt. A saved bill is never recreated.</p></div>
-    <div class="pos-history-tools"><label class="sr-only" for="restaurant-history-search">Search saved bills</label><input id="restaurant-history-search" type="search" placeholder="Bill #, guest or room" aria-label="Search saved restaurant bills"><button id="restaurant-history-more" class="secondary" type="button" hidden>Show more</button></div></div>
-  <p id="restaurant-history-count" class="muted" role="status"></p><div id="restaurant-history"></div>
+  <div id="restaurant-history-section" class="restaurant-history-section">
+  <div class="pos-history-head"><div><h3>2. Saved bills & receipts</h3><p class="muted">Search and inspect original items, paid status and room charges. Saved receipts are immutable.</p></div>
+    <div class="pos-history-tools"><label class="sr-only" for="restaurant-history-search">Search saved bills</label><input id="restaurant-history-search" type="search" placeholder="Bill #, item, guest or room" aria-label="Search saved restaurant bills"></div></div>
+  <div id="restaurant-history-filters" class="restaurant-history-filters" role="group" aria-label="Filter saved bills">
+    <button type="button" class="secondary" data-bill-filter="all" aria-pressed="true">All bills</button>
+    <button type="button" class="secondary" data-bill-filter="paid" aria-pressed="false">Paid</button>
+    <button type="button" class="secondary" data-bill-filter="unpaid" aria-pressed="false">Room balance due</button>
+    <button type="button" class="secondary" data-bill-filter="unmatched" aria-pressed="false">Needs linking</button>
+  </div>
+  <p id="restaurant-history-count" class="muted" role="status"></p><div id="restaurant-history"></div><button id="restaurant-history-more" class="secondary" type="button" hidden>Show more bills</button></div>
 </section>
 <section id="profile" class="panel" hidden>
     <div class="panel-head"><div><h2>My profile</h2><p>Your local account and access permissions.</p></div></div>
