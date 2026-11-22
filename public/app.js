@@ -1126,6 +1126,8 @@ async function load(){
   $('#staff-admin').hidden=currentUser.role!=='owner';
   $('#update-center').hidden=!can('system.update');
   $('#backup-center').hidden=!can('system.update');
+  $('#release-status-panel').hidden=currentUser.role!=='owner'||!can('system.update')||
+    !['127.0.0.1','localhost'].includes(window.location.hostname);
   // Off-device encrypted backup preparation is deliberately a local owner
   // operation; never offer it to staff phones or private-LAN sessions.
   $('#backup-upgrade-preparation').hidden=!can('system.update')||
@@ -1252,6 +1254,40 @@ async function renderProfile(){
     }
   }
 }
+$('#release-status-check').onclick=async()=>{
+  if(currentUser?.role!=='owner'||!can('system.update')||
+     !['127.0.0.1','localhost'].includes(window.location.hostname))return;
+  const button=$('#release-status-check'),message=$('#release-status-message');
+  const items=$('#release-status-items'),machine=$('#release-status-machine');
+  button.disabled=true;
+  message.textContent='Checking local diagnostics and outstanding physical release evidence…';
+  items.replaceChildren();machine.textContent='';
+  try{
+    const status=await api('/api/system/release-readiness');
+    if(status.verdict!=='NOT RELEASED'||status.production_ready!==false)
+      throw new Error('Unexpected release status; do not deploy');
+    message.textContent='NOT RELEASED · '+status.evidence.attested+' of '+
+      status.evidence.total+' on-site checks reported as operator-attested.';
+    machine.textContent='Machine checks: '+status.machine_checks.passed+' pass · '+
+      status.machine_checks.warnings+' warning(s) · '+
+      status.machine_checks.failed+' failure(s).';
+    for(const gate of status.gates){
+      const li=label('li');
+      li.append(label('strong',gate.label),label('span',gate.status));
+      items.append(li);
+    }
+    if(status.blocking_checks?.length){
+      const li=label('li');
+      li.append(label('strong','Local diagnostic exceptions'),
+        label('span',status.blocking_checks.map(c=>c.name+' ('+c.status+')').join('; ')));
+      items.append(li);
+    }
+    items.append(label('li',status.notice,'muted'));
+  }catch(error){
+    message.textContent='Release readiness could not be verified: '+error.message+
+      '. FortLedger remains NOT RELEASED.';
+  }finally{button.disabled=false;}
+};
 $('#backup-center-prepare').onclick=async()=>{
   if(currentUser?.role!=='owner'||!can('system.update')||
     !['127.0.0.1','localhost'].includes(window.location.hostname))return;
