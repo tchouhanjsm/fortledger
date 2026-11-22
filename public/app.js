@@ -3,6 +3,7 @@ import {VIEWS,viewForHash} from './navigation.js';
 import {matchesWorkQueue} from './booking-work-queue.js';
 import {bookingDraftError} from './booking-editor-guards.js';
 import {todayAttention} from './today-attention.js';
+import {stayMetrics} from './stay-metrics.js';
 const $ = selector => document.querySelector(selector);
 let currentUser=null;
 const can=permission=>Boolean(currentUser&&(currentUser.permissions.includes('*')||currentUser.permissions.includes(permission)));
@@ -637,12 +638,13 @@ function renderDashboard(){
     const stamp=String(b.created_at||'').replace(' ','T')+'Z';
     return Number.isFinite(Date.parse(stamp))&&dateISO(new Date(stamp))===today;
   });
-  const active=bookings.filter(b=>b.status!=='cancelled');
+  const stays=stayMetrics(bookings,today);
   const kpis=can('bookings.read')?[
-    ['Arrivals today',active.filter(b=>b.checkin===today).length,'Scheduled check-ins'],
-    ['Occupied tonight',active.filter(b=>b.checkin<=today&&today<b.checkout).reduce((n,b)=>n+b.rooms_count,0)+' / 7','Physical rooms'],
-    ['Outstanding',money(active.reduce((n,b)=>n+(b.due_paise||0),0)),'Guest booking balances'],
-    ['Departures today',active.filter(b=>b.checkout===today).length,'Scheduled check-outs']
+    ['Booked tonight',stays.booked_rooms_tonight+' / 7','Reserved capacity, not physical occupancy'],
+    ['In-house rooms',stays.in_house_rooms+' / 7','Guests actually checked in'],
+    ['Arrivals pending',stays.arrivals_pending,'Reservations awaiting check-in today'],
+    ['Departures pending',stays.departures_pending,'Checked-in departures due or overdue'],
+    ['Outstanding',money(stays.guest_outstanding_paise),'Active guest booking balances']
   ]:[
     ['Food bills today',todaysSales.length,'Saved locally'],
     ['Gross today',money(todaysSales.reduce((n,b)=>n+b.total_paise,0)),'Recorded sales'],
