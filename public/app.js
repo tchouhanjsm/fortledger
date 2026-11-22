@@ -1598,7 +1598,7 @@ $('#review-restaurant-bill').onclick=()=>{
     return;
   }
   try{restaurantBillDraft();}
-  catch(error{$('#restaurant-message').textContent=error.message;return;}
+  catch(error){$('#restaurant-message').textContent=error.message;return;}
   restaurantReviewOpen=true;
   $('#restaurant-message').textContent='Review and edit the items above. Confirm & save only when the final bill is correct.';
   renderRestaurantReview();
