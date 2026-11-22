@@ -1272,7 +1272,7 @@ $('#release-status-check').onclick=async()=>{
   const button=$('#release-status-check'),message=$('#release-status-message');
   const items=$('#release-status-items'),machine=$('#release-status-machine');
   button.disabled=true;
-  message.textContent='Checking local diagnostics and outstanding physical release evidence…';
+  message.textContent='Reviewing redacted on-site evidence (no heavy server diagnostics)…';
   items.replaceChildren();machine.textContent='';
   try{
     const status=await api('/api/system/release-readiness');
@@ -1280,9 +1280,11 @@ $('#release-status-check').onclick=async()=>{
       throw new Error('Unexpected release status; do not deploy');
     message.textContent='NOT RELEASED · '+status.evidence.attested+' of '+
       status.evidence.total+' on-site checks reported as operator-attested.';
-    machine.textContent='Machine checks: '+status.machine_checks.passed+' pass · '+
-      status.machine_checks.warnings+' warning(s) · '+
-      status.machine_checks.failed+' failure(s).';
+    machine.textContent=status.full_machine_diagnostics_performed?
+      'Machine checks: '+status.machine_checks.passed+' pass · '+
+        status.machine_checks.warnings+' warning(s) · '+
+        status.machine_checks.failed+' failure(s).':
+      'Full machine diagnostics were NOT run here. Use Diagnose FortLedger.cmd in a safe maintenance window and separately verify the off-device backup.';
     for(const gate of status.gates){
       const li=label('li');
       li.append(label('strong',gate.label),label('span',gate.status));
