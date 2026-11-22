@@ -294,3 +294,9 @@ All five increments completed in this development session were reviewed and merg
 - The child server rejects new financial requests while draining and closes the HTTP listener gracefully. The parent waits for the clean drain message and child exit, revalidates CI and passes an exact 40-character commit to the Windows updater, which performs encrypted-backup restore drill, SQLite snapshot, verified fast-forward, `npm ci` and full Node tests. Restart is supervised.
 - Failed/uncertain installs leave an update journal outside Git; the prior version is only restarted when the Git revision did not change. Migrations are not blindly rolled back.
 - No signed releases, live Windows process/service integration test, off-device backup certification, Mac auto-updater or statutory invoice approval yet. These remain explicit production gates.
+
+## 2026-11-22 — Windows one-double-click onboarding and DPAPI backup configuration
+- Added Explorer-friendly Install, Start, Configure Backups and Diagnose launchers using the existing Windows setup/start scripts. They are convenience entrypoints, not an MSI, Windows service or silent update.
+- Windows setup now verifies official Git origin/main, Node 22, idle server and existing administrator pairing before installing pinned dependencies. It refuses to create a new owner hash when an existing hotel database has lost its credential file.
+- Optional backup wizard stores only encrypted CurrentUser-DPAPI passphrase data and a separately protected backup folder path outside Git. Startup, manual update and diagnostics load the secret into the current process environment so encrypted snapshots and the Windows supervisor do not require repeated manual input.
+- The backup location guard requires a different Windows drive/share root from the live SQLite database. External-drive encryption, credentials recovery on a different Windows account/PC, physical Epson tests and statutory GST acceptance remain unverified.
