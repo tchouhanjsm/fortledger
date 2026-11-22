@@ -22,6 +22,8 @@ export function requiredPermission(method,path){
   if(path==='/analytics/rooms')return method==='GET'?'analytics.read':null;
   if(path==='/finance/closing')return method==='GET'?'finance.read':
     method==='POST'?'finance.write':null;
+  if(path==='/finance/closing/attention')return method==='GET'?'finance.read':null;
+  if(path==='/finance/closing/review')return method==='POST'?'finance.write':null;
   if(path==='/finance/expenses')return method==='GET'?'finance.read':
     method==='POST'?'finance.write':null;
   if(path.startsWith('/finance/'))return method==='GET'?'finance.read':null;
