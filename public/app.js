@@ -1499,28 +1499,99 @@ function renderCart(){
   $('#cart-total').textContent='Total (inclusive) '+money(total);
   renderRestaurantReview();
 }
-let restaurantHistoryLimit=15;
+let restaurantHistoryLimit=15,restaurantBillFilter='all';
+function restaurantBillStatus(bill){
+  if(bill.payment_method!=='room')return {key:'paid',text:'Paid · '+bill.payment_method.toUpperCase()};
+  if(bill.booking_id===null)return {key:'unmatched',text:'Needs guest linking'};
+  if(bill.settlement_method)return {key:'paid',text:'Settled · '+bill.settlement_method.toUpperCase()};
+  return {key:'unpaid',text:'Room balance due'};
+}
+function restaurantBillTime(stamp){
+  const instant=new Date(String(stamp||'').replace(' ','T')+'Z');
+  if(!Number.isFinite(instant.getTime()))return 'Saved time unavailable';
+  return new Intl.DateTimeFormat('en-IN',{
+    timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',
+    hour:'2-digit',minute:'2-digit',hour12:true
+  }).format(instant)+' IST';
+}
+function renderRestaurantOverview(){
+  const today=hotelToday();
+  const todays=restaurantBills.filter(b=>hotelDateAt(new Date(b.created_at.replace(' ','T')+'Z'))===today);
+  // Collected is a cash/UPI/card recording, not a verified bank statement;
+  // room charges only count when a separate settlement is actually recorded.
+  const immediate=todays.filter(b=>b.payment_method!=='room')
+    .reduce((n,b)=>n+b.total_paise,0);
+  const settled=restaurantBills.filter(b=>b.payment_method==='room'&&b.settled_at&&
+    hotelDateAt(new Date(b.settled_at.replace(' ','T')+'Z'))===today)
+    .reduce((n,b)=>n+b.total_paise,0);
+  $('#restaurant-today-bills').textContent=String(todays.length);
+  $('#restaurant-today-collected').textContent=money(immediate+settled);
+  $('#restaurant-room-unpaid').textContent=String(restaurantBills.filter(b=>
+    b.payment_method==='room'&&!b.settlement_method).length);
+  $('#restaurant-room-unmatched').textContent=String(restaurantBills.filter(b=>
+    b.payment_method==='room'&&b.booking_id===null).length);
+}
 function showRestaurantReceipt(id){
   const href='/api/restaurant/bills/'+encodeURIComponent(id)+'/receipt';
   window.open(href,'_blank','noopener');
 }
 function renderRestaurantHistory(){
+  renderRestaurantOverview();
   const list=$('#restaurant-history');list.replaceChildren();
+  for(const button of $('#restaurant-history-filters').querySelectorAll('[data-bill-filter]')){
+    button.setAttribute('aria-pressed',String(button.dataset.billFilter===restaurantBillFilter));
+  }
   const query=$('#restaurant-history-search').value.trim().toLocaleLowerCase().replace(/^#/,'');
-  const matched=restaurantBills.filter(bill=>
-    [String(bill.id),bill.payment_method,bill.manual_room||'',bill.manual_guest||'',
-      bill.booking_id==null?'':String(bill.booking_id)]
-      .some(value=>String(value).toLocaleLowerCase().includes(query)));
+  const matched=restaurantBills.filter(bill=>{
+    const status=restaurantBillStatus(bill).key;
+    if(restaurantBillFilter==='unpaid'&&status!=='unpaid')return false;
+    if(restaurantBillFilter==='paid'&&status!=='paid')return false;
+    if(restaurantBillFilter==='unmatched'&&status!=='unmatched')return false;
+    return [String(bill.id),bill.payment_method,bill.manual_room||'',bill.manual_guest||'',
+      bill.booking_id==null?'':String(bill.booking_id),
+      ...(bill.items||[]).map(x=>x.name)]
+      .some(value=>String(value).toLocaleLowerCase().includes(query));
+  });
   $('#restaurant-history-count').textContent=matched.length+' of '+restaurantBills.length+' saved bills'+
     (query?' matching search':'');
   const more=$('#restaurant-history-more');
   more.hidden=matched.length<=restaurantHistoryLimit;
   for(const bill of matched.slice(0,restaurantHistoryLimit)){
-    const row=label('div',undefined,'menu-item');
-    const details=label('div');details.append(label('strong','#'+bill.id+' · '+bill.payment_method.toUpperCase()),label('small',money(bill.total_paise)));
-    const print=label('button','Print receipt','secondary');
+    const status=restaurantBillStatus(bill);
+    const article=label('article',undefined,'restaurant-history-card');
+    const top=label('div',undefined,'restaurant-history-main');
+    const identity=label('div',undefined,'restaurant-history-identity');
+    identity.append(label('strong','Bill #'+bill.id),
+      label('small',restaurantBillTime(bill.created_at)));
+    const badge=label('span',status.text,'restaurant-history-status');
+    badge.dataset.status=status.key;
+    const amount=label('strong',money(bill.total_paise),'restaurant-history-amount');
+    top.append(identity,badge,amount);
+    article.append(top);
+    if(bill.payment_method==='room'){
+      const target=label('p',bill.booking_id==null?
+        'Guest / room: '+(bill.manual_guest||'Unverified')+' · '+(bill.manual_room||'Unknown'):
+        'Booking #'+bill.booking_id,'restaurant-history-target');
+      article.append(target);
+    }
+    const expand=label('details',undefined,'restaurant-history-details');
+    const summary=label('summary','View '+(bill.items||[]).length+' bill line'+
+      ((bill.items||[]).length===1?'':'s')+' · tax included '+money(bill.tax_paise));
+    expand.append(summary);
+    const itemList=label('div',undefined,'restaurant-history-items');
+    for(const line of bill.items||[]){
+      const item=label('div',undefined,'restaurant-history-item');
+      item.append(label('span',line.name+' × '+line.quantity+
+        ' · '+money(line.unit_price_paise)+' each'),
+        label('strong',money(line.total_paise)));
+      itemList.append(item);
+    }
+    expand.append(itemList);
+    article.append(expand);
+    const actions=label('div',undefined,'restaurant-history-actions');
+    const print=label('button','View receipt','secondary');print.type='button';
     print.onclick=()=>showRestaurantReceipt(bill.id);
-    const lan=label('button','LAN Print','secondary');
+    const lan=label('button','LAN Print','secondary');lan.type='button';
     lan.onclick=async()=>{
       if(!confirm('Send existing saved receipt #'+bill.id+' to configured Epson LAN printer?'))return;
       try{
@@ -1537,19 +1608,33 @@ function renderRestaurantHistory(){
         }catch(next){alert(next.message);}
       }
     };
-    if(bill.payment_method==='room'&&bill.booking_id===null){
-      details.append(label('small','Needs review · '+(bill.manual_room||'Unknown room')+' · '+(bill.manual_guest||'Unknown guest')));
-      const link=label('button','Link to guest','secondary');
+    actions.append(print,lan);
+    if(status.key==='unmatched'){
+      const link=label('button','Link to guest','secondary');link.type='button';
       link.onclick=()=>linkPendingCharge(bill);
-      row.append(link);
+      actions.append(link);
     }
-    row.append(details,print,lan);
-    list.append(row);
+    article.append(actions);
+    list.append(article);
   }
   if(!matched.length)list.append(label('p',restaurantBills.length?
-    'No saved bills match this search. Clear the search to see all receipts.':'No restaurant bills yet.','muted'));
+    'No bills match these filters. Try All bills or clear the search.':
+    'No restaurant bills yet. Prepare a new bill above.','muted'));
 }
 $('#restaurant-history-search').oninput=()=>{restaurantHistoryLimit=15;renderRestaurantHistory();};
+for(const button of $('#restaurant-history-filters').querySelectorAll('[data-bill-filter]')){
+  button.onclick=()=>{
+    restaurantBillFilter=button.dataset.billFilter;
+    restaurantHistoryLimit=15;
+    renderRestaurantHistory();
+  };
+}
+$('#restaurant-jump-new').onclick=()=>$('#restaurant-editor-anchor').scrollIntoView({behavior:'smooth',block:'start'});
+$('#restaurant-jump-history').onclick=()=>$('#restaurant-history-section').scrollIntoView({behavior:'smooth',block:'start'});
+$('#restaurant-jump-menu').onclick=()=>{
+  $('#menu-import-section').open=true;
+  $('#menu-import-section').scrollIntoView({behavior:'smooth',block:'start'});
+};
 $('#restaurant-history-more').onclick=()=>{restaurantHistoryLimit+=20;renderRestaurantHistory();};
 function updateManualRoomFields(){
   $('#manual-room-fields').hidden=$('#restaurant-guest').value!=='manual';
