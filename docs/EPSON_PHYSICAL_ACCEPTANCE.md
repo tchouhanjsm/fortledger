@@ -8,9 +8,13 @@
 2. Ensure the printer has paper and is switched on. Do not confuse browser print with Epson LAN transport.
 3. Run the one-off test slip below from the same computer and network as FortLedger:
 
-```powershell
-npm.cmd run printer:test-slip -- 192.168.1.50 9100 --confirm
+On the hotel **Mac**, open Terminal in the existing FortLedger checkout and run:
+
+```sh
+npm run printer:test-slip -- 192.168.1.50 9100 --confirm
 ```
+
+For a Windows technician using the same checkout, the equivalent is `npm.cmd run printer:test-slip -- 192.168.1.50 9100 --confirm`. Run it only on the Mac or intended hotel computer that can actually reach the physical printer. Do not use an internet-hosted test environment.
 
 Replace the sample IP/port with your confirmed values. **The explicit `--confirm` flag is required.** This sends a clearly marked **TEST ONLY — NO SALE** slip. It never creates a restaurant bill, takes payment, modifies SQLite, or uses guest details.
 
@@ -29,3 +33,7 @@ Replace the sample IP/port with your confirmed values. **The explicit `--confirm
 **Gate:** Mark Epson hardware accepted only after physical paper and failure/reprint behavior were observed and verified by hotel staff. CLI/test CI is not that acceptance.
 
 **Command safety:** Running this without `--confirm` exits without contacting the printer. A network timeout or TCP error is not evidence that paper did or did not print; inspect the device before any second attempt.
+
+## Mac acceptance record — not automatically certified
+
+Before any hotel release, perform the above synthetic test on the Mac and record privately: date, Mac OS version, exact Epson TM-T82 variant, paper width, test-slip paper observed, printing after a disconnected LAN attempt, a confirmed reprint, whether duplicate billing was avoided, and any unresolved faults. Do not upload guest details, credentials, network passwords or printer test photos to the public repository. **Leave the release gate pending until a human has verified actual paper.**
