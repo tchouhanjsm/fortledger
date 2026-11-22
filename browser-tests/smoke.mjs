@@ -81,6 +81,9 @@ try{
       assert.ok(layout.headingWidth>=200,'The reservation heading must not be squeezed by filters');
       assert.ok(layout.headingHeight<=32,'Reservation heading should fit on one line at 1440px');
       assert.ok(layout.filtersScroll<=layout.filtersWidth+2,'Booking filters must not clip controls');
+      const queueFits=await page.locator('#booking-quick-queues').evaluate(el=>
+        el.scrollWidth<=el.clientWidth+2);
+      assert.ok(queueFits,'Every desktop work queue should be reachable without hidden horizontal clipping');
     }
     assert.equal(await page.locator('#dashboard').isVisible(),false,
       'Hidden dashboard should not be exposed by responsive CSS');
