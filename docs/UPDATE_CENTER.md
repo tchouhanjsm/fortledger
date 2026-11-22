@@ -1,0 +1,23 @@
+# Update Center and Windows desktop updater — safe rollout
+
+**Release state:** ACTIVE ALPHA — NOT RELEASED. Local hotel data and admin credentials are not held in GitHub.
+
+## Exactly what is available
+
+1. **In-app owner-only Update Center:** My Profile → Application updates → **Check for updates**. This performs read-only Git inspection and compares the local HEAD with GitHub's `refs/heads/main`. It shows **installed and remote** abbreviated commit hashes. It never pulls code, migrates a database, installs packages, restarts Node, or writes guest records. The Git remote must be the approved `tchouhanjsm/fortledger`, the branch must be `main`, and the checkout must have no tracked **or untracked** changes. Offline GitHub, an unexpected remote, or a dirty checkout is a clear block, not a guessed update state. A differing SHA does **not** itself prove the update can fast-forward; the offline updater verifies that separately.
+2. **Windows one-double-click launcher (after stopping FortLedger):** open the *existing installed Git checkout*, then double-click `Update FortLedger.cmd` (or create a Windows desktop shortcut to it once). It runs `scripts/windows-quick-update.ps1`. It **never kills an active server**, drops a guest transaction or forces a Git reset. It refuses to continue unless an encrypted `.flbk` backup from the last 36 hours is present in the configured independent backup directory and `npm run recovery:encrypted-drill -- <actual file>` verifies an isolated restore. The existing `windows-update.ps1` then refuses a running localhost listener, unexpected repository/branch, untracked or tracked changes and missing legacy data. It creates a separate verified consistent SQLite + admin authentication snapshot, fetches GitHub `main`, fast-forwards (no force), uses the committed dependency lockfile with `npm ci`, and runs all Node tests. **Only after success** does the launcher start a new normal `windows-start.ps1` PowerShell window. Review old data and sign in again.
+3. **Mac updates remain manually gated** under `docs/MAC_RELEASE_PREFLIGHT.md`. No change to the current `data/fortledger.sqlite` Mac path, credential file, or backup configuration. Updating an older Git checkout (for example PR #83) still requires a one-time code sync and conflict review before this Update Center becomes visible locally.
+
+## Windows requirements
+
+- Git for Windows, Node 22.x and PowerShell 5.1+, installed checkout on `main` with `origin` pointing to `tchouhanjsm/fortledger`; a **clean tracked and untracked** Git state.
+- Existing persistent database at `%LOCALAPPDATA%\FortLedger\data\fortledger.sqlite` and valid owner authentication. The updater will **not** initialize a blank replacement for a legacy database.
+- A separately protected encrypted backup directory and `FORTLEDGER_BACKUP_DIR` / `FORTLEDGER_BACKUP_PASSPHRASE` available in the launcher environment. The passphrase must be safeguarded, not committed to source control or logged. An independent restore on a replacement device still needs human acceptance; verifying a local artifact is not proof of off-device recoverability.
+- Finish all bookings, payments and bill printing, then stop the active FortLedger terminal with **Ctrl+C**; the listener check refuses updates while the app is running. Run the shortcut locally on the device, not on a staff phone or a LAN browser.
+- If a check fails, **the process stops** and reports the blocker. Keep the verified backups and original credential file. Do not delete `data`, `*-wal`, `*-shm` files, or run `git reset --hard` / force-pull. A new app version can introduce a data migration, so automatically reverting code is not a safe rollback plan.
+
+## Why no browser-triggered auto-install yet?
+
+The browser UI is not a privileged Windows service. Updating Node code while its own server is processing transactions creates risks of lost HTTP responses and unsafe migrations; starting a detached process from an HTTP request would also broaden local privilege and CSRF attack surfaces. The next, separately reviewed phase can introduce a **local supervisor** that provides graceful quiescence, append-only update state, pinned/verified CI builds, safe process drain, artifact verification, explicit owner confirmation, and reliable startup/rollback boundaries. Until then, the check button is an inspection function and the desktop shortcut is the safest one-click installation workflow after stopping the app.
+
+**No silent updates, paid infrastructure, new runtime dependencies, or Git credentials in the web UI.** The owner must still verify the new revision, hotel records, printer and actual restored backup. Do not interpret a clean update as a production-release certificate.
