@@ -30,7 +30,7 @@ test('restaurant sale and cashier audit commit atomically; replay never duplicat
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bill_requests').get().n,1);
     assert.throws(()=>createRestaurantBill(db,{...body,request_id:randomUUID()},{
       id:-1,username:'invalid',role:'cashier'
-    }),/Invalid audit event/);
+    }),/Invalid restaurant bill actor/);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bills').get().n,1,
       'audit failure must also roll back the sale and its idempotency marker');
   }finally{db.close();}
