@@ -12,7 +12,7 @@ Nontechnical hotel operators should not need a Node terminal to understand what 
 - **Output:** Six gate labels and redacted statuses, counts of local pass/warn/fail diagnostics, and diagnostic **names only**. The public shape excludes proof reference locations, filenames, passwords, real guest data, reviewer identity and private drive paths.
 - **Failure:** Malformed results fail closed. `verdict` is hard-coded **NOT RELEASED** and `production_ready` remains false, even if six local evidence references exist.
 - **No actions:** This page cannot create, approve, edit, attest, reject or erase physical checks; cannot issue a GST invoice; cannot install an EXE, change room readiness, export records or perform money operations. For evidence recording, continue to use private off-GitHub operator paperwork and independent review.
-- **Concurrency:** One human-triggered GET, button disabled until completion. The source inspector may be expensive, so it never runs on a routine dashboard load.
+- **Concurrency:** One human-triggered GET, button disabled until completion. The browser GET deliberately skips full diagnostics (which can decrypt large backups and block reception requests). It reads only the small private gate evidence manifest; full device diagnostics and encrypted restore verification stay in their separate maintenance workflows.
 - **Rollback:** Revert pure summary helper, owner-only GET, My Profile display and tests. No migrations or hotel data changes.
 
 ## Machine verification
