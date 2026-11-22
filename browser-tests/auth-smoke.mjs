@@ -67,6 +67,26 @@ export async function runAuthenticatedBrowserSmoke(browser){
         }else{
           assert.equal((await context.request.get(base+'/api/finance/closing/attention')).status(),200);
           assert.equal((await context.request.get(base+'/api/audit/daily_close/1')).status(),200);
+          if(user.role==='manager'){
+            // Real 390px keyboard/touch journey, not just a direct HTTP toggle.
+            await page.goto(base+'/#restaurant');
+            await page.locator('#restaurant').waitFor({state:'visible'});
+            await page.locator('#menu-import-section > summary').click();
+            await page.locator('#menu-availability-section > summary').click();
+            await page.waitForFunction(()=>document.querySelector('#menu-availability-items .menu-availability-row button'));
+            assert.equal(await page.locator('#menu-availability-items .menu-availability-row').count(),1);
+            page.once('dialog',dialog=>dialog.accept());
+            await page.getByRole('button',{name:'Mark unavailable: Synthetic Chai'}).click();
+            await page.getByRole('button',{name:'Make available: Synthetic Chai'}).waitFor();
+            assert.equal((await context.request.get(base+'/api/restaurant/menu').then(r=>r.json())).length,0);
+            assert.equal(await page.locator('#menu-items .menu-item').count(),0);
+            assert.equal(await page.getByRole('button',{name:'Make available: Synthetic Chai'}).isEnabled(),true);
+            page.once('dialog',dialog=>dialog.accept());
+            await page.getByRole('button',{name:'Make available: Synthetic Chai'}).click();
+            await page.getByRole('button',{name:'Mark unavailable: Synthetic Chai'}).waitFor();
+            assert.equal((await context.request.get(base+'/api/restaurant/menu').then(r=>r.json())).length,1);
+            assert.equal(db.prepare('SELECT COUNT(*) n FROM operation_audit WHERE entity_type=?').get('menu_item').n,2);
+          }
         }
         assert.deepEqual(errors,[],'Authenticated browser errors for '+user.role);
       }finally{await context.close();}
