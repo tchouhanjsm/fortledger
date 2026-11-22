@@ -27,7 +27,7 @@ The **installer-managed** build does not have a Git checkout. Its owner-only Upd
 For a desktop upgrade:
 
 1. Finish all reservations, restaurant bills and payments, and close the tray application safely.
-2. Ensure the **last 36-hour encrypted backup** exists on a separate drive and was successfully tested. Keep the original backup passphrase outside the PC.
+2. Ensure a **recent (within 36 hours) paired encrypted ledger and original owner credential backup** exists on a separate protected drive and has passed an isolated recovery test. Keep the original backup passphrase outside the PC. The Windows installer also independently authenticates the encrypted owner artifact, even when an older installed version lacks this check.
 3. Run the newer verified `FortLedger-Setup-*.exe`. Before replacing any executable, the installer refuses a listening application on port 3000, a half-present database/password, an absent separate-drive backup, or an encrypted-backup restore drill that fails.
 4. After installation, open the FortLedger shortcut. The original database and owner password are reused. Verify seven rooms, prior bookings, invoice numbers, food bills and stored payments; if any mismatch occurs, stop making new financial records and investigate the backup.
 
@@ -41,7 +41,7 @@ The builder runs on GitHub's Windows runner, bundles exactly the installed Node 
 
 ## Backup health and update acceptance
 
-Automatic encrypted backups use the separately protected directory selected in **Configure encrypted backups** from the Windows tray. With valid CurrentUser-DPAPI settings available to the installed Windows account, the app makes a snapshot at startup and every 24 hours while the app is running, keeping the latest 30 files; backups do **not** run when the program is closed. Keep the external drive connected. The standalone `.flbk` files contain the SQLite ledger and staff account hashes in SQLite, **not the separate owner `admin-auth.json`**; protect an independently encrypted copy of that file too, and keep the passphrase offline.
+Automatic encrypted backups use the separately protected directory selected in **Configure encrypted backups** from the Windows tray. With valid CurrentUser-DPAPI settings available to the installed Windows account, the app makes a snapshot at startup and every 24 hours while the app is running, keeping the latest 30 files; backups do **not** run when the program is closed. Keep the external drive connected. Newer backups are a **paired** encrypted `.flbk` SQLite ledger and `.flba` original owner-credential artifact. Legacy SQLite-only backups do **not** contain the owner credentials and no longer qualify for a protected Windows upgrade. Keep the passphrase offline and rehearse recovery of both files on another computer.
 
 The owner can now open **My Profile → Protected backups → Verify latest backup**. This explicitly decrypts the newest `.flbk` into disposable private storage and checks the seven-room SQLite structure. The result never exposes a private path, passphrase or guest name. A successful local test is not an off-device restore, and the `independent_drive` result checks drive roots, not encryption/recoverability. Rehearse a full replacement-device restore before permitting a live hotel upgrade.
 
