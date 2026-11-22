@@ -52,7 +52,22 @@ export function prepareTaxDraft(db,proformaId,input={}){
   });
   const total=lines.reduce((sum,line)=>sum+line.total_paise,0);
   if(total!==original.total_paise)throw new Error('Proforma line totals are inconsistent');
+  // Document-level 5% inclusive GST rounding is the authoritative total.
+  // Distribute the (usually one-paise) line rounding remainder explicitly so
+  // every displayed line adds exactly to the printed document values.
   const taxable_paise=Math.round(total*100/105),gst_paise=total-taxable_paise;
+  let residual=taxable_paise-lines.reduce((sum,line)=>sum+line.taxable_paise,0);
+  for(let i=0;residual!==0;i=(i+1)%lines.length){
+    const step=Math.sign(residual);
+    const candidate=lines[i].taxable_paise+step;
+    if(candidate<0||candidate>lines[i].total_paise)continue;
+    lines[i].taxable_paise=candidate;
+    lines[i].gst_paise=lines[i].total_paise-candidate;
+    residual-=step;
+  }
+  if(lines.reduce((sum,line)=>sum+line.taxable_paise,0)!==taxable_paise||
+     lines.reduce((sum,line)=>sum+line.gst_paise,0)!==gst_paise)
+    throw new Error('Tax draft line reconciliation failed');
   const cgst_paise=Math.round(gst_paise/2),sgst_paise=gst_paise-cgst_paise;
   const snapshot={
     kind:'tax_draft',label:'DRAFT - NOT A GST TAX INVOICE',
