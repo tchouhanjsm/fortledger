@@ -2,6 +2,7 @@ import { randomUUID,createHash } from 'node:crypto';
 import { bookingTotals } from './finance.js';
 import { NET_PAYMENTS_SQL } from './payment-ledger.js';
 import {recordAudit} from './financial-audit.js';
+import {adjustedAccommodation,listAccommodationAdjustments} from './accommodation-adjustments.js';
 
 /** v10: the write and its response marker commit together; old settlements are
  * never backfilled or inferred from an unrelated historical group UUID. */
@@ -70,12 +71,16 @@ function roomBills(db,bookingId){
 }
 export function getGuestFolio(db,bookingId){
   const booking=getBooking(db,bookingId);
-  const accommodation=bookingTotals(booking);
-  const invoice_discrepancy=invoiceContractMismatch(db,bookingId,accommodation.total_paise);
+  const contract=bookingTotals(booking);
+  // Historical proforma must match original booking contract; a separate
+  // immutable approved adjustment changes only the current guest receivable.
+  const invoice_discrepancy=invoiceContractMismatch(db,bookingId,contract.total_paise);
+  const accommodation=adjustedAccommodation(db,booking,contract);
+  const adjustments=listAccommodationAdjustments(db,bookingId);
   const bills=roomBills(db,bookingId);
   const restaurant_due_paise=bills.filter(x=>!x.settlement_id).reduce((sum,x)=>sum+x.total_paise,0);
   return {booking_id:bookingId,guest_name:booking.guest_name,status:booking.status,
-    accommodation,bills,invoice_discrepancy,restaurant_due_paise,
+    accommodation,adjustments,bills,invoice_discrepancy,restaurant_due_paise,
     combined_due_paise:accommodation.due_paise+restaurant_due_paise};
 }
 export function settleRoomBill(db,bookingId,billId,method,actor=null,{request_id}={}){
