@@ -36,6 +36,8 @@ test('pre-update backup is consistent, preserves credentials and does not alter 
     const backedUpDb=path.join(backup.folder,'fortledger.sqlite');
     assert.equal(validateBackup(backedUpDb).bookings,1);
     assert.equal(validateBackup(backedUpDb).rooms,7);
+    assert.equal(fs.existsSync(backedUpDb+'-wal'),false,'Backup must be a standalone snapshot');
+    assert.equal(fs.existsSync(backedUpDb+'-shm'),false,'No copied SQLite shared-memory file');
     assert.equal(fs.readFileSync(path.join(backup.folder,'admin-auth.json'),'utf8'),
       fs.readFileSync(auth,'utf8'));
     assert.equal(hash(),before);
