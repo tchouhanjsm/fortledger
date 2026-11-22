@@ -214,3 +214,11 @@ dialog::backdrop{background:rgba(23,38,62,.72)}
 .update-center>div>p{line-height:1.5}
 @media(max-width:600px){.update-center{padding:var(--sh-space-4)}
   .update-center-actions>*{flex:1 1 100%}}
+
+/* Supervised Windows update is explicitly owner-controlled and gated. */
+.update-center-readiness{margin-top:var(--sh-space-4);padding:var(--sh-space-4);background:var(--sh-washi);border:1px solid var(--hs-border);border-radius:var(--hs-control-radius)}
+#update-center-readiness-status{font-size:13px;line-height:1.5;margin:0 0 var(--sh-space-3);color:var(--hs-ink)}
+#update-center-blockers{padding-left:20px;margin:0 0 var(--sh-space-3);font-size:13px;line-height:1.6;color:var(--sh-vermilion)}
+#update-center-ci{font-size:12px;margin:var(--sh-space-3) 0}
+#update-center-install{max-width:100%}
+@media(max-width:600px){#update-center-install{width:100%}}
