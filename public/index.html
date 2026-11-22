@@ -168,7 +168,7 @@
   </div>
 </section>
 <section id="restaurant" class="panel">
-  <div class="panel-head"><div><h2>New food bill</h2><p>Select an item, add quantities, and settle or charge it to a room.</p></div></div>
+  <div class="panel-head"><div><h2>New food bill</h2><p>Add items, review and correct the draft, then save and print the final receipt.</p></div></div>
   <div class="restaurant-flex">
     <div class="pos-menu-panel"><h3>Menu</h3><input id="menu-search" type="search" placeholder="Search all menu items" aria-label="Search menu"><div id="menu-categories" class="pos-categories" role="group" aria-label="Filter menu by category"></div><p id="menu-result-count" class="muted" aria-live="polite"></p><div id="menu-items"></div></div>
     <div class="pos-bill-panel"><div class="pos-cart-heading"><h3>Current bill <span id="cart-count" class="pos-count" aria-live="polite">0 items</span></h3><button id="clear-restaurant-cart" type="button" class="secondary" disabled>Clear</button></div><div id="cart-items" class="cart-items"></div><div id="cart-total" class="form-preview" aria-live="polite">₹0.00</div>
@@ -181,8 +181,19 @@
           <p class="muted">Unmatched charges are saved for review and will not appear in a guest folio until linked.</p>
         </div>
       </div>
+      <section id="restaurant-review" class="restaurant-review" aria-label="Review unsaved food bill" hidden>
+        <h3>Review bill before saving</h3>
+        <p class="muted">Unsaved draft — correct quantities, remove items or add more from the menu. Printing is available only after saving.</p>
+        <div id="restaurant-review-items"></div>
+        <p id="restaurant-review-payment" class="muted"></p>
+        <div id="restaurant-review-total" class="form-preview" aria-live="polite"></div>
+      </section>
       <p id="restaurant-message" role="status"></p>
-      <button type="button" class="primary" id="save-restaurant-bill">Save restaurant bill</button>
+      <div class="restaurant-bill-actions">
+        <button type="button" class="primary" id="review-restaurant-bill">Review bill</button>
+        <button type="button" class="secondary" id="edit-restaurant-bill" hidden>Continue editing</button>
+        <button type="button" class="primary" id="save-restaurant-bill" hidden>Confirm &amp; save bill</button>
+      </div>
     </div>
   </div>
   <details class="menu-import" id="menu-import-section"><summary>Import menu from CSV</summary>
