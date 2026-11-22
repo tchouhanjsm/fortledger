@@ -337,3 +337,9 @@ All five increments completed in this development session were reviewed and merg
 - Ubuntu CI publishes informational measurements without imposing ungrounded latency thresholds. No production database, cloud API, guest records, financial event writes or persistent files are used.
 - Pure quantile validation and source guard tests included. Results do not certify physical Windows/Chromium page navigation, idle CPU, PDF throughput or actual encrypted backup restore.
 - Run npm run perf:baseline; methodology and rollback docs/KAIZEN_V3_PERFORMANCE_BASELINE.md.
+
+## 2026-11-22 — V3 Phase 5: low-cost, bounded reservation card rendering
+- A synthetic API baseline at 28/700 historical bookings motivated examining browser DOM volume. Unbounded historical booking rows create avoidable interactive controls on each refresh; no production page speed result was claimed.
+- Added an initial 40-card reservation presentation and explicit 40-more control. Global search, calendar, room availability, invoices, payment references and work queues still use the complete authorized booking collection.
+- Changing query/status/queue resets display size while retaining all historical records. No new schema, background service, API, pagination token or financial write. Tests include 95 synthetic booking records through Chromium 390px.
+- See docs/KAIZEN_V3_BOOKING_RENDER.md. On-site responsive, zoom, keyboard and actual speed evidence remain pending.
