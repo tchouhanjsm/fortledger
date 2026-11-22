@@ -49,6 +49,11 @@ try{
     assert.equal(await page.locator('#bookings').isVisible(),true);
     if(screenshots&&(width===390||width===1440)){
       await captureViewportWidth(page,width,'shizuka-bookings-'+width);
+      // Element screenshots preserve full panel height without including the
+      // overflowed week-calendar offscreen columns in the page image.
+      await page.locator('#bookings').screenshot({
+        path:'browser-artifacts/shizuka-reservation-panel-'+width+'.png'
+      });
     }
     // Icons and skip action must be real keyboard-accessible controls without
     // changing the route or creating any financial activity.
@@ -247,6 +252,9 @@ try{
       await page.locator('#restaurant').waitFor({state:'visible'});
       if(screenshots){
         await captureViewportWidth(page,width,'shizuka-restaurant-1440');
+        await page.locator('#restaurant').screenshot({
+          path:'browser-artifacts/shizuka-restaurant-panel-1440.png'
+        });
       }
       const chip=page.locator('#menu-categories').getByRole('button',{name:'Hot Drinks'});
       await chip.click();
