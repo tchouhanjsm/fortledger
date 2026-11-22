@@ -1,3 +1,4 @@
+import {allocateEntityId} from './entity-identity.js';
 import {recordAudit} from './financial-audit.js';
 
 export function ensureGuestSchema(db){
@@ -48,10 +49,10 @@ export function saveGuest(db,input,actor,id=null){
         WHERE id=@id`).run({...guest,id});
       recordAudit(db,actor,'guest.updated','guest',id,{fields:Object.keys(guest)});
     }else{
-      const saved=db.prepare(`INSERT INTO guest_profiles
-        (name,phone,email,company_name,preferences)
-        VALUES(@name,@phone,@email,@company_name,@preferences)`).run(guest);
-      target=Number(saved.lastInsertRowid);
+      target=allocateEntityId(db,'guest');
+      db.prepare(`INSERT INTO guest_profiles
+        (id,name,phone,email,company_name,preferences)
+        VALUES(@id,@name,@phone,@email,@company_name,@preferences)`).run({...guest,id:target});
       recordAudit(db,actor,'guest.created','guest',target,{});
     }
     return db.prepare('SELECT * FROM guest_profiles WHERE id=?').get(target);
