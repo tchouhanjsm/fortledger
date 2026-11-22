@@ -7,7 +7,7 @@ $persistentDatabase = Join-Path $env:FORTLEDGER_DATA_DIR 'fortledger.sqlite'
 if ((Test-Path -LiteralPath $legacyDatabase) -and -not (Test-Path -LiteralPath $persistentDatabase)) {
   throw 'Found an older in-repository data\fortledger.sqlite, but no database in the new persistent Windows folder. Stop: migrate your existing database and admin-auth.json safely before starting/updating. Do not create a fresh empty ledger.'
 }
-$env:npm_config_package_lock = 'false'
+# Install exactly the tested dependency tree in the committed package-lock.json.
 $nodeVersion = (& node --version)
 if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch '^v22\.') {
   throw "FortLedger currently requires Node.js 22.x for reliable native SQLite builds. Found: $nodeVersion"
@@ -16,8 +16,8 @@ if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch '^v22\.') {
 if ($LASTEXITCODE -ne 0) { throw 'Install Git for Windows first.' }
 New-Item -ItemType Directory -Force -Path $env:FORTLEDGER_DATA_DIR | Out-Null
 Write-Host 'Installing local application dependencies...' -ForegroundColor Cyan
-& npm.cmd install --no-audit --no-fund
-if ($LASTEXITCODE -ne 0) { throw 'npm install failed. Check the SQLite native build troubleshooting notes.' }
+& npm.cmd ci --no-audit --no-fund
+if ($LASTEXITCODE -ne 0) { throw 'npm ci failed. Check the committed lockfile, Node 22 and SQLite native-build troubleshooting.' }
 Write-Host 'Running application tests...' -ForegroundColor Cyan
 & npm.cmd test
 if ($LASTEXITCODE -ne 0) { throw 'Tests failed; do not enter business data.' }
