@@ -955,8 +955,10 @@ async function load(){
   if(can('settings.read'))await refreshHotelLogo();
   $('#backup-button').hidden=!can('settings.admin');
   $('#save-restaurant-bill').hidden=!can('restaurant.write');
-  $('#import-menu').hidden=!can('restaurant.write');
-  $('#preview-menu').hidden=!can('restaurant.write');
+  $('#menu-import-section').hidden=!can('menu.manage');
+  $('#restaurant-jump-menu').hidden=!can('menu.manage');
+  $('#import-menu').hidden=!can('menu.manage');
+  $('#preview-menu').hidden=!can('menu.manage');
   $('#staff-admin').hidden=currentUser.role!=='owner';
   $('#guest-create').hidden=!can('guests.write');
   const settingsSave=$('#business-form').querySelector('[type=submit]');
@@ -966,7 +968,7 @@ async function load(){
   await renderCollections();
   if(can('finance.read')){await renderExpenseList();await renderDailyClose();}
   $('#invoice-empty-action').hidden=Boolean(invoices.length)||!can('bookings.read');
-  if(!menu.length&&can('restaurant.write'))$('#menu-import-section').open=true;
+  if(!menu.length&&can('menu.manage'))$('#menu-import-section').open=true;
   applyWorkspaceView();
   return true;
 }
@@ -1422,7 +1424,12 @@ let restaurantReviewOpen=false;
 function restaurantBillDraft(){
   const method=$('#restaurant-method').value;
   if(!cart.length||cart.length>50)throw new Error('Add 1–50 menu lines before saving');
-  const items=cart.map(x=>({menu_item_id:x.menu_item_id,quantity:x.quantity}));
+  const items=cart.map(x=>{
+    const item=menu.find(y=>y.id===x.menu_item_id);
+    if(!item)throw new Error('Menu item no longer available; refresh and review the bill');
+    return {menu_item_id:x.menu_item_id,quantity:x.quantity,
+      unit_price_paise:item.price_paise,tax_rate:item.tax_rate};
+  });
   const manual=method==='room'&&$('#restaurant-guest').value==='manual';
   const body={payment_method:method,items,
     booking_id:method==='room'&&!manual?Number($('#restaurant-guest').value):undefined};
@@ -1708,6 +1715,9 @@ $('#clear-restaurant-cart').onclick=()=>{
   cart=[];restaurantReviewOpen=false;renderCart();$('#restaurant-message').textContent='Unsaved bill cleared.';
 };
 $('#restaurant-method').onchange=()=>{
+  $('#restaurant-payment-hint').textContent=$('#restaurant-method').value==='room'?
+    'Room charge: unpaid until separately settled or included in the guest folio.':
+    'Cash / UPI / card: only select after the payment has actually been received and verified by staff.';
   $('#room-charge-choice').hidden=$('#restaurant-method').value!=='room';
   updateManualRoomFields();
   renderRestaurantReview();
@@ -1718,6 +1728,12 @@ $('#manual-room-guest').oninput=renderRestaurantReview;
 // Keep the same immutable intent and UUID after an uncertain response. Never
 // create a second financial record while the original attempt is unresolved.
 let pendingRestaurantBill=null,restaurantBillSubmitting=false;
+function lockPendingRestaurantInputs(locked){
+  for(const selector of ['#restaurant-method','#restaurant-guest',
+    '#manual-room-number','#manual-room-guest']){
+    $(selector).disabled=locked;
+  }
+}
 $('#save-restaurant-bill').onclick=async()=>{
   const button=$('#save-restaurant-bill'),message=$('#restaurant-message');
   if(restaurantBillSubmitting)return;
@@ -1734,6 +1750,7 @@ $('#save-restaurant-bill').onclick=async()=>{
       '? Cash/UPI/card means payment has been manually confirmed. Saved bills cannot be edited or deleted.'))return;
     body.request_id=crypto.randomUUID();
     pendingRestaurantBill=body;
+    lockPendingRestaurantInputs(true);
     renderCart();
   }else if(!confirm('A previous bill submission was not confirmed. Check the saved bills first. Retry the EXACT original bill with the same request ID? Changes to the current cart will not be submitted.')){
     return;
@@ -1748,6 +1765,8 @@ $('#save-restaurant-bill').onclick=async()=>{
     }catch(error){
       if(!(error instanceof TypeError)){
         pendingRestaurantBill=null;
+        lockPendingRestaurantInputs(false);
+        renderCart();
         throw error;
       }
       try{
@@ -1764,6 +1783,7 @@ $('#save-restaurant-bill').onclick=async()=>{
       }
     }
     pendingRestaurantBill=null;
+    lockPendingRestaurantInputs(false);
     restaurantReviewOpen=false;
     cart=[];
     renderCart();

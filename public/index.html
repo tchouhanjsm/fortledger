@@ -186,7 +186,8 @@
   <div class="restaurant-flex">
     <div class="pos-menu-panel"><div class="restaurant-pane-heading"><h3>Menu</h3><span class="muted">Tap + Add</span></div><input id="menu-search" type="search" placeholder="Search all menu items" aria-label="Search menu"><div id="menu-categories" class="pos-categories" role="group" aria-label="Filter menu by category"></div><p id="menu-result-count" class="muted" aria-live="polite"></p><div id="menu-items"></div></div>
     <div class="pos-bill-panel"><div class="pos-cart-heading"><h3>Draft bill <span id="cart-count" class="pos-count" aria-live="polite">0 items</span></h3><button id="clear-restaurant-cart" type="button" class="secondary" disabled>Clear</button></div><div id="cart-items" class="cart-items"></div><div id="cart-total" class="form-preview" aria-live="polite">₹0.00</div>
-      <label class="restaurant-field">Payment method<select id="restaurant-method"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option><option value="room">Charge to room</option></select></label>
+      <label class="restaurant-field">Payment handling<select id="restaurant-method"><optgroup label="Payment received now"><option value="cash">Cash received</option><option value="upi">UPI received</option><option value="card">Card received</option></optgroup><optgroup label="Unpaid guest charge"><option value="room">Charge to room — settle later</option></optgroup></select></label>
+      <p id="restaurant-payment-hint" class="muted" role="status">Cash / UPI / card: only select after the payment has actually been received and verified by staff.</p>
       <div id="room-charge-choice" hidden>
         <label class="restaurant-field">Checked-in guest or manual entry<select id="restaurant-guest"></select></label>
         <div id="manual-room-fields" hidden>

@@ -51,12 +51,15 @@ export async function runAuthenticatedBrowserSmoke(browser){
           assert.equal(bookings.status(),403);
           const res=await context.request.post(base+'/api/restaurant/bills',{
             data:{request_id:randomUUID(),payment_method:'cash',
-              items:[{menu_item_id:listMenu(db)[0].id,quantity:1}]}
+              items:[{menu_item_id:listMenu(db)[0].id,quantity:1,
+                unit_price_paise:listMenu(db)[0].price_paise,tax_rate:listMenu(db)[0].tax_rate}]}
           });
           assert.equal(res.status(),201);
           await page.goto(base+'/#restaurant');
           await page.locator('#restaurant').waitFor({state:'visible'});
           assert.equal(await page.locator('#bookings').isVisible(),false);
+          assert.equal(await page.locator('#menu-import-section').isVisible(),false,
+            'Cashiers may bill but must not access menu price administration');
         }else if(user.role==='frontdesk'){
           assert.equal((await context.request.get(base+'/api/bookings')).status(),200);
           assert.equal((await context.request.get(base+'/api/guests')).status(),200);

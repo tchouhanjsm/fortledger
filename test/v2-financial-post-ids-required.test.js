@@ -42,7 +42,9 @@ test('public booking/payment/restaurant POSTs require stable client IDs and repl
     const payment={request_id:randomUUID(),amount:100,method:'upi'};
     assert.equal((await post(payPath,payment)).status,201);
     assert.equal((await post(payPath,payment)).status,200);
-    const bill={payment_method:'cash',items:[{menu_item_id:listMenu(db)[0].id,quantity:1}]};
+    const item=listMenu(db)[0];
+    const bill={payment_method:'cash',items:[{menu_item_id:item.id,quantity:1,
+      unit_price_paise:item.price_paise,tax_rate:item.tax_rate}]};
     assert.equal((await post('/api/restaurant/bills',bill)).status,400);
     const billRequest={...bill,request_id:randomUUID()};
     assert.equal((await post('/api/restaurant/bills',billRequest)).status,201);
