@@ -13,6 +13,7 @@ import {createApp} from '../src/server.js';
 import {prepareVerifiedUpgradeBackup,UpgradeBackupRefusal,isSeparateBackupVolume}
   from '../src/upgrade-backup.js';
 import {credentialCompanionPath,createEncryptedBackup} from '../src/encrypted-backups.js';
+import {verifyOwnerCompanion} from '../scripts/windows-verify-owner-companion.mjs';
 
 const passphrase='synthetic-independent-update-backup-secret-123';
 async function fixture(cb){
@@ -134,11 +135,25 @@ test('Windows installer rejects a decryptable legacy SQLite-only backup without 
     FORTLEDGER_AUTH_FILE:auth,FORTLEDGER_DB:live};
   const run=file=>spawnSync(process.execPath,[drill,file,'--require-owner-companion'],
     {env,encoding:'utf8',timeout:20000});
+  assert.equal(verifyOwnerCompanion(good.file,passphrase),true);
+  const newSetupVerifier=path.resolve('scripts/windows-verify-owner-companion.mjs');
+  const check=file=>spawnSync(process.execPath,[newSetupVerifier,file],
+    {env,encoding:'utf8',timeout:20000});
+  assert.equal(check(good.file).status,0,'New setup must independently prove owner recovery');
   const accepted=run(good.file);
   assert.equal(accepted.status,0,'Verified encrypted pair should qualify: '+accepted.stderr);
   const refused=run(old.file);
   assert.notEqual(refused.status,0,'Legacy SQLite-only archive must not qualify');
   assert.match(refused.stderr,/owner credential companion is missing/);
+  assert.notEqual(check(old.file).status,0,'Old installed drill may ignore flags, new verifier never does');
+  const ownerArtifact=credentialCompanionPath(good.file);
+  const damaged=fs.readFileSync(ownerArtifact);
+  damaged[damaged.length-1]^=1;
+  fs.writeFileSync(ownerArtifact,damaged);
+  assert.notEqual(check(good.file).status,0,'Cryptographic tampering must always block the update');
   const guard=fs.readFileSync(new URL('../scripts/windows-installer-guard.ps1',import.meta.url),'utf8');
   assert.match(guard,/--require-owner-companion/);
+  assert.match(guard,/\$node \$Verifier \$latest\.FullName/);
+  const iss=fs.readFileSync(new URL('../installers/FortLedger.iss',import.meta.url),'utf8');
+  assert.match(iss,/windows-verify-owner-companion\.mjs/);
 }));
