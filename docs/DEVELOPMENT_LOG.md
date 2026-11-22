@@ -344,3 +344,9 @@ All five increments completed in this development session were reviewed and merg
 - Focuses the exact existing physical room record. Unmatched food bill links focus the original bill. Backup warnings distinguish stale/unconfigured/local-only states and owner backup-center actions.
 - No check-in, room readiness, restaurant linking, payment, encrypted backup, database migration or application update is executed from the briefing.
 - Synthetic source/state and Chromium 390px tests added; independent real hotel, backup and printer acceptance remains required. See docs/KAIZEN_V3_ARRIVAL_READINESS.md.
+
+## 2026-11-22 — V3 Phase 5: low-cost, bounded reservation card rendering
+- A synthetic API baseline at 28/700 historical bookings motivated examining browser DOM volume. Unbounded historical booking rows create avoidable interactive controls on each refresh; no production page speed result was claimed.
+- Added an initial 40-card reservation presentation and explicit 40-more control. Global search, calendar, room availability, invoices, payment references and work queues still use the complete authorized booking collection.
+- Changing query/status/queue resets display size while retaining all historical records. No new schema, background service, API, pagination token or financial write. Tests include 95 synthetic booking records through Chromium 390px.
+- See docs/KAIZEN_V3_BOOKING_RENDER.md. On-site responsive, zoom, keyboard and actual speed evidence remain pending.

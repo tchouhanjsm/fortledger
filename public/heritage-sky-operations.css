@@ -196,3 +196,9 @@ main,.sidebar{max-width:100%;overflow-x:clip}
   .shift-handover-items{grid-template-columns:1fr}
   .shift-handover-row{min-height:48px}
 }
+
+/* Incremental booking cards: retain complete search and business logic. */
+.booking-list-more{display:block;margin:14px auto 4px;min-height:44px;
+  padding:9px 18px;max-width:100%;font-weight:650}
+.booking-list-more[hidden]{display:none}
+.booking-list-more:focus-visible{outline:3px solid var(--hs-focus);outline-offset:3px}

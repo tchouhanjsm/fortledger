@@ -6,6 +6,7 @@ import {openDatabase} from '../src/database.js';
 import {createApp} from '../src/server.js';
 import {importMenuCsv} from '../src/restaurant.js';
 import {runAuthenticatedBrowserSmoke} from './auth-smoke.mjs';
+import {runBookingCardPageSmoke} from './booking-card-page-smoke.mjs';
 import {runArrivalReadinessSmoke} from './arrival-readiness-smoke.mjs';
 
 const screenshots=process.env.FORTLEDGER_CAPTURE_SCREENSHOTS==='1';
@@ -442,6 +443,7 @@ try{
   assert.equal(db.prepare('SELECT count(*) AS n FROM bookings').get().n,2);
   assert.equal(db.prepare('SELECT count(*) AS n FROM booking_create_requests').get().n,2);
   await runAuthenticatedBrowserSmoke(browser);
+  await runBookingCardPageSmoke(browser);
   await runArrivalReadinessSmoke(browser);
   console.log('PASS: Chromium receipt-loss reconciliation, booking/payment flow, responsive 320(reflow proxy)/360/390/768/1024/1280/1440/1920 px.');
 }finally{
