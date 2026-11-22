@@ -306,3 +306,8 @@ All five increments completed in this development session were reviewed and merg
 - The native first-run owner password dialog communicates only over private stdin to a one-time initializer that refuses any existing SQLite or owner hash. The database and auth remain under `%LOCALAPPDATA%\\FortLedger\\data`, outside installed code.
 - Installer upgrades run a pre-copy guard: no active listener, paired database/auth, recent protected separate-drive encrypted backup and verified isolated restore when the app was previously installed. Uninstall never deletes hotel data or backup settings.
 - Installer mode reports installer-managed updates rather than attempting the Git-based Update Center. A GitHub Actions artifact is available for owner-managed distribution; digital signing, a stable GitHub release channel, a physical Windows GUI trial, external-drive recovery and legal/printing gates remain pending.
+
+## 2026-11-22 — Quiet owner Update Center notice
+- Owner-only top-bar `New update` action polls the verified installer feed after owner login and at most every four hours, never blocking an active hotel booking or restaurant bill.
+- The action links to existing My Profile download-only UI. Cashier/front desk/manager see no prompt. Offline checks silently fail without touching SQLite, staff accounts or installation binaries.
+- No auto-install, restart, Git fast-forward or unsigned-executable self-update is implied. Signed immutable releases and physical Windows acceptance remain pending.
