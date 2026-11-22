@@ -1,8 +1,44 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID,createHash } from 'node:crypto';
 import { bookingTotals } from './finance.js';
 import { NET_PAYMENTS_SQL } from './payment-ledger.js';
 import {recordAudit} from './financial-audit.js';
 
+/** v10: the write and its response marker commit together; old settlements are
+ * never backfilled or inferred from an unrelated historical group UUID. */
+export function ensureFolioSettlementRequestSchema(db){
+  db.exec(`CREATE TABLE IF NOT EXISTS folio_settlement_requests(
+    request_id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL CHECK(kind IN ('combined','room_bill')),
+    booking_id INTEGER NOT NULL REFERENCES bookings(id),
+    fingerprint TEXT NOT NULL,
+    response_json TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+}
+function executeOnce(db,{requestId,kind,bookingId,billId,method,accommodationMethod,reference},write){
+  if(requestId!==undefined&&
+    (typeof requestId!=='string'||!/^[A-Za-z0-9_-]{16,80}$/.test(requestId)))
+    throw new Error('Invalid folio settlement request ID');
+  const fingerprint=requestId?createHash('sha256').update(JSON.stringify({
+    kind,booking_id:bookingId,bill_id:billId??null,method,
+    accommodation_method:accommodationMethod??null,bank_reference:reference??''
+  })).digest('hex'):null;
+  return db.transaction(()=>{
+    if(requestId){
+      const prior=db.prepare('SELECT fingerprint,response_json FROM folio_settlement_requests WHERE request_id=?').get(requestId);
+      if(prior){
+        if(prior.fingerprint!==fingerprint)
+          throw new Error('Folio settlement request ID already used with different details');
+        return {...JSON.parse(prior.response_json),already_recorded:true};
+      }
+    }
+    const result=write();
+    if(requestId)db.prepare(`INSERT INTO folio_settlement_requests
+      (request_id,kind,booking_id,fingerprint,response_json) VALUES(?,?,?,?,?)`)
+      .run(requestId,kind,bookingId,fingerprint,JSON.stringify(result));
+    return {...result,already_recorded:false};
+  })();
+}
 const METHODS=['cash','upi','card'];
 function validMethod(method){if(!METHODS.includes(method))throw new Error('Choose cash, UPI, or card');return method;}
 function getBooking(db,id){
@@ -42,9 +78,9 @@ export function getGuestFolio(db,bookingId){
     accommodation,bills,invoice_discrepancy,restaurant_due_paise,
     combined_due_paise:accommodation.due_paise+restaurant_due_paise};
 }
-export function settleRoomBill(db,bookingId,billId,method,actor=null){
+export function settleRoomBill(db,bookingId,billId,method,actor=null,{request_id}={}){
   validMethod(method);
-  return db.transaction(()=>{
+  return executeOnce(db,{requestId:request_id,kind:'room_bill',bookingId,billId,method},()=>{
     const booking=getBooking(db,bookingId);
     if(booking.status==='cancelled')throw new Error('Cancelled booking cannot be settled');
     const bill=roomBills(db,bookingId).find(b=>b.id===billId);
@@ -59,7 +95,7 @@ export function settleRoomBill(db,bookingId,billId,method,actor=null){
   })();
 }
 export function settleCombined(db,bookingId,method,actor=null,{
-  accommodation_method=method,bank_reference=''
+  accommodation_method=method,bank_reference='',request_id
 }={}){
   // Restaurant settlement remains cash/UPI/card. Accommodation can use an
   // independently reconciled bank transfer, with a mandatory human reference.
@@ -71,7 +107,8 @@ export function settleCombined(db,bookingId,method,actor=null,{
   const reference=bank_reference.trim();
   if(accommodation_method==='bank'&&!/^[A-Za-z0-9/_ .-]{5,80}$/.test(reference))
     throw new Error('Bank transfer needs a reference (5–80 characters) for reconciliation');
-  return db.transaction(()=>{
+  return executeOnce(db,{requestId:request_id,kind:'combined',bookingId,method,
+    accommodationMethod:accommodation_method,reference},()=>{
     const folio=getGuestFolio(db,bookingId);
     if(folio.status==='cancelled')throw new Error('Cancelled booking cannot be settled');
     if(folio.invoice_discrepancy)throw new Error('Proforma and booking totals disagree; manager review required before combined settlement');
