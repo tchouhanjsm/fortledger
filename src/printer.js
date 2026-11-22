@@ -15,7 +15,7 @@ const money=amount=>'INR '+(amount/100).toFixed(2);
 /** SQLite event instants are stored as UTC without a trailing Z. */
 export function receiptLocalTime(createdAt){
   const raw=String(createdAt||'');
-  if(!/^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$/.test(raw))
+  if(!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw))
     throw new Error('Invalid saved restaurant receipt timestamp');
   const utc=new Date(raw.replace(' ','T')+'Z');
   if(!Number.isFinite(utc.getTime()))throw new Error('Invalid saved restaurant receipt timestamp');
@@ -34,8 +34,8 @@ function aligned(a,b,width){
 export function buildReceipt(bill,width=42,{hotel_name='Garh Jaisal'}={}){
   if(![32,42,48].includes(width))throw new Error('Unsupported paper width');
   const entries=JSON.parse(bill.items_snapshot);
-  const lines=['GARH JAISAL\n','RESTAURANT RECEIPT - NOT A TAX INVOICE\n',
-    '-'.repeat(width)+'\n','Receipt #'+bill.id+'\n','Saved '+bill.created_at+' UTC\n',
+  const lines=[clean(hotel_name).slice(0,width)+'\n','RESTAURANT RECEIPT - NOT A TAX INVOICE\n',
+    '-'.repeat(width)+'\n','Receipt #'+bill.id+'\n','Saved '+receiptLocalTime(bill.created_at)+'\n',
     'Payment: '+clean(bill.payment_method).toUpperCase()+'\n','-'.repeat(width)+'\n'];
   for(const item of entries){
     lines.push(clean(item.name).slice(0,width)+'\n');
