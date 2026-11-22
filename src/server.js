@@ -606,6 +606,24 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
         (tls?'https://':'http://')+host+':'+port);
       scheduleEncryptedBackups(db);
     });
+    if(process.platform==='win32'&&process.env.FORTLEDGER_DESKTOP_INSTALLER==='1'&&
+       !tls&&host==='127.0.0.1'&&port===3000){
+      // Local GUI tray launcher owns stdin. It asks the server to stop without
+      // killing an in-progress bill, booking, SQLite write or receipt response.
+      let quitting=false,buffer='';
+      process.stdin.setEncoding('utf8');
+      process.stdin.on('data',part=>{
+        buffer=(buffer+part).slice(-256);
+        if(!buffer.includes('FORTLEDGER_DESKTOP_QUIT\n'))return;
+        if(quitting)return;
+        quitting=true;
+        listener.close(()=>{
+          try{db.close();}
+          finally{process.exit(0);}
+        });
+      });
+      process.stdin.resume();
+    }
     if(supervised){
       let stopping=false;
       app.locals.stopForUpdate=()=>{
