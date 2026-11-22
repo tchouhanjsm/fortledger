@@ -134,3 +134,9 @@ A lightweight owner/manager report calculates booking occupancy, gross ADR and g
 - Treat Windows setup as a small free local application: Git and Node are explicit prerequisites; after cloning, one-double-click scripts wrap first install, routine start, separate-drive protected backup configuration, read-only diagnostics and guarded updates.
 - Backup secrets may be stored via Windows CurrentUser DPAPI **outside Git and outside the live SQLite folder**; never store plaintext or credentials in a committed script. DPAPI settings are not portable disaster-recovery credentials.
 - Safe Mac→Windows data movement must preserve a consistent SQLite snapshot and original auth credential file, not just a raw database file or a freshly created password. Physical replacement-device restoration and staff acceptance remain outstanding.
+
+## Desktop installer decision — 2026-11-22
+- Nontechnical Windows staff operate FortLedger through a Start Menu/desktop icon and tray launcher. Bundle Node 22 and production native SQLite in a simple per-user Inno Setup EXE; do not rebuild booking, restaurant, invoice or financial workflows inside Electron.
+- The launcher provides one-time owner credential setup, browser opening, single-instance tray behavior and a graceful local-stdin shutdown path. Keep staff role-based logins and localhost-only HTTP. No public inbound port or background cloud service.
+- Keep app files in `%LOCALAPPDATA%\\Programs\\FortLedger`; durable SQLite, auth and encrypted backup settings remain in `%LOCALAPPDATA%\\FortLedger`. Installer upgrade must refuse unsafe active operations and require recent independently protected encrypted-backup restoration before replacing already installed code.
+- Installer-managed installations cannot call Git fast-forward. Their owner update path is to install newer verified Windows EXEs. These unsigned alpha artifacts are not physical acceptance, trusted-code-signing, accountant sign-off or a public release.
