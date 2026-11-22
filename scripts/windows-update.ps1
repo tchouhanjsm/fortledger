@@ -8,7 +8,7 @@ $persistentDatabase = Join-Path $env:FORTLEDGER_DATA_DIR 'fortledger.sqlite'
 if ((Test-Path -LiteralPath $legacyDatabase) -and -not (Test-Path -LiteralPath $persistentDatabase)) {
   throw 'Found an older in-repository data\fortledger.sqlite, but no database in the new persistent Windows folder. Stop: migrate your existing database and admin-auth.json safely before starting/updating. Do not create a fresh empty ledger.'
 }
-$env:npm_config_package_lock = 'false'
+# The lockfile is committed; use npm ci for reproducible updates.
 $backupDir = Join-Path $env:LOCALAPPDATA 'FortLedger\update-backups'
 $nodeVersion = (& node --version)
 if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch '^v22\.') { throw "Expected Node.js 22.x. Found: $nodeVersion" }
@@ -18,9 +18,9 @@ $origin = (& git remote get-url origin).Trim()
 if ($LASTEXITCODE -ne 0 -or $origin -notmatch '^(https://github\.com/|git@github\.com:)tchouhanjsm/fortledger(\.git)?$') {
   throw "Unexpected Git remote URL. Review before updating: $origin"
 }
-$changed = @(& git status --porcelain --untracked-files=no)
+$changed = @(& git status --porcelain=v1 --untracked-files=all)
 if ($LASTEXITCODE -ne 0 -or $changed.Count -gt 0) {
-  throw 'Tracked app files have local changes. Commit or review these before updating; nothing will be overwritten.'
+  throw 'The app checkout has tracked or untracked changes (including possible package-lock.json conflicts). Preserve/review them before updating; nothing will be overwritten.'
 }
 # On Windows 10/11, refuse update while default local server is listening.
 if (Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue) {
@@ -38,7 +38,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Git fetch failed. No application files changed
 & git merge --ff-only origin/main
 if ($LASTEXITCODE -ne 0) { throw 'Fast-forward refused; inspect Git status. Backup remains intact.' }
 Write-Host 'Installing dependencies for updated code...' -ForegroundColor Cyan
-& npm.cmd install --no-audit --no-fund
+& npm.cmd ci --no-audit --no-fund
 if ($LASTEXITCODE -ne 0) { throw "Dependency update failed. Previous commit: $previous. Data was not deleted; do not start until resolved." }
 Write-Host 'Checking all automated tests...' -ForegroundColor Cyan
 & npm.cmd test
