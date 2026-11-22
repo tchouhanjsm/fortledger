@@ -1,7 +1,7 @@
 /** Read-only day-close preparation derived from the authoritative daily ledger.
  * Figures are operator-recorded, never independently bank verified. */
 export function prepareDailyClosing(report){
-  if(!report||!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(report.business_date))||
+  if(!report||!/^\d{4}-\d{2}-\d{2}$/.test(String(report.business_date))||
      report.timezone!=='Asia/Kolkata'||!report.by_method)
     throw new Error('Valid IST daily ledger is required for closing preparation');
   const methods=['cash','upi','card','bank','unrecorded'];
