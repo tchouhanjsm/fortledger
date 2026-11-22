@@ -5,6 +5,10 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location $root
 Write-Host 'FortLedger Windows safe-update assistant' -ForegroundColor Cyan
 Write-Host 'It will not interrupt an active reception or restaurant transaction.' -ForegroundColor Yellow
+if (Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue) {
+  $listening = @(Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue)
+  if ($listening.Count -gt 0) { throw 'FortLedger is running on port 3000. Finish work and stop the existing app window using Ctrl+C before updating.' }
+}
 
 # The one-click path requires independently protected encrypted backup readiness.
 # A timestamp-only file check is insufficient: inspect the latest actual artifact.
@@ -21,9 +25,15 @@ $backups = @(Get-ChildItem -LiteralPath $backupDir -File -Filter 'fortledger-*.f
 if ($backups.Count -eq 0 -or ((Get-Date).ToUniversalTime()-$backups[0].LastWriteTimeUtc).TotalHours -gt 36) {
   throw 'An independently protected encrypted backup from the last 36 hours is required.'
 }
-if ($backups[0].FullName.StartsWith($root+[IO.Path]::DirectorySeparatorChar,
-  [StringComparison]::OrdinalIgnoreCase)) {
-  throw 'Encrypted backup must be outside the Git application checkout.'
+$backupAbsolute = [IO.Path]::GetFullPath($backupDir)
+$dataAbsolute = [IO.Path]::GetFullPath($env:FORTLEDGER_DATA_DIR)
+if ($backupAbsolute.Equals($root,[StringComparison]::OrdinalIgnoreCase) -or
+    $backupAbsolute.StartsWith($root+[IO.Path]::DirectorySeparatorChar,
+      [StringComparison]::OrdinalIgnoreCase) -or
+    $backupAbsolute.Equals($dataAbsolute,[StringComparison]::OrdinalIgnoreCase) -or
+    $backupAbsolute.StartsWith($dataAbsolute+[IO.Path]::DirectorySeparatorChar,
+      [StringComparison]::OrdinalIgnoreCase)) {
+  throw 'Encrypted backup must be outside both the active hotel database and Git application folders.'
 }
 Write-Host 'Verifying that the latest encrypted backup can be restored in isolation...' -ForegroundColor Cyan
 & npm.cmd run recovery:encrypted-drill -- $backups[0].FullName
