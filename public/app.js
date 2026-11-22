@@ -524,12 +524,13 @@ function updateRoomOptions(selected=[]){
   if(!list.children.length)list.append(label('p','Set up physical rooms for this category first.','muted'));
 }
 /* Asia/Kolkata is the business date even when the browser machine uses another zone. */
-function hotelToday(){
+function hotelDateAt(instant){
   const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{
     timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'
-  }).formatToParts(new Date()).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
+  }).formatToParts(instant).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));
   return parts.year+'-'+parts.month+'-'+parts.day;
 }
+function hotelToday(){return hotelDateAt(new Date());}
 /* Read-only seven-room situational awareness; statuses are intentionally independent.
    Reserved does not mean physically occupied and vacant does not mean guest-ready. */
 function renderTodayRoomBoard(today){
@@ -636,7 +637,7 @@ function renderDashboard(){
   const today=hotelToday();
   const todaysSales=restaurantBills.filter(b=>{
     const stamp=String(b.created_at||'').replace(' ','T')+'Z';
-    return Number.isFinite(Date.parse(stamp))&&dateISO(new Date(stamp))===today;
+    return Number.isFinite(Date.parse(stamp))&&hotelDateAt(new Date(stamp))===today;
   });
   const stays=stayMetrics(bookings,today);
   const kpis=can('bookings.read')?[
