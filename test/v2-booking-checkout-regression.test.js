@@ -8,7 +8,8 @@ import {importMenuCsv,listMenu} from '../src/restaurant.js';
 test('booking-to-checkout regression keeps folio, bill replay, room readiness and next arrival consistent',async()=>{
   const db=openDatabase(':memory:');
   importMenuCsv(db,'name,category,price,tax_rate\nTea,Drinks,150,5');
-  const server=createApp(db).listen(0,'127.0.0.1');
+  let day='2027-02-10';
+  const server=createApp(db,{businessDate:()=>day}).listen(0,'127.0.0.1');
   await new Promise(resolve=>server.once('listening',resolve));
   const base='http://127.0.0.1:'+server.address().port;
   const call=async(url,method='GET',body)=>{
@@ -40,7 +41,7 @@ test('booking-to-checkout regression keeps folio, bill replay, room readiness an
     assert.equal(folio.status,200);
     assert.equal(folio.value.restaurant_due_paise,30000);
     assert.ok(folio.value.accommodation.due_paise>0);
-    const blocked=await call('/api/bookings/'+id+'/status','PATCH',{status:'checked_out'});
+    const blocked=await call('/api/bookings/'+id+'/status','PATCH',{status:'checked_out',date_override:true,reason:'Confirmed early departure of guest'});
     assert.equal(blocked.status,400);
     assert.match(blocked.value.error,/Outstanding guest folio balance/);
     const settled=await call('/api/bookings/'+id+'/folio/settle-combined','POST',{method:'cash'});
@@ -53,6 +54,7 @@ test('booking-to-checkout regression keeps folio, bill replay, room readiness an
     const checkout=await call('/api/bookings/'+id+'/status','PATCH',{status:'checked_out'});
     assert.equal(checkout.status,200);
     assert.equal((await call('/api/housekeeping')).value[0].status,'dirty');
+    day='2027-02-11';
     const nextBlocked=await call('/api/bookings/'+nextId+'/status','PATCH',{status:'checked_in'});
     assert.equal(nextBlocked.status,400);
     assert.match(nextBlocked.value.error,/not ready/);
