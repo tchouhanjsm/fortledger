@@ -50,3 +50,9 @@ The **Download verified Windows update** action appears only when the official a
 ## Optional HTTPS access on hotel staff phones
 
 Owner/IT can configure a private IPv4 listener using **FortLedger tray → Private hotel Wi-Fi HTTPS (owner/IT)**, which requires UAC approval, a certificate with the exact IP SAN, and a staff-subnet firewall allow rule. The phone then accesses `https://<hotel-PC-private-IP>:3000` only when on the staff Wi-Fi, with the issuer explicitly trusted. The Windows tray offers a separate action to return to strictly localhost-only. The original C# and Node app stays local-first and offline-capable. See [private staff-network guide](WINDOWS_STAFF_WIFI.md); do **not** bypass certificate warnings or expose the port to guest Wi-Fi or the internet.
+
+## Quiet owner update notification
+
+Once an installed Windows EXE includes this improvement, the signed-in **owner** gets a small **New update** action in the top bar only when the app can verify an available newer Windows installer artifact: an exact GitHub `main` commit with passing Ubuntu/Windows/Chromium CI and an official successful Windows-installer build. It checks after the owner logs in, and at most once per four hours while their page remains open. No pop-ups interrupt reception; staff accounts never see it. Offline/failure means there is no warning rather than an unsafe guess.
+
+Selecting **New update** opens **My Profile → Application updates**, where the owner may click **Download verified Windows update** to obtain the official GitHub build. Downloading does not install or restart the app. Finish bills and unsaved forms, verify recent off-device encrypted backups, stop the tray safely, and run the new installer on the same Windows user account. This remains unsigned alpha pending signed, immutable release packaging.
