@@ -590,12 +590,36 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
     console.error('FortLedger requires local admin authentication. Run: npm run setup-auth');
     process.exitCode=1;db.close();
   }else{
-    const app=createApp(db,{authRecord,authFile:DEFAULT_AUTH_FILE,network});
+    const supervised=process.platform==='win32'&&
+      process.env.FORTLEDGER_SUPERVISED==='1'&&
+      typeof process.send==='function'&&!tls&&
+      host==='127.0.0.1'&&port===3000;
+    const ipc=supervised?createSupervisedUpdateIpc(process):null;
+    const app=createApp(db,{authRecord,authFile:DEFAULT_AUTH_FILE,network,
+      ...(ipc?{updateService:{
+        inspect:()=>inspectUpdateReadiness({supervised:true}),
+        request:sha=>ipc.request(sha)
+      }}:{})});
     const server=tls?https.createServer({cert:tls.cert,key:tls.key,minVersion:'TLSv1.2'},app):app;
-    server.listen(port,host,()=>{
+    const listener=server.listen(port,host,()=>{
       console.log('FortLedger '+(tls?'private staff HTTPS':'local app')+': '+
         (tls?'https://':'http://')+host+':'+port);
       scheduleEncryptedBackups(db);
     });
+    if(supervised){
+      let stopping=false;
+      app.locals.stopForUpdate=()=>{
+        if(stopping)return;
+        stopping=true;
+        // Node's graceful close finishes existing HTTP responses, including
+        // persisted transactions. Never call closeAllConnections or kill staff writes.
+        listener.close(()=>{
+          try{db.close();}finally{
+            process.send?.({type:'fortledger.update.drained'});
+            process.exit(0);
+          }
+        });
+      };
+    }
   }
 }
