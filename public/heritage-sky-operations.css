@@ -202,3 +202,11 @@ main,.sidebar{max-width:100%;overflow-x:clip}
   padding:9px 18px;max-width:100%;font-weight:650}
 .booking-list-more[hidden]{display:none}
 .booking-list-more:focus-visible{outline:3px solid var(--hs-focus);outline-offset:3px}
+
+/* Owner-only, read-only physical release gate summary. */
+.release-status-items{list-style:none;margin:12px 0;padding:0;display:grid;gap:8px}
+.release-status-items li{border:1px solid var(--hs-border);border-radius:8px;
+  padding:9px 12px;background:var(--hs-surface);display:flex;flex-wrap:wrap;
+  justify-content:space-between;gap:7px;line-height:1.4;font-size:12px}
+.release-status-items li strong{font-weight:650}
+.release-status-items li span{font-size:11px;color:var(--hs-muted)}

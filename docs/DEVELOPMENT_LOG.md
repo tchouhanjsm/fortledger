@@ -350,3 +350,10 @@ All five increments completed in this development session were reviewed and merg
 - Added an initial 40-card reservation presentation and explicit 40-more control. Global search, calendar, room availability, invoices, payment references and work queues still use the complete authorized booking collection.
 - Changing query/status/queue resets display size while retaining all historical records. No new schema, background service, API, pagination token or financial write. Tests include 95 synthetic booking records through Chromium 390px.
 - See docs/KAIZEN_V3_BOOKING_RENDER.md. On-site responsive, zoom, keyboard and actual speed evidence remain pending.
+
+## 2026-11-22 — V3 Phase 6: read-only owner release-readiness visibility
+- Preserved existing six human evidence gates and CLI diagnostics; added a local-owner-only My Profile view of redacted machine pass/warn/fail counts, gate statuses and blocking check names.
+- Data is calculated on demand through the existing release evidence and diagnostic paths, not by adding a shadow release database, background process or user-generated approval.
+- The API requires system.update, local loopback owner sign-in and strips reviewer names, proof references, file paths and private details. Cashiers/managers/front desk cannot call it.
+- The status remains NOT RELEASED even if all operator evidence is attested. This UI cannot approve GST documents, install software or change hotel data.
+- See docs/KAIZEN_V3_RELEASE_STATUS.md; independent real Windows, Epson, backup restore, LAN and accountant acceptance remains pending.

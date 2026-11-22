@@ -4,6 +4,8 @@ import {randomBytes} from 'node:crypto';
 import path from 'node:path';
 import https from 'node:https';
 import {backupFreshness} from './backup-freshness.js';
+import {releaseReadiness} from './release-readiness.js';
+import {summarizeReleaseReadiness} from './release-status-summary.js';
 import {verifyLocalBackupHealth} from './backup-health.js';
 import {prepareVerifiedUpgradeBackup,UpgradeBackupRefusal} from './upgrade-backup.js';
 import {updateStatus} from './update-status.js';
@@ -42,6 +44,16 @@ import {normalizeOperationalNotes,updateOperationalNotes} from './booking-notes.
 import {deleteUnusedBooking,deleteUnusedGuest} from './entry-deletion.js';
 import {requireConfiguredHost,localListenerSettings,readLanTlsCredentials} from './network-policy.js';
 
+/** Avoid full SQLite/backup decrypt diagnostics in the live HTTP process.
+ * The complete doctor and isolated restore are separate maintenance operations. */
+function lightweightReleaseReadiness(){
+  return releaseReadiness({diagnostics:{
+    checks:[{name:'Full device diagnostics require a separate maintenance window',
+      status:'warn',detail:'Use Diagnose FortLedger.cmd and a verified off-device restore'}],
+    summary:{passed:0,failed:0,warnings:1}
+  }});
+}
+
 /** Financial POSTs require a caller-supplied stable request identity.
  * Generating a new key in the server would make lost-response retries unsafe. */
 function requireFinancialRequestId(body){
@@ -50,7 +62,7 @@ function requireFinancialRequestId(body){
     throw new Error('Unique request_id (16–80 safe characters) required for financial POST; reuse unchanged ID on retry');
 }
 export function createApp(db,{authRecord=null,authFile=null,network=null,businessDate=null,checkUpdates=updateStatus,updateService=null,checkBackupHealth=verifyLocalBackupHealth,
-  prepareUpgradeBackup=prepareVerifiedUpgradeBackup}={}) {
+  prepareUpgradeBackup=prepareVerifiedUpgradeBackup,getReleaseReadiness=lightweightReleaseReadiness}={}) {
   if(network?.mode==='lan'&&!authRecord)throw new Error('LAN access requires configured authentication');
   const app = express();
   const menuPreviewKey=randomBytes(32); // invalidated safely on every server restart
@@ -99,6 +111,12 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   // npm installation, data migration, process restart, or a remote network command.
   const updateOwnerLocal=req=>Boolean(authRecord&&network?.mode!=='lan'&&
     ['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress));
+  app.get('/api/system/release-readiness',(req,res,next)=>{
+    if(req.actor?.role!=='owner'||!updateOwnerLocal(req))
+      return res.status(403).json({error:'Read-only release review requires owner sign-in on this computer'});
+    try{res.json(summarizeReleaseReadiness(getReleaseReadiness()));}
+    catch(error){next(error);}
+  });
   // Backup preparation deliberately does not use the Git updater. It creates
   // only a new independently protected encrypted snapshot, never a booking or
   // database migration. Keep it alive during a graceful tray shutdown.
