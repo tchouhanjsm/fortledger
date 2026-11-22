@@ -316,3 +316,10 @@ All five increments completed in this development session were reviewed and merg
 - Implemented an owner-only, local-PC **Prepare safe update backup** operation in My Profile. Creates a fresh paired AES-GCM SQLite and original-owner credential artifact to the configured separate drive and performs a complete isolated restore rehearsal. It refuses same-PC emergency backups, missing drives, missing/invalid owner hash and unverified copies, returning no private paths or secrets.
 - The route serializes repeated clicks and is awaited by the graceful desktop tray/supervisor shutdown so SQLite is not closed while the backup is in progress. The current installer still requires closed operations and a recent separately protected backup before program files can be changed; the operation does **not** run unsigned downloaded executables or perform migrations.
 - Synthetic regression and authenticated owner/staff permission tests cover refusal paths and restore integrity. Physical external-drive and new-PC acceptance remain mandatory.
+
+## 2026-11-22 — V3 Kaizen Phase 2: read-only day closing preparation
+- Added optional, on-demand source review inside existing End-of-day cash closing panel. It requests the existing authenticated IST daily collections report only when staff open the disclosure or choose a date.
+- Displays cash, UPI, card, bank and legacy method amounts with accommodation, restaurant, refund and expense splits; distinguishes money collected from unlinked/unsettled room receivables and bank-verification evidence.
+- Reconciles integer-paise method totals with report totals; mismatches fail visibly instead of silently adjusting financial records. Includes refund-heavy negative net day cases and role boundary tests.
+- No additional financial mutations, migration, closing snapshots or unattended settlement. Original immutable close, review acknowledgment and accountant sign-off boundaries remain unchanged.
+- Documentation: docs/KAIZEN_V3_CLOSING_PREPARATION.md. CI results and physical acceptance must be recorded separately after the PR head completes checks.
