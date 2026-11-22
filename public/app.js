@@ -1,11 +1,13 @@
 import {occupiedRoomCount,monthGrid} from './calendar-utils.js';
 import {VIEWS,viewForHash} from './navigation.js';
 import {createWorkspaceNavigator} from './workspace-navigation.js';
+import {createConfirmAction} from './ui-dialog.js';
 import {matchesWorkQueue,bookingNextActionCue} from './booking-work-queue.js';
 import {bookingDraftError} from './booking-editor-guards.js';
 import {todayAttention} from './today-attention.js';
 import {stayMetrics} from './stay-metrics.js';
 const $ = selector => document.querySelector(selector);
+const confirmAction=createConfirmAction($('#shizuka-confirm-dialog'));
 $('#skip-to-main').onclick=()=>{
   const main=$('#workspace-main');
   main.focus({preventScroll:true});
@@ -1735,12 +1737,17 @@ $('#edit-restaurant-bill').onclick=()=>{
   $('#restaurant-message').textContent='Draft remains unsaved. Add or remove items, then review it again.';
   $('#menu-search').focus({preventScroll:true});
 };
-$('#clear-restaurant-cart').onclick=()=>{
+$('#clear-restaurant-cart').onclick=async()=>{
   if(pendingRestaurantBill){
     $('#restaurant-message').textContent='An earlier bill submission is not confirmed. Review saved bills and retry the original request before starting another bill.';
     return;
   }
-  if(!cart.length||!confirm('Clear this unsaved bill?'))return;
+  if(!cart.length||!await confirmAction({
+    title:'Clear this draft bill?',
+    detail:'Only unsaved items will be removed. Existing saved bills and payments will not change.',
+    confirmLabel:'Clear draft',danger:true
+  }))return;
+  if(pendingRestaurantBill)return;
   cart=[];restaurantReviewOpen=false;renderCart();$('#restaurant-message').textContent='Unsaved bill cleared.';
 };
 $('#restaurant-method').onchange=()=>{
@@ -1877,9 +1884,13 @@ async function changeMenuAvailability(item){
   if(!can('menu.manage')||menuAvailabilityBusy||!menuAvailabilityVerified)return;
   const wasActive=Boolean(item.active),makeActive=!wasActive;
   const verb=makeActive?'Make available':'Mark unavailable';
-  if(!confirm(verb+' '+item.name+'? '+(makeActive?
-    'It will become selectable for new bills.':
-    'It will disappear from new bills; saved receipts stay unchanged.')))return;
+  if(!await confirmAction({
+    title:verb+' '+item.name+'?',
+    detail:makeActive?
+      'It will become selectable for new bills. Saved receipts remain unchanged.':
+      'It will disappear from new bills. Saved receipts and original prices remain unchanged.',
+    confirmLabel:verb
+  }))return;
   menuAvailabilityBusy=true;
   menuAvailabilityVerified=false;
   menuAvailabilityRevision++; // invalidate a read already in flight
