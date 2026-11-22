@@ -3,6 +3,7 @@
 // Never ask the old software to validate a file format it may silently ignore.
 import fs from 'node:fs';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {createDecipheriv,scryptSync} from 'node:crypto';
 
 function verifyOwnerCompanion(backup,passphrase){
@@ -28,7 +29,7 @@ function verifyOwnerCompanion(backup,passphrase){
     return true;
   }finally{plaintext.fill(0);}
 }
-if(import.meta.url===new URL('file://'+process.argv[1]?.replaceAll('\\','/')).href){
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   try{
     verifyOwnerCompanion(process.argv[2],process.env.FORTLEDGER_BACKUP_PASSPHRASE);
     console.log('PASS: encrypted owner credential companion authenticated without exposing the credential.');
