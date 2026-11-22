@@ -30,6 +30,10 @@ async function syntheticSnapshot(work){
   db.close();
   savePasswordRecord(auth,'synthetic-previous-owner-password-123');
   const archive=await backupBeforeUpdate(archives,{source,auth});
+  assert.equal(fs.existsSync(path.join(archive.folder,'fortledger.sqlite-wal')),false,
+    'Verified snapshots must not require live WAL companions');
+  assert.equal(fs.existsSync(path.join(archive.folder,'fortledger.sqlite-shm')),false,
+    'Verified snapshots must not require SQLite shared-memory companions');
   try{
     await work({root,dest,archive:archive.folder,source,auth,invoice});
   }finally{fs.rmSync(root,{recursive:true,force:true});}
