@@ -337,3 +337,10 @@ All five increments completed in this development session were reviewed and merg
 - Ubuntu CI publishes informational measurements without imposing ungrounded latency thresholds. No production database, cloud API, guest records, financial event writes or persistent files are used.
 - Pure quantile validation and source guard tests included. Results do not certify physical Windows/Chromium page navigation, idle CPU, PDF throughput or actual encrypted backup restore.
 - Run npm run perf:baseline; methodology and rollback docs/KAIZEN_V3_PERFORMANCE_BASELINE.md.
+
+## 2026-11-22 — V3 Phase 6: read-only owner release-readiness visibility
+- Preserved existing six human evidence gates and CLI diagnostics; added a local-owner-only My Profile view of redacted machine pass/warn/fail counts, gate statuses and blocking check names.
+- Data is calculated on demand through the existing release evidence and diagnostic paths, not by adding a shadow release database, background process or user-generated approval.
+- The API requires system.update, local loopback owner sign-in and strips reviewer names, proof references, file paths and private details. Cashiers/managers/front desk cannot call it.
+- The status remains NOT RELEASED even if all operator evidence is attested. This UI cannot approve GST documents, install software or change hotel data.
+- See docs/KAIZEN_V3_RELEASE_STATUS.md; independent real Windows, Epson, backup restore, LAN and accountant acceptance remains pending.
