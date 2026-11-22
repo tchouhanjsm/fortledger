@@ -26,6 +26,7 @@ test('public release status never reveals private proof references, locations or
   const r=summarizeReleaseReadiness(syntheticReport()),serialized=JSON.stringify(r);
   assert.equal(r.verdict,'NOT RELEASED');
   assert.equal(r.production_ready,false);
+  assert.equal(r.full_machine_diagnostics_performed,false);
   assert.equal(r.evidence.attested,1);
   assert.equal(r.gates.length,6);
   assert.equal(r.blocking_checks.length,1);
@@ -86,5 +87,6 @@ test('UI is owner-only, opt-in, and never attests evidence through a browser',()
   assert.match(ui,/\$\('#release-status-panel'\)\.hidden=currentUser\.role!=='owner'/);
   assert.match(ui,/\$\('#release-status-check'\)\.onclick=async\(\)=>/);
   assert.match(ui,/api\('\/api\/system\/release-readiness'\)/);
+  assert.match(readFileSync(new URL('../src/server.js',import.meta.url),'utf8'),/getReleaseReadiness=lightweightReleaseReadiness/);
   assert.doesNotMatch(html,/mark production ready|self-certify/);
 });
