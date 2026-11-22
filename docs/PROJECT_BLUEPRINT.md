@@ -129,3 +129,8 @@ A lightweight owner/manager report calculates booking occupancy, gross ADR and g
 - The supervisor waits for existing financial HTTP requests to finish before installation. New money requests fail with 503 while draining; if the transaction response is uncertain, the operator checks the ledger before retrying.
 - The latest GitHub main commit is installable **only after exact-SHA push CI** has passed in Linux, Windows and Chromium, a recent encrypted backup is configured on a separate drive, and the reviewed Git origin/fast-forward requirements still hold.
 - The supervisor can safely relaunch the old version after an update failed before changing Git HEAD, but **never blindly rolls back** after the commit advances or SQLite migrations may have occurred. Physical device/backup acceptance remains pending; signed/tagged releases are future hardening.
+
+## Windows setup simplicity — 2026-11-22
+- Treat Windows setup as a small free local application: Git and Node are explicit prerequisites; after cloning, one-double-click scripts wrap first install, routine start, separate-drive protected backup configuration, read-only diagnostics and guarded updates.
+- Backup secrets may be stored via Windows CurrentUser DPAPI **outside Git and outside the live SQLite folder**; never store plaintext or credentials in a committed script. DPAPI settings are not portable disaster-recovery credentials.
+- Safe Mac→Windows data movement must preserve a consistent SQLite snapshot and original auth credential file, not just a raw database file or a freshly created password. Physical replacement-device restoration and staff acceptance remain outstanding.
