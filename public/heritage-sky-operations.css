@@ -15,19 +15,36 @@
 .today-room-board .today-room-readiness{font-size:12px;color:#225e51;margin:0 0 7px}
 .today-room-board .today-room-alert{font-size:12px;color:#8b471d;font-weight:700;margin:0 0 7px}
 .today-room-card small{display:block;font-size:11px;line-height:1.5;color:var(--hs-muted)}
-.booking-filters{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-.booking-filters select{padding:10px 12px;min-height:42px;border:1px solid #cbd4dd;border-radius:var(--hs-control-radius);background:var(--hs-surface);color:var(--hs-ink)}
-.booking-filters input{min-width:190px;min-height:42px}
+/* The reservation title, task queues and filters are separate deliberate regions.
+   Do not let competing flex items squeeze the heading or clip selectors. */
+#bookings > .panel-head{
+  display:grid;
+  grid-template-columns:minmax(225px,1fr) minmax(0,2fr);
+  grid-template-areas:"intro queues" "intro filters";
+  align-items:start;
+  column-gap:var(--sh-space-6);row-gap:var(--sh-space-2);
+}
+#bookings > .panel-head > :first-child{grid-area:intro;min-width:0}
+#booking-quick-queues{grid-area:queues;min-width:0;width:100%;margin:0}
+.booking-filters{
+  grid-area:filters;display:grid;
+  grid-template-columns:minmax(100px,1fr) minmax(110px,1.2fr) minmax(125px,1.2fr) auto;
+  align-items:center;gap:var(--sh-space-2);min-width:0
+}
+.booking-filters>*{min-width:0;width:100%}
+.booking-filters select{padding:10px 12px;min-height:var(--sh-control-height);border:1px solid #cbd4dd;border-radius:var(--hs-control-radius);background:var(--hs-surface);color:var(--hs-ink);max-width:none}
+.booking-filters input{min-width:0;min-height:var(--sh-control-height)}
+@media(max-width:1250px){
+  #bookings > .panel-head{grid-template-columns:minmax(0,1fr);grid-template-areas:"intro" "queues" "filters";row-gap:var(--sh-space-3)}
+  .booking-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 @media(max-width:750px){
   .today-room-board{padding:15px}
   .today-room-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
   .booking-filters{width:100%}
-  .booking-filters input{flex:1 1 190px}
 }
-@media(max-width:390px){
-  .today-room-cards{grid-template-columns:1fr}
-  .booking-filters>*{flex:1 1 100%;width:100%}
-}
+@media(max-width:600px){.booking-filters{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:390px){.today-room-cards{grid-template-columns:1fr}}
 
 /* Received-payment entry stays compact; financial mutations remain server-authorized. */
 #booking-payment-dialog{width:min(510px,calc(100vw - 24px));padding:clamp(18px,3vw,30px)}
@@ -38,10 +55,8 @@
 #booking-payment-dialog .dialog-actions{flex-wrap:wrap;margin-top:22px}
 @media(max-width:480px){#booking-payment-dialog .form-grid{grid-template-columns:1fr}}
 
-.booking-filters #booking-clear-filters{min-height:42px;white-space:nowrap;padding:9px 12px}
-.booking-results-count{font-size:12px;color:var(--hs-muted);margin:-8px 0 14px;font-variant-numeric:tabular-nums}
-.booking-filters select{max-width:min(100%,290px)}
-@media(max-width:750px){.booking-filters select{max-width:100%;flex:1 1 180px}}
+.booking-filters #booking-clear-filters{min-height:var(--sh-control-height);white-space:nowrap;padding:9px 12px}
+.booking-results-count{font-size:12px;color:var(--hs-muted);margin:0 0 var(--sh-space-4);font-variant-numeric:tabular-nums}
 
 /* Phase 7B: avoid equally prominent destructive/secondary actions.
    Explicit hidden override prevents responsive display rules from exposing RBAC-hidden views. */
