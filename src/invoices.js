@@ -19,6 +19,12 @@ export function createProforma(db,bookingId,input={}){
     if(booking.status==='cancelled')throw new Error('Cannot invoice a cancelled booking');
     const details=normalizeInvoiceInput(input,booking);
     const totals=bookingTotals(booking);
+    // A proforma is an immutable presentation of the agreed reservation,
+    // not an independent charge ledger. Custom descriptions/splits may vary,
+    // but the customer-facing amount must match the guest folio.
+    if(details.total_paise!==totals.total_paise)
+      throw new Error('Proforma accommodation total must equal the booked stay total ('+
+        (totals.total_paise/100).toFixed(2)+' INR). Edit the booking before issuing a proforma; do not create an unrecorded charge adjustment.');
     const paid_paise=totals.paid_paise;
     const next=db.prepare('UPDATE invoice_sequence SET last_number=last_number+1 WHERE id=1 RETURNING last_number').get().last_number;
     const year=new Date().getFullYear();
