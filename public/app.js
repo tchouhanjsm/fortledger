@@ -1,7 +1,7 @@
 import {occupiedRoomCount,monthGrid} from './calendar-utils.js';
 import {VIEWS,viewForHash} from './navigation.js';
 import {createWorkspaceNavigator} from './workspace-navigation.js';
-import {matchesWorkQueue} from './booking-work-queue.js';
+import {matchesWorkQueue,bookingNextActionCue} from './booking-work-queue.js';
 import {bookingDraftError} from './booking-editor-guards.js';
 import {todayAttention} from './today-attention.js';
 import {stayMetrics} from './stay-metrics.js';
@@ -203,7 +203,7 @@ function renderBookings(){
       }
       if(outcome.warnings?.length)alert(outcome.warnings.join('\\n'));
     };
-    stage.append(status);
+    stage.append(status,label('small',bookingNextActionCue(b,today),'booking-next-action'));
     const due=label('div',undefined,'money');due.append(label('strong',money(b.total_paise)),label('small','Due '+money(b.due_paise)));
     const actions=label('div',undefined,'row-actions');
     const edit=label('button','Edit','secondary');edit.disabled=!can('bookings.write')||['cancelled','checked_out'].includes(b.status)||invoices.some(i=>i.booking_id===b.id);edit.onclick=()=>openEdit(b);

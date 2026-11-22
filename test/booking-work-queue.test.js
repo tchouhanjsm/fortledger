@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {matchesWorkQueue} from '../public/booking-work-queue.js';
+import {matchesWorkQueue,bookingNextActionCue} from '../public/booking-work-queue.js';
 
 const today='2026-11-21';
 const base={status:'reserved',checkin:today,checkout:'2026-11-23',room_ids:[],rooms_count:2,due_paise:1000};
@@ -41,4 +41,33 @@ test('work queue controls are present and wired to the existing local booking le
   assert.match(js,/matchesWorkQueue\(b,workFilter,today\)/);
   assert.match(js,/const today=hotelToday\(\)/);
   assert.match(js,/\$\('#booking-work-filter'\)\.onchange=renderBookings/);
+});
+
+test('in-house queue represents actual checked-in status, including an overdue departure',()=>{
+  assert.equal(matchesWorkQueue({...base,status:'checked_in'},'in_house',today),true);
+  assert.equal(matchesWorkQueue({...base,status:'checked_in',checkout:'2026-11-19'},'in_house',today),true,
+    'Overdue guests must not silently disappear from physical in-house work');
+  assert.equal(matchesWorkQueue({...base,status:'reserved'},'in_house',today),false);
+  assert.equal(matchesWorkQueue({...base,status:'checked_out'},'in_house',today),false);
+  assert.equal(matchesWorkQueue({...base,status:'cancelled'},'in_house',today),false);
+});
+test('operator prompts do not mistake a reserved room for checked-in or automatically ready',()=>{
+  assert.match(bookingNextActionCue({...base,room_ids:[]},today),/assign all booked rooms/);
+  assert.match(bookingNextActionCue({...base,room_ids:[1,2]},today),/confirm room readiness/);
+  assert.match(bookingNextActionCue({...base,status:'checked_in',checkout:'2026-11-19'},today),/Departure overdue/);
+  assert.match(bookingNextActionCue({...base,status:'checked_in',checkout:today},today),/Departure due today/);
+  assert.match(bookingNextActionCue({...base,status:'checked_in'},today),/Guest in-house/);
+  assert.match(bookingNextActionCue({...base,status:'cancelled'},today),/refund any advance separately/);
+  assert.match(bookingNextActionCue({...base,status:'checked_out'},today),/housekeeping/);
+});
+test('primary receptionist workflow tabs match arrivals, in-house, departures and all bookings',()=>{
+  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+  const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+  const src=html.slice(html.indexOf('id="booking-quick-queues"'),html.indexOf('</div><div class="booking-filters">'));
+  const ordered=['arrivals','in_house','departures','all'];
+  for(let i=1;i<ordered.length;i++)
+    assert.ok(src.indexOf('data-booking-queue="'+ordered[i-1]+'"')<
+      src.indexOf('data-booking-queue="'+ordered[i]+'"'));
+  assert.match(html,/<option value="in_house">/);
+  assert.match(js,/bookingNextActionCue\(b,today\)/);
 });
