@@ -40,7 +40,7 @@ Spacing uses a 4px base with 8px rhythm: `--sh-space-{1,2,3,4,5,6,8,10,12,16}`. 
 | 4 | **Responsive/accessibility** | 200% browser zoom and assistive technology, keyboard dialog focus, 360/390/768/1024/1440/1920 layouts | Visual/functional signoff; WCAG claims only after audit |
 | 5 | **Final craftsmanship** | Remove now-obsolete CSS, tighten microcopy, screenshots across all states, review performance | Representative Mac+phone walkthrough; no hidden financial changes |
 
-Parallel **business safety** priorities remain: audited saved-bill correction/credit (separate accountant-reviewed design), price editor with signed review, daily reconciliation export, and the outstanding Mac/Epson/backup/GST acceptance gates. Do not mix ledger mutations into visual PRs.
+Parallel **business safety** priorities remain: audited saved-bill correction/credit (separate accountant-reviewed design), price editor with signed review, and the outstanding Mac/Epson/backup/GST acceptance gates. The restaurant **read-only recorded-event reconciliation CSV** is now delivered separately (see `docs/RESTAURANT_RECONCILIATION_EXPORT.md`); independent bank verification is not implemented. Do not mix ledger mutations into visual PRs.
 
 ## Evidence limits and delivery
 
