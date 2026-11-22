@@ -75,8 +75,51 @@ function reportChanged(db,close){
   const current=relevant(dailyCollections(db,close.business_date));
   return fingerprint(current)!==close.snapshot_hash;
 }
+function reviewedState(db,row,currentHash){
+  const last=db.prepare(`SELECT details,actor_username,created_at FROM operation_audit
+    WHERE entity_type='daily_close' AND entity_id=? AND action='daily_close.reviewed'
+    ORDER BY id DESC LIMIT 1`).get(row.id);
+  if(!last)return {status:'needs_review'};
+  const details=JSON.parse(last.details);
+  if(details.live_snapshot_hash!==currentHash)return {status:'needs_review'};
+  return {status:details.disposition==='investigate'?'investigating':'reviewed',
+    reviewer:last.actor_username,reviewed_at:last.created_at,reason:details.reason};
+}
 export function getDailyClose(db,date){
   const day=expenseDate(date);
   const row=db.prepare('SELECT * FROM daily_closes WHERE business_date=?').get(day);
-  return row?{...row,snapshot:JSON.parse(row.snapshot),stale:reportChanged(db,row)}:null;
+  if(!row)return null;
+  const currentHash=fingerprint(relevant(dailyCollections(db,day)));
+  const stale=currentHash!==row.snapshot_hash;
+  return {...row,snapshot:JSON.parse(row.snapshot),stale,
+    review:stale?reviewedState(db,row,currentHash):{status:'current'}};
+}
+export function reviewDailyClose(db,date,input,actor){
+  if(!actor||!['owner','manager'].includes(actor.role))
+    throw new Error('Only owner or manager can review a changed daily close');
+  if(!input||typeof input!=='object'||Array.isArray(input))
+    throw new Error('Invalid closing review');
+  const day=expenseDate(date);
+  const reason=String(input.reason??'').trim();
+  if(reason.length<10||reason.length>300)throw new Error('Closing review reason must be 10–300 characters');
+  if(!['acknowledged','investigate'].includes(input.disposition))
+    throw new Error('Choose acknowledged or investigate for closing review');
+  return db.transaction(()=>{
+    const existing=getDailyClose(db,day);
+    if(!existing)throw new Error('Daily close not found');
+    if(!existing.stale)throw new Error('Daily close still agrees with the ledger; no discrepancy to review');
+    const currentHash=fingerprint(relevant(dailyCollections(db,day)));
+    recordAudit(db,actor,'daily_close.reviewed','daily_close',existing.id,{
+      business_date:day,live_snapshot_hash:currentHash,
+      original_snapshot_hash:existing.snapshot_hash,
+      disposition:input.disposition,reason
+    });
+    return getDailyClose(db,day);
+  })();
+}
+export function unreviewedDailyCloses(db){
+  const days=db.prepare('SELECT business_date FROM daily_closes ORDER BY business_date DESC LIMIT 500').all();
+  return days.map(x=>getDailyClose(db,x.business_date))
+    .filter(x=>x.stale&&x.review.status!=='reviewed')
+    .map(x=>({business_date:x.business_date,id:x.id,review_status:x.review.status}));
 }
