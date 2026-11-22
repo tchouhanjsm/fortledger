@@ -1678,6 +1678,18 @@ async function showFolio(booking){
   $('#folio-dialog').showModal();
   await refreshFolio();
 }
+// Preserve retry identities across folio dialog refreshes until a successful
+// API acknowledgment. An ambiguous fetch outcome is NOT proof of failure.
+const pendingFolioSettlements=new Map();
+function folioSettlementIntent(key,details){
+  const serialized=JSON.stringify(details),previous=pendingFolioSettlements.get(key);
+  if(previous&&previous.serialized!==serialized)
+    throw new Error('A settlement response is uncertain. Retry with the same payment choices, or inspect the ledger before changing them.');
+  if(previous)return previous.body;
+  const body={...details,request_id:crypto.randomUUID()};
+  pendingFolioSettlements.set(key,{serialized,body});
+  return body;
+}
 async function refreshFolio(){
   const data=await api('/api/bookings/'+activeFolioBooking+'/folio');
   $('#folio-name').textContent=data.guest_name;
@@ -1693,9 +1705,16 @@ async function refreshFolio(){
     button.onclick=async()=>{
       if(!confirm('Record separate payment of '+money(bill.total_paise)+' for food bill #'+bill.id+'?'))return;
       try{
-        await api('/api/bookings/'+activeFolioBooking+'/folio/room-bills/'+bill.id+'/settle',{method:'POST',body:JSON.stringify({method:$('#folio-method').value})});
-        $('#folio-message').textContent='Separate food payment saved.';await refreshFolio();
-      }catch(e){$('#folio-message').textContent=e.message;}
+        const bookingId=activeFolioBooking,key='room:'+bookingId+':'+bill.id;
+        const body=folioSettlementIntent(key,{method:$('#folio-method').value});
+        const result=await api('/api/bookings/'+bookingId+'/folio/room-bills/'+bill.id+'/settle',{
+          method:'POST',body:JSON.stringify(body)});
+        pendingFolioSettlements.delete(key);
+        $('#folio-message').textContent=result.already_recorded?
+          'Food payment already saved; original settlement recovered.':'Separate food payment saved.';
+        await refreshFolio();
+      }catch(e){$('#folio-message').textContent='Payment outcome not confirmed: '+e.message+
+        '. Check the ledger or retry with unchanged payment details; do not create a second payment.';}
     };
     row.append(details,button);list.append(row);
   }
@@ -1712,14 +1731,22 @@ $('#folio-combined').onclick=async()=>{
   if(!confirm('Record full accommodation and unpaid restaurant balance as paid?'))return;
   const button=$('#folio-combined');button.disabled=true;
   try{
-    await api('/api/bookings/'+activeFolioBooking+'/folio/settle-combined',{method:'POST',body:JSON.stringify({
+    const bookingId=activeFolioBooking,key='combined:'+bookingId;
+    const body=folioSettlementIntent(key,{
       method:$('#folio-method').value,
       accommodation_method:$('#folio-accommodation-method').value,
       bank_reference:$('#folio-bank-reference').value.trim()
-    })});
-    message.textContent='Combined payment saved. No duplicate charges recorded.';
+    });
+    const result=await api('/api/bookings/'+bookingId+'/folio/settle-combined',{
+      method:'POST',body:JSON.stringify(body)});
+    pendingFolioSettlements.delete(key);
+    message.textContent=result.already_recorded?
+      'Original combined settlement recovered; no second payment recorded.':
+      'Combined payment saved. No duplicate charges recorded.';
     await load();await refreshFolio();
-  }catch(e){message.textContent=e.message;button.disabled=false;}
+  }catch(e){message.textContent='Payment outcome not confirmed: '+e.message+
+    '. Inspect the folio or retry unchanged details before recording another payment.';
+    button.disabled=false;}
 };
 
 async function refreshHotelLogo(){
