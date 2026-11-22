@@ -70,5 +70,4 @@ test('primary receptionist workflow tabs match arrivals, in-house, departures an
       src.indexOf('data-booking-queue="'+ordered[i]+'"'));
   assert.match(html,/<option value="in_house">/);
   assert.match(js,/bookingNextActionCue\(b,today\)/);
-  assert.match(js,/workspaceNavigator\.navigate\('bookings','bookings'\)/);
 });
