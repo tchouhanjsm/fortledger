@@ -191,7 +191,7 @@ export function restaurantBillRequest(db,requestId){
   const row=db.prepare('SELECT bill_id FROM restaurant_bill_requests WHERE request_id=?').get(requestId);
   return row?{recorded:true,id:row.bill_id}:{recorded:false};
 }
-export function createRestaurantBill(db,input,actor=null){
+export function createRestaurantBill(db,input,actor=null,{requireReviewedPrices=false}={}){
   if(!input||!Array.isArray(input.items)||input.items.length===0||input.items.length>50)throw new Error('Add 1–50 menu lines');
   const requestId=input.request_id;
   if(requestId!==undefined&&(typeof requestId!=='string'||!/^[A-Za-z0-9_-]{16,80}$/.test(requestId)))
@@ -211,13 +211,24 @@ export function createRestaurantBill(db,input,actor=null){
       throw new Error('Choose a checked-in guest');
     }
   }
-  // Fingerprint only the normalized submitted intent, never current menu prices:
-  // a lost-response retry must still resolve after a price or occupancy change.
+  // Include the operator-reviewed rates and GST in the request identity.
+  // Exact retries resolve BEFORE checking current menu prices: a lost response
+  // may be recovered even if the manager updated prices in the meantime.
   const normalizedItems=input.items.map(line=>{
-    const id=Number(line.menu_item_id),quantity=Number(line.quantity);
+    const id=Number(line?.menu_item_id),quantity=Number(line?.quantity);
     if(!Number.isSafeInteger(id)||id<1||!Number.isInteger(quantity)||quantity<1||quantity>100)
       throw new Error('Invalid item ID or quantity');
-    return {menu_item_id:id,quantity};
+    const hasPrice=Object.hasOwn(line,'unit_price_paise'),hasTax=Object.hasOwn(line,'tax_rate');
+    if(requireReviewedPrices&&(!hasPrice||!hasTax))
+      throw new Error('Review current menu price and GST for every bill item before saving');
+    if(hasPrice&&(!Number.isSafeInteger(line.unit_price_paise)||line.unit_price_paise<0||
+      line.unit_price_paise>10000000000))
+      throw new Error('Invalid reviewed unit price');
+    if(hasTax&&(!Number.isInteger(line.tax_rate)||line.tax_rate<0||line.tax_rate>28))
+      throw new Error('Invalid reviewed GST rate');
+    return {menu_item_id:id,quantity,
+      ...(hasPrice?{unit_price_paise:line.unit_price_paise}:{}),
+      ...(hasTax?{tax_rate:line.tax_rate}:{})};
   });
   const fingerprint=requestId?createHash('sha256').update(JSON.stringify({
     payment_method,booking_id,manual_room,manual_guest,items:normalizedItems
@@ -240,6 +251,9 @@ export function createRestaurantBill(db,input,actor=null){
       if(!Number.isSafeInteger(id)||id<1||!Number.isInteger(quantity)||quantity<1||quantity>100)
         throw new Error('Invalid item ID or quantity');
       const item=get.get(id);if(!item)throw new Error('Menu item not found');
+      if((line.unit_price_paise!==undefined&&line.unit_price_paise!==item.price_paise)||
+         (line.tax_rate!==undefined&&line.tax_rate!==item.tax_rate))
+        throw new Error('Menu price or GST rate changed since review; refresh and verify the bill before saving');
       const total_paise=item.price_paise*quantity;
       const taxable_paise=Math.round(total_paise*100/(100+item.tax_rate));
       return {menu_item_id:id,name:item.name,category:item.category,quantity,unit_price_paise:item.price_paise,
