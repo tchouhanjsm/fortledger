@@ -331,3 +331,10 @@ All five increments completed in this development session were reviewed and merg
 - Reconciles integer-paise method totals with report totals; mismatches fail visibly instead of silently adjusting financial records. Includes refund-heavy negative net day cases and role boundary tests.
 - No additional financial mutations, migration, closing snapshots or unattended settlement. Original immutable close, review acknowledgment and accountant sign-off boundaries remain unchanged.
 - Documentation: docs/KAIZEN_V3_CLOSING_PREPARATION.md. CI results and physical acceptance must be recorded separately after the PR head completes checks.
+
+## 2026-11-22 — V3 Phase 3: near-arrival room readiness and exact source navigation
+- Identified an operator blind spot: arrivals and dirty rooms were counted separately, leaving staff to guess which reservation was waiting for a specific unready room.
+- Added read-only, permission-scoped near-arrival readiness cues for named room allocations. Reports dirty/cleaning/inactive/missing rooms, TODAY-only out-of-service state and authorized maintenance conflicts anywhere across the booked interval.
+- Focuses the exact existing physical room record. Unmatched food bill links focus the original bill. Backup warnings distinguish stale/unconfigured/local-only states and owner backup-center actions.
+- No check-in, room readiness, restaurant linking, payment, encrypted backup, database migration or application update is executed from the briefing.
+- Synthetic source/state and Chromium 390px tests added; independent real hotel, backup and printer acceptance remains required. See docs/KAIZEN_V3_ARRIVAL_READINESS.md.
