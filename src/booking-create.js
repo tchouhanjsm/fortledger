@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {assertAvailability} from './database.js';
 import {bookingTotals} from './finance.js';
 import {recordAudit} from './financial-audit.js';
+import {normalizeOperationalNotes} from './booking-notes.js';
 
 /** Append-only request ledger. Old bookings/payments are never backfilled or deduplicated. */
 export function ensureBookingCreateSchema(db){
@@ -38,6 +39,8 @@ export function createBookingSafely(db,{booking,initialPaise,method,requestId,ac
   if(requestId!==undefined&&
      (typeof requestId!=='string'||!/^[A-Za-z0-9_-]{16,80}$/.test(requestId)))
     throw new Error('Invalid booking request ID');
+  // Supported internal callers may still omit these optional v12 fields.
+  booking={...booking,...normalizeOperationalNotes(booking)};
   const fingerprint=requestId?requestFingerprint(booking,initialPaise,method):null;
   return db.transaction(()=>{
     if(requestId){
