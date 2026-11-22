@@ -615,8 +615,8 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
         // persisted transactions. Never call closeAllConnections or kill staff writes.
         listener.close(()=>{
           try{db.close();}finally{
-            process.send?.({type:'fortledger.update.drained'});
-            process.exit(0);
+            if(process.send)process.send({type:'fortledger.update.drained'},()=>process.exit(0));
+            else process.exit(0);
           }
         });
       };
