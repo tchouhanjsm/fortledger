@@ -293,7 +293,20 @@
   </form></dialog>
 <dialog id="folio-dialog"><div class="dialog-heading"><div><span class="eyebrow">GUEST FOLIO</span><h2 id="folio-name">Guest settlement</h2></div><button id="close-folio" type="button" class="icon-btn" aria-label="Close">×</button></div>
   <div id="folio-summary" class="form-preview"></div>
-  <div id="folio-room-bills"></div>
+  <section aria-label="Accommodation adjustments">
+    <h3>Accommodation adjustments</h3>
+    <p class="muted">Approved charges and credits are recorded separately. The issued proforma is never changed. This is not a GST tax invoice.</p>
+    <div id="folio-adjustments"></div>
+    <form id="folio-adjustment-form" hidden>
+      <div class="form-grid">
+        <label>Adjustment type<select name="kind" required><option value="charge">Additional accommodation charge</option><option value="credit">Accommodation credit</option></select></label>
+        <label>Amount (INR)<input name="amount" type="number" min="0.01" max="1000000000" step="0.01" inputmode="decimal" required></label>
+        <label class="wide">Review reason<textarea name="reason" required minlength="10" maxlength="300" rows="2" placeholder="Reason agreed with guest and reviewed by owner/manager"></textarea></label>
+        <label class="wide">Supporting reference (optional)<input name="reference" maxlength="120" placeholder="Private signed adjustment memo reference"></label>
+      </div>
+      <button class="secondary" type="submit">Record reviewed adjustment</button>
+    </form>
+  </section>  <div id="folio-room-bills"></div>
   <label class="restaurant-field">Food room-charge payment method<select id="folio-method"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option></select></label>
   <label class="restaurant-field">Accommodation payment method<select id="folio-accommodation-method"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option><option value="bank">Bank transfer</option></select></label>
   <label class="restaurant-field" id="folio-bank-reference-field" hidden>Bank transfer reference<input id="folio-bank-reference" maxlength="80" autocomplete="off" placeholder="UTR / transaction reference"></label>
