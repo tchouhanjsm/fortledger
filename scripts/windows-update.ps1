@@ -1,4 +1,8 @@
 # Safe, repeatable Git fast-forward update for an existing Windows FortLedger checkout.
+param(
+  [ValidatePattern('^[a-fA-F0-9]{40}$')]
+  [string]$ExpectedCommit = ''
+)
 # Requires that the app be stopped before running. NEVER removes business data.
 $ErrorActionPreference = 'Stop'
 Set-Location (Resolve-Path (Join-Path $PSScriptRoot '..'))
@@ -35,8 +39,20 @@ Write-Host 'Previous application revision:' $previous
 Write-Host 'Fetching latest approved main branch...' -ForegroundColor Cyan
 & git fetch origin main
 if ($LASTEXITCODE -ne 0) { throw 'Git fetch failed. No application files changed.' }
+if ($ExpectedCommit) {
+  $fetchedCommit = (& git rev-parse refs/remotes/origin/main).Trim()
+  if ($LASTEXITCODE -ne 0 -or $fetchedCommit -ne $ExpectedCommit) {
+    throw 'GitHub main changed since owner approval. No merge attempted; check update readiness again.'
+  }
+}
 & git merge --ff-only origin/main
 if ($LASTEXITCODE -ne 0) { throw 'Fast-forward refused; inspect Git status. Backup remains intact.' }
+if ($ExpectedCommit) {
+  $installedCommit = (& git rev-parse HEAD).Trim()
+  if ($LASTEXITCODE -ne 0 -or $installedCommit -ne $ExpectedCommit) {
+    throw 'Installed revision differs from approved commit. Leave the app stopped and inspect.'
+  }
+}
 Write-Host 'Installing dependencies for updated code...' -ForegroundColor Cyan
 & npm.cmd ci --no-audit --no-fund
 if ($LASTEXITCODE -ne 0) { throw "Dependency update failed. Previous commit: $previous. Data was not deleted; do not start until resolved." }

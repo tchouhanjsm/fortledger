@@ -1,4 +1,9 @@
 # Double-click launcher invokes this only after the operator stops FortLedger.
+param(
+  [ValidatePattern('^[a-fA-F0-9]{40}$')]
+  [string]$ExpectedCommit = '',
+  [switch]$SkipRestart
+)
 # No forced process termination, guest-data deletion, Git reset, or silent migration.
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -61,13 +66,19 @@ if ($LASTEXITCODE -ne 0) { throw 'Encrypted restore drill failed; app files were
 # branch/origin/cleanliness, creates a separate verified SQLite snapshot,
 # fast-forwards main and runs full Node tests. No operation writes into GitHub.
 Write-Host 'Running the existing verified Git update and regression checks...' -ForegroundColor Cyan
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'windows-update.ps1')
+$updateArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File',
+  (Join-Path $PSScriptRoot 'windows-update.ps1'))
+if ($ExpectedCommit) { $updateArgs += @('-ExpectedCommit',$ExpectedCommit) }
+& powershell.exe @updateArgs
 if ($LASTEXITCODE -ne 0) { throw 'Update failed. Leave FortLedger stopped and review the error and verified backups.' }
-
-Write-Host 'Restarting FortLedger with the original persistent Windows data path...' -ForegroundColor Cyan
-$startup = Join-Path $PSScriptRoot 'windows-start.ps1'
-Start-Process -FilePath 'powershell.exe' -WorkingDirectory $root -ArgumentList (
-  '-NoProfile -ExecutionPolicy Bypass -File "'+$startup+'"'
-) | Out-Null
-Write-Host 'Update tests passed and the normal startup window was launched.' -ForegroundColor Green
+if (-not $SkipRestart) {
+  Write-Host 'Restarting FortLedger with the original persistent Windows data path...' -ForegroundColor Cyan
+  $startup = Join-Path $PSScriptRoot 'windows-start.ps1'
+  Start-Process -FilePath 'powershell.exe' -WorkingDirectory $root -ArgumentList (
+    '-NoProfile -ExecutionPolicy Bypass -File "'+$startup+'"'
+  ) | Out-Null
+  Write-Host 'Update tests passed and the normal startup window was launched.' -ForegroundColor Green
+} else {
+  Write-Host 'Verified install succeeded; the external supervisor will restart FortLedger.' -ForegroundColor Green
+}
 Write-Host 'Open http://127.0.0.1:3000 and sign in. Verify existing records before further use.'

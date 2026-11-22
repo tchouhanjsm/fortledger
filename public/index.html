@@ -286,8 +286,14 @@
         <p id="update-center-state" role="status" aria-live="polite">Version not checked.</p>
       </div>
       <p id="update-center-versions" class="muted"></p>
+      <div id="update-center-readiness" class="update-center-readiness" hidden>
+        <p id="update-center-readiness-status" role="status" aria-live="polite"></p>
+        <ul id="update-center-blockers"></ul>
+        <p id="update-center-ci" class="muted"></p>
+        <button type="button" id="update-center-install" class="primary" hidden disabled>Install verified update & restart</button>
+      </div>
       <div id="update-center-windows" hidden>
-        <p class="muted">Windows: after finishing bills and stopping the app, double-click <strong>Update FortLedger.cmd</strong> in your existing FortLedger folder. It verifies a recent independently protected encrypted backup by restoring it in isolation, then makes a verified snapshot, fast-forwards main, runs tests and starts the app again. It refuses active servers, unverified backups and unsafe changes.</p>
+        <p class="muted">On Windows, a supervised installation can safely finish active requests and restart the local app when every check passes. If unavailable, first finish work and stop the app, then double-click <strong>Update FortLedger.cmd</strong> in the trusted existing folder. The manual launcher also verifies a protected backup before installing.</p>
       </div>
       <div id="update-center-mac" hidden>
         <p class="muted">Mac: finish active work, verify an independent protected backup, stop the server, then follow <a href="https://github.com/tchouhanjsm/fortledger/blob/main/docs/MAC_RELEASE_PREFLIGHT.md" target="_blank" rel="noopener noreferrer">the Mac safe-update guide</a>. Browser checks do not install updates.</p>

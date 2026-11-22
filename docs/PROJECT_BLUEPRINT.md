@@ -123,3 +123,9 @@ A lightweight owner/manager report calculates booking occupancy, gross ADR and g
 - Allow optional internal Pickup/arrival details and Other stay instructions under a collapsed Booking editor section. Keep the primary reservation workflow clean and unchanged when blank.
 - Permit authorized staff to correct these notes after issuing a proforma, using a distinct auditable *nonfinancial* endpoint; do not allow changing invoice snapshots, amounts, payment methods or room allocation through it.
 - No transport dispatch, fare collection or automatic messaging; sensitive guest document/payment data must not be stored in generic free-text notes. Refer to docs/BOOKING_OPERATIONAL_NOTES.md.
+
+## Windows supervised updater V2 — source-design decision, 2026-11-22
+- The Windows-only external Node supervisor owns the process lifecycle and invokes pre-existing backup/restore/Git/test scripts. The HTTP application merely checks a pinned commit and hands off a confirmed owner action through local IPC. No command execution is exposed on the LAN or to cashiers/managers.
+- The supervisor waits for existing financial HTTP requests to finish before installation. New money requests fail with 503 while draining; if the transaction response is uncertain, the operator checks the ledger before retrying.
+- The latest GitHub main commit is installable **only after exact-SHA push CI** has passed in Linux, Windows and Chromium, a recent encrypted backup is configured on a separate drive, and the reviewed Git origin/fast-forward requirements still hold.
+- The supervisor can safely relaunch the old version after an update failed before changing Git HEAD, but **never blindly rolls back** after the commit advances or SQLite migrations may have occurred. Physical device/backup acceptance remains pending; signed/tagged releases are future hardening.

@@ -5,6 +5,7 @@ import path from 'node:path';
 import https from 'node:https';
 import {backupFreshness} from './backup-freshness.js';
 import {updateStatus} from './update-status.js';
+import {inspectUpdateReadiness,createSupervisedUpdateIpc} from './update-readiness.js';
 import { fileURLToPath } from 'node:url';
 import {authGate,loadPasswordRecord,DEFAULT_AUTH_FILE} from './auth.js';
 import {renderRestaurantReceipt} from './restaurant-receipt.js';
@@ -46,10 +47,18 @@ function requireFinancialRequestId(body){
     !/^[A-Za-z0-9_-]{16,80}$/.test(body.request_id))
     throw new Error('Unique request_id (16–80 safe characters) required for financial POST; reuse unchanged ID on retry');
 }
-export function createApp(db,{authRecord=null,authFile=null,network=null,businessDate=null,checkUpdates=updateStatus}={}) {
+export function createApp(db,{authRecord=null,authFile=null,network=null,businessDate=null,checkUpdates=updateStatus,updateService=null}={}) {
   if(network?.mode==='lan'&&!authRecord)throw new Error('LAN access requires configured authentication');
   const app = express();
   const menuPreviewKey=randomBytes(32); // invalidated safely on every server restart
+  let updateDraining=false,installPending=false;
+  app.use((req,res,next)=>{
+    if(updateDraining&&['POST','PUT','PATCH','DELETE'].includes(req.method)){
+      res.setHeader('Cache-Control','no-store');
+      return res.status(503).json({error:'FortLedger is draining active work for a supervised update. Do not retry money writes until the new server is ready; review the ledger first.'});
+    }
+    next();
+  });
   app.disable('x-powered-by');
   // Fail closed against hostile Host headers and DNS rebinding on the
   // single-machine alpha. Private staff-LAN mode requires a separate review.
@@ -78,13 +87,47 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.get('/api/system/backup-status',(_req,res)=>res.json(backupFreshness()));
   // Read-only inspection only. Never let a browser request execute a Git merge,
   // npm installation, data migration, process restart, or a remote network command.
+  const updateOwnerLocal=req=>Boolean(authRecord&&network?.mode!=='lan'&&
+    ['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress));
   app.get('/api/system/updates',async(req,res,next)=>{
     try{
-      if(!authRecord||network?.mode==='lan'||
-        !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress))
+      if(!updateOwnerLocal(req))
         return res.status(403).json({error:'Update checks require local owner sign-in on this device'});
       res.json(await checkUpdates());
     }catch(error){next(error);}
+  });
+  app.get('/api/system/updates/readiness',async(req,res,next)=>{
+    try{
+      if(!updateOwnerLocal(req))
+        return res.status(403).json({error:'Update readiness requires local owner sign-in'});
+      res.json(await (updateService?.inspect?.()??inspectUpdateReadiness({supervised:false})));
+    }catch(error){next(error);}
+  });
+  app.post('/api/system/updates/install',async(req,res,next)=>{
+    try{
+      if(!updateOwnerLocal(req)||!updateService?.request||
+        typeof app.locals.stopForUpdate!=='function')
+        return res.status(403).json({error:'A dedicated local Windows supervisor is required to install updates'});
+      if(installPending)return res.status(409).json({error:'An update request is already underway'});
+      if(req.body?.confirmation!=='stop_after_current_requests'||
+         !/^[a-f0-9]{40}$/i.test(req.body?.target_sha||''))
+        return res.status(400).json({error:'Explicit owner confirmation and a pinned 40-character Git commit are required'});
+      // The original authenticated app never runs Git merge, npm or PowerShell.
+      installPending=true;
+      const readiness=await updateService.inspect();
+      if(!readiness.ready||readiness.target_sha!==req.body.target_sha.toLowerCase()){
+        installPending=false;
+        return res.status(409).json({error:'The verified candidate or backup readiness changed. Check for updates again.'});
+      }
+      await updateService.request(readiness.target_sha);
+      updateDraining=true;
+      res.once('finish',()=>setImmediate(()=>app.locals.stopForUpdate(readiness.target_sha)));
+      return res.status(202).json({accepted:true,
+        message:'The separate Windows supervisor is finishing active requests, verifying the backup and applying the pinned tested commit. Reopen and sign in after restart.'});
+    }catch(error){
+      installPending=false;
+      next(error);
+    }
   });
   app.post('/api/me/password',gate.changePassword);
   app.patch('/api/me',(req,res,next)=>{
@@ -547,12 +590,36 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
     console.error('FortLedger requires local admin authentication. Run: npm run setup-auth');
     process.exitCode=1;db.close();
   }else{
-    const app=createApp(db,{authRecord,authFile:DEFAULT_AUTH_FILE,network});
+    const supervised=process.platform==='win32'&&
+      process.env.FORTLEDGER_SUPERVISED==='1'&&
+      typeof process.send==='function'&&!tls&&
+      host==='127.0.0.1'&&port===3000;
+    const ipc=supervised?createSupervisedUpdateIpc(process):null;
+    const app=createApp(db,{authRecord,authFile:DEFAULT_AUTH_FILE,network,
+      ...(ipc?{updateService:{
+        inspect:()=>inspectUpdateReadiness({supervised:true}),
+        request:sha=>ipc.request(sha)
+      }}:{})});
     const server=tls?https.createServer({cert:tls.cert,key:tls.key,minVersion:'TLSv1.2'},app):app;
-    server.listen(port,host,()=>{
+    const listener=server.listen(port,host,()=>{
       console.log('FortLedger '+(tls?'private staff HTTPS':'local app')+': '+
         (tls?'https://':'http://')+host+':'+port);
       scheduleEncryptedBackups(db);
     });
+    if(supervised){
+      let stopping=false;
+      app.locals.stopForUpdate=()=>{
+        if(stopping)return;
+        stopping=true;
+        // Node's graceful close finishes existing HTTP responses, including
+        // persisted transactions. Never call closeAllConnections or kill staff writes.
+        listener.close(()=>{
+          try{db.close();}finally{
+            if(process.send)process.send({type:'fortledger.update.drained'},()=>process.exit(0));
+            else process.exit(0);
+          }
+        });
+      };
+    }
   }
 }
