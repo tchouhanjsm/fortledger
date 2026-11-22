@@ -57,6 +57,8 @@ export function requiredPermission(method,path){
   if(path.startsWith('/rooms'))return method==='GET'?'rooms.read':'rooms.write';
   if(path.startsWith('/invoices')||path.startsWith('/tax-drafts'))
     return method==='GET'?'invoices.read':'invoices.write';
+  if(/^\/bookings\/\d+\/operational-notes$/.test(path))
+    return method==='PATCH'?'bookings.write':null;
   if(path.startsWith('/bookings/')){
     if(/\/payments\/\d+\/refunds$/.test(path)||/\/refunds$/.test(path))
       return method==='GET'?'bookings.read':'refunds.write';
