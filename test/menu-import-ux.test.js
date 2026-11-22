@@ -40,7 +40,7 @@ test('preview is non-mutating; importing verified CSV writes once',async()=>{
     assert.deepEqual(checked.category_counts,{Beverages:1});
     assert.deepEqual(checked.tax_rates,[5]);
     assert.equal(listMenu(db).length,0);
-    const imported=await fetch(base+'/api/restaurant/menu/import',{method:'POST',headers,body:JSON.stringify({csv})});
+    const imported=await fetch(base+'/api/restaurant/menu/import',{method:'POST',headers,body:JSON.stringify({csv,preview_token:checked.preview_token,confirm_import:true})});
     assert.equal(imported.status,200);
     assert.equal(listMenu(db).length,1);
   }finally{await new Promise(resolve=>server.close(resolve));db.close();}
@@ -65,7 +65,7 @@ test('bulk menu review returns every row and detects category/rate coverage with
     assert.deepEqual(data.tax_rates,[5,12]);
     assert.equal(listMenu(db).length,0,'Review must not change the ledger');
     const imported=await fetch(base+'/api/restaurant/menu/import',{
-      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({csv})});
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({csv,preview_token:data.preview_token,confirm_import:true})});
     assert.equal(imported.status,200);
     assert.equal(listMenu(db).length,142);
   }finally{await new Promise(resolve=>server.close(resolve));db.close();}

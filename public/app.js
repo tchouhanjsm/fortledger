@@ -608,7 +608,10 @@ function renderTodayAttention(today){
     }],
     ['unmatched',count.unmatched,'Restaurant room charges awaiting guest verification','restaurant.read',()=>{
       window.location.hash='restaurant';
-      document.getElementById('restaurant-history')?.scrollIntoView({block:'start'});
+      restaurantBillFilter='unmatched';
+      restaurantHistoryLimit=15;
+      renderRestaurantHistory();
+      document.getElementById('restaurant-history-section')?.scrollIntoView({block:'start'});
     }]
   ];
   const shown=tasks.filter(([,n,,permission])=>n>0&&can(permission));
@@ -639,11 +642,12 @@ function renderTodayAttention(today){
       label('span','Daily closings need discrepancy review'));
     warning.setAttribute('aria-label','Open financial closing review for '+closeAttention[0].business_date);
     warning.onclick=()=>{
-      window.location.hash='business-settings';
+      window.location.hash='dashboard';
+      $('#home-closing').open=true;
       const date=$('#daily-close-form').elements.namedItem('business_date');
       date.value=closeAttention[0].business_date;
-      renderDailyClose();
-      $('#daily-close-form').scrollIntoView({block:'start'});
+      void renderDailyClose();
+      $('#home-closing').scrollIntoView({block:'start'});
     };
     items.append(warning);
   }
@@ -1778,66 +1782,150 @@ $('#save-restaurant-bill').onclick=async()=>{
   }catch(error){message.textContent='Bill was not saved: '+error.message;}
   finally{restaurantBillSubmitting=false;button.disabled=false;}
 };
-let validatedMenuCsv=null;
-async function readMenuCsv(){
-  const file=$('#menu-csv').files[0];
-  if(!file)throw new Error('Choose a CSV file first.');
-  if(file.size>65000)throw new Error('CSV must be smaller than 65 KB.');
-  return file.text();
-}
-$('#menu-csv').onchange=()=>{
-  validatedMenuCsv=null;
+let validatedMenuCsv=null,menuImportGeneration=0,menuImportRows=[],menuImportInFlight=false;
+function clearMenuImportReview(){
+  validatedMenuCsv=null;menuImportRows=[];
   $('#import-menu').disabled=true;
-  $('#menu-import-message').textContent='';
+  $('#menu-import-review-controls').hidden=true;
   $('#menu-import-preview').replaceChildren();
+}
+function renderMenuImportReview(){
+  const list=$('#menu-import-preview');list.replaceChildren();
+  if(!validatedMenuCsv)return;
+  const query=$('#menu-import-search').value.trim().toLocaleLowerCase();
+  const category=$('#menu-import-category').value;
+  const change=$('#menu-import-change').value;
+  const selected=menuImportRows.filter(item=>
+    (category==='all'||item.category===category)&&
+    (change==='all'||(change==='changes'?item.change!=='unchanged':item.change===change))&&
+    (item.name+' '+item.category+' '+item.row_number).toLocaleLowerCase().includes(query));
+  $('#menu-import-row-count').textContent=selected.length+' of '+menuImportRows.length+' preview rows';
+  const container=label('div',undefined,'import-preview-scroll');
+  container.setAttribute('role','region');
+  container.setAttribute('aria-label','Complete reviewed menu changes');
+  container.tabIndex=0;
+  const table=label('table',undefined,'import-preview-table');
+  const head=label('thead'),headerRow=label('tr');
+  for(const title of ['CSV row','Menu item','Category','Change','Current price','Imported price','GST rate','Review notes']){
+    const th=label('th',title);th.scope='col';headerRow.append(th);
+  }
+  head.append(headerRow);table.append(head);
+  const body=label('tbody');
+  for(const item of selected){
+    const row=label('tr');row.dataset.change=item.change;
+    const status=label('strong',item.change==='suspicious'?'Needs review':item.change);
+    status.className='menu-import-status';status.dataset.change=item.change;
+    const col=label('td');col.append(status);
+    const old=item.old_price_paise===null?'New item':money(item.old_price_paise);
+    const tax=item.old_tax_rate===null?item.tax_rate+'%':
+      item.old_tax_rate===item.tax_rate?item.tax_rate+'%':
+      item.old_tax_rate+'% → '+item.tax_rate+'%';
+    const priceChange=item.old_price_paise!==null&&item.price_delta_paise!==0?
+      ' ('+(item.price_delta_paise>0?'+':'')+money(item.price_delta_paise)+')':'';
+    row.append(label('td',String(item.row_number)),label('td',item.name),
+      label('td',item.category),col,label('td',old),
+      label('td',money(item.price_paise)+priceChange),label('td',tax),
+      label('td',item.concern||(item.reactivates?'Reactivates previously inactive item':'—')));
+    body.append(row);
+  }
+  table.append(body);container.append(table);list.append(container);
+  if(!selected.length)list.append(label('p','No preview rows match these filters.','muted'));
+}
+$('#menu-import-search').oninput=renderMenuImportReview;
+$('#menu-import-category').onchange=renderMenuImportReview;
+$('#menu-import-change').onchange=renderMenuImportReview;
+$('#menu-csv').onchange=()=>{
+  menuImportGeneration++;
+  clearMenuImportReview();
+  $('#menu-import-message').textContent='New file selected. Check this file before importing.';
 };
 $('#preview-menu').onclick=async()=>{
-  const message=$('#menu-import-message'),list=$('#menu-import-preview');
-  message.textContent='';list.replaceChildren();validatedMenuCsv=null;$('#import-menu').disabled=true;
+  const message=$('#menu-import-message'),file=$('#menu-csv').files[0];
+  const generation=++menuImportGeneration;
+  clearMenuImportReview();
+  if(!file){message.textContent='Choose a CSV file first.';return;}
+  if(file.size>65000){message.textContent='CSV must be smaller than 65 KB.';return;}
+  message.textContent='Checking the selected menu file and comparing existing prices…';
+  $('#preview-menu').disabled=true;
   try{
-    const csv=await readMenuCsv();
-    const result=await api('/api/restaurant/menu/preview',{method:'POST',body:JSON.stringify({csv})});
-    validatedMenuCsv=csv;
-    const rates=(result.tax_rates||[]).map(rate=>rate+'%').join(', ');
-    message.textContent=result.count+' items validated across '+
-      Object.keys(result.category_counts||{}).length+' categories. CSV rates: '+rates+
-      '. Confirm GST applicability and ALL prices before import. Import adds/updates matching items; it does not remove older menu items.';
-    const container=label('div',undefined,'import-preview-scroll');
-    container.setAttribute('role','region');
-    container.setAttribute('aria-label','Complete validated menu preview');
-    container.tabIndex=0;
-    const table=label('table',undefined,'import-preview-table');
-    const head=label('thead');
-    const headerRow=label('tr');
-    for(const title of ['Item','Category','Price (tax inclusive)','GST rate']){
-      const th=label('th',title);
-      th.scope='col';headerRow.append(th);
+    const csv=await file.text();
+    if(generation!==menuImportGeneration||$('#menu-csv').files[0]!==file)return;
+    const result=await api('/api/restaurant/menu/preview',{
+      method:'POST',body:JSON.stringify({csv})
+    });
+    // A stale response must NEVER reenable Import for a newly selected file.
+    if(generation!==menuImportGeneration||$('#menu-csv').files[0]!==file)return;
+    if(!result.preview_token||!Array.isArray(result.preview))
+      throw new Error('Server did not verify the menu preview; update FortLedger');
+    validatedMenuCsv={csv,file,preview_token:result.preview_token,summary:result.summary};
+    menuImportRows=result.preview;
+    const categories=$('#menu-import-category');categories.replaceChildren();
+    const all=label('option','All categories');all.value='all';categories.append(all);
+    for(const category of Object.keys(result.category_counts||{})){
+      const option=label('option',category);option.value=category;categories.append(option);
     }
-    head.append(headerRow);table.append(head);
-    const body=label('tbody');
-    for(const item of result.preview){
-      const row=label('tr');
-      row.append(label('td',item.name),label('td',item.category),
-        label('td',money(item.price_paise)),label('td',item.tax_rate+'%'));
-      body.append(row);
-    }
-    table.append(body);container.append(table);
-    list.append(container);
+    $('#menu-import-search').value='';
+    $('#menu-import-change').value='all';
+    $('#menu-import-review-controls').hidden=false;
+    renderMenuImportReview();
+    const count=result.summary;
+    message.textContent=result.count+' rows inspected: '+count.new+' new, '+
+      count.updated+' updated, '+count.unchanged+' unchanged, '+
+      count.suspicious+' require special review. '+
+      (count.suspicious?'Review flagged prices or GST rates before confirming. ':
+      'No unusual price or GST changes found. ')+
+      'Older menu items not in this file will not be deleted.';
     $('#import-menu').disabled=false;
-  }catch(error){message.textContent='Import check failed: '+error.message;}
+  }catch(error){
+    if(generation===menuImportGeneration){
+      clearMenuImportReview();message.textContent='Menu review failed: '+error.message;
+    }
+  }finally{$('#preview-menu').disabled=false;}
 };
 $('#import-menu').onclick=async()=>{
-  const message=$('#menu-import-message');
-  if(!validatedMenuCsv){message.textContent='Check the CSV file before importing.';return;}
+  const message=$('#menu-import-message'),approved=validatedMenuCsv;
+  if(!approved||$('#menu-csv').files[0]!==approved.file){
+    message.textContent='Check the exact currently selected CSV before importing.';return;
+  }
+  if(menuImportInFlight)return;
+  const {new:added,updated,unchanged,suspicious}=approved.summary;
+  if(!confirm('Apply this EXACT menu preview? '+added+' new, '+updated+
+    ' standard updates, '+suspicious+' flagged changes, '+unchanged+
+    ' unchanged. Historical restaurant receipts will not change.'))return;
+  let approve_suspicious=false;
+  if(suspicious){
+    approve_suspicious=confirm(suspicious+' rows have unusually large price or GST changes. '+
+      'Inspect those rows carefully and confirm with the person responsible for pricing. Approve these changes?');
+    if(!approve_suspicious)return;
+  }
+  menuImportInFlight=true;
   const button=$('#import-menu');button.disabled=true;
+  $('#preview-menu').disabled=true;$('#menu-csv').disabled=true;
+  message.textContent='Applying the reviewed menu changes…';
   try{
     const result=await api('/api/restaurant/menu/import',{
-      method:'POST',body:JSON.stringify({csv:validatedMenuCsv})
+      method:'POST',body:JSON.stringify({
+        csv:approved.csv,preview_token:approved.preview_token,
+        confirm_import:true,approve_suspicious
+      })
     });
-    validatedMenuCsv=null;
-    message.textContent='Imported '+result.imported+' menu items successfully. You can now search and add them to a bill.';
-    await load();
-  }catch(error){message.textContent='Import failed: '+error.message;button.disabled=false;}
+    menuImportGeneration++;
+    clearMenuImportReview();
+    $('#menu-csv').value='';
+    message.textContent='Menu import recorded: '+result.imported+' rows processed. '+
+      'New prices apply to future bills only; existing receipts are unchanged.';
+    try{await load();}catch(error){
+      message.textContent+=' Workspace refresh failed: '+error.message+'. Use Refresh to view the current menu.';
+    }
+  }catch(error){
+    menuImportGeneration++;
+    clearMenuImportReview();
+    message.textContent=(error instanceof TypeError?
+      'Menu import outcome not confirmed. Reconnect and review the current menu; do not assume changes failed. ':
+      'Menu import stopped without confirmation. Review the latest menu and preview again. ')+error.message;
+  }finally{
+    menuImportInFlight=false;$('#preview-menu').disabled=false;$('#menu-csv').disabled=false;
+  }
 };
 
 let activeFolioBooking=null;
