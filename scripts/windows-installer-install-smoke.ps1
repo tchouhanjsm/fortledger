@@ -37,6 +37,27 @@ try{
       throw 'Shortcut does not open the installed local FortLedger application.'
     }
   }
+  # Synthetic only: an upgrade against an existing hotel ledger MUST be
+  # refused without a verified separate-drive encrypted restore. This never
+  # touches real hotel data; run only on GitHub's disposable Windows runner.
+  if ($env:GITHUB_ACTIONS -ne 'true') { throw 'This destructive synthetic-profile test is CI-only.' }
+  $live=Join-Path $profileData 'fortledger.sqlite'
+  $ownerFile=Join-Path $profileData 'admin-auth.json'
+  if ((Test-Path -LiteralPath $live) -or (Test-Path -LiteralPath $ownerFile)) {
+    throw 'Unexpected pre-existing hotel data on CI runner; refusing synthetic upgrade test.'
+  }
+  $env:FORTLEDGER_DATA_DIR=$profileData
+  'synthetic-ci-only-owner-password-123' | & (Join-Path $target 'node.exe') (Join-Path $target 'src\\desktop-first-run.js')
+  if ($LASTEXITCODE -ne 0) { throw 'Could not generate isolated synthetic hotel for upgrade guard test.' }
+  $beforeDb=(Get-FileHash -LiteralPath $live -Algorithm SHA256).Hash
+  $beforeAuth=(Get-FileHash -LiteralPath $ownerFile -Algorithm SHA256).Hash
+  $upgrade=Start-Process -FilePath $Installer -ArgumentList $argsToSetup -PassThru -Wait
+  if ($upgrade.ExitCode -eq 0) { throw 'Unsafe upgrade was accepted without a verified encrypted backup.' }
+  if ((Get-FileHash -LiteralPath $live -Algorithm SHA256).Hash -ne $beforeDb -or
+      (Get-FileHash -LiteralPath $ownerFile -Algorithm SHA256).Hash -ne $beforeAuth) {
+    throw 'Refused installer upgrade changed synthetic hotel records or owner credentials.'
+  }
+  Write-Host 'PASS: upgrading existing synthetic hotel without protected backup was blocked.'
   Write-Host 'Uninstalling program files while keeping profile data...' -ForegroundColor Cyan
   $uninstaller=Join-Path $target 'unins000.exe'
   $uninstall=Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -PassThru -Wait
@@ -48,5 +69,11 @@ try{
   Write-Host 'PASS: real installer installed native runtime, desktop/Start Menu icons and preserved profile data on uninstall.' -ForegroundColor Green
 }finally{
   if(Test-Path -LiteralPath $marker){Remove-Item -LiteralPath $marker -Force}
+  if ($env:GITHUB_ACTIONS -eq 'true') {
+    foreach($candidate in @((Join-Path $profileData 'fortledger.sqlite'),
+        (Join-Path $profileData 'admin-auth.json'))) {
+      if(Test-Path -LiteralPath $candidate){Remove-Item -LiteralPath $candidate -Force}
+    }
+  }
   if(Test-Path -LiteralPath $root){Remove-Item -LiteralPath $root -Recurse -Force}
 }
