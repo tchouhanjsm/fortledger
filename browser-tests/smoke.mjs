@@ -1,11 +1,30 @@
 /* Real Chromium smoke: disposable in-memory hotel, no external API or actual guests. */
 import assert from 'node:assert/strict';
+import {mkdirSync} from 'node:fs';
 import {chromium} from 'playwright';
 import {openDatabase} from '../src/database.js';
 import {createApp} from '../src/server.js';
 import {importMenuCsv} from '../src/restaurant.js';
 import {runAuthenticatedBrowserSmoke} from './auth-smoke.mjs';
 
+const screenshots=process.env.FORTLEDGER_CAPTURE_SCREENSHOTS==='1';
+if(screenshots)mkdirSync('browser-artifacts',{recursive:true});
+async function captureViewportWidth(page,width,name){
+  // Retain the entire working page vertically but never expand PNG width
+  // to include an intentionally scrollable calendar's offscreen columns.
+  await page.evaluate(()=>window.scrollTo(0,0));
+  const height=await page.evaluate(()=>{
+    // overflow-x:clip can report viewport height as document scrollHeight;
+    // use the last visible workspace section instead so full vertical content
+    // is retained without including offscreen calendar columns.
+    const last=[...document.querySelectorAll('main > section')]
+      .filter(el=>getComputedStyle(el).display!=='none')
+      .reduce((bottom,el)=>Math.max(bottom,el.getBoundingClientRect().bottom+scrollY),0);
+    return Math.ceil(Math.max(document.documentElement.clientHeight,last+32));
+  });
+  await page.screenshot({path:'browser-artifacts/'+name+'.png',
+    clip:{x:0,y:0,width,height}});
+}
 const db=openDatabase(':memory:');
 importMenuCsv(db,'name,category,price,tax_rate\nMasala Chai,Hot Drinks,80,5');
 const server=createApp(db).listen(0,'127.0.0.1');
@@ -17,7 +36,8 @@ const base='http://127.0.0.1:'+server.address().port;
 let browser;
 try{
   browser=await chromium.launch({headless:true});
-  for(const width of [360,390,768,1024,1280,1440,1920]){
+  // 320 CSS pixels is a 640px-at-200%-zoom reflow proxy, not an actual native zoom certification.
+  for(const width of [320,360,390,768,1024,1280,1440,1920]){
     const page=await browser.newPage({viewport:{width,height:850}});
     const errors=[];
     page.on('pageerror',error=>errors.push(error.message));
@@ -27,6 +47,44 @@ try{
     const heading=await page.locator('#workspace-title').textContent();
     assert.ok(heading?.length>2,'Workspace header should be populated');
     assert.equal(await page.locator('#bookings').isVisible(),true);
+    if(screenshots&&(width===390||width===1440)){
+      await captureViewportWidth(page,width,'shizuka-bookings-'+width);
+      // Element screenshots preserve full panel height without including the
+      // overflowed week-calendar offscreen columns in the page image.
+      await page.locator('#bookings').screenshot({
+        path:'browser-artifacts/shizuka-reservation-panel-'+width+'.png'
+      });
+    }
+    // Icons and skip action must be real keyboard-accessible controls without
+    // changing the route or creating any financial activity.
+    assert.equal(await page.locator('#skip-to-main').count(),1);
+    if(width===1440){
+      const icons=page.getByRole('navigation',{name:'Primary'}).locator('a .nav-icon');
+      assert.equal(await icons.count(),8);
+      assert.deepEqual(await icons.evaluateAll(els=>els.map(el=>Math.round(el.getBoundingClientRect().width))),
+        Array(8).fill(20));
+      await page.locator('#skip-to-main').focus();
+      await page.keyboard.press('Enter');
+      assert.equal(await page.evaluate(()=>document.activeElement?.id),'workspace-main');
+      assert.equal(await page.locator('#bookings').isVisible(),true);
+    }
+    if(width===1440){
+      const layout=await page.evaluate(()=>{
+        const box=selector=>document.querySelector(selector)?.getBoundingClientRect();
+        const heading=box('#bookings > .panel-head h2'),
+          filters=box('#bookings .booking-filters'),
+          queue=box('#booking-quick-queues');
+        return {headingWidth:heading?.width,headingHeight:heading?.height,
+          filtersWidth:filters?.width,filtersScroll:document.querySelector('#bookings .booking-filters')?.scrollWidth,
+          queueWidth:queue?.width};
+      });
+      assert.ok(layout.headingWidth>=200,'The reservation heading must not be squeezed by filters');
+      assert.ok(layout.headingHeight<=32,'Reservation heading should fit on one line at 1440px');
+      assert.ok(layout.filtersScroll<=layout.filtersWidth+2,'Booking filters must not clip controls');
+      const queueFits=await page.locator('#booking-quick-queues').evaluate(el=>
+        el.scrollWidth<=el.clientWidth+2);
+      assert.ok(queueFits,'Every desktop work queue should be reachable without hidden horizontal clipping');
+    }
     assert.equal(await page.locator('#dashboard').isVisible(),false,
       'Hidden dashboard should not be exposed by responsive CSS');
     const manifest=await page.locator('link[rel="manifest"]').getAttribute('href');
@@ -195,6 +253,12 @@ try{
       // POST response. The UI must lookup the UUID, not create a second bill.
       await page.evaluate(()=>{window.location.hash='restaurant';});
       await page.locator('#restaurant').waitFor({state:'visible'});
+      if(screenshots){
+        await captureViewportWidth(page,width,'shizuka-restaurant-1440');
+        await page.locator('#restaurant').screenshot({
+          path:'browser-artifacts/shizuka-restaurant-panel-1440.png'
+        });
+      }
       const chip=page.locator('#menu-categories').getByRole('button',{name:'Hot Drinks'});
       await chip.click();
       assert.equal(await chip.getAttribute('aria-pressed'),'true');
@@ -332,7 +396,7 @@ try{
   assert.equal(db.prepare('SELECT count(*) AS n FROM bookings').get().n,2);
   assert.equal(db.prepare('SELECT count(*) AS n FROM booking_create_requests').get().n,2);
   await runAuthenticatedBrowserSmoke(browser);
-  console.log('PASS: Chromium receipt-loss reconciliation, booking/payment flow, responsive 360/390/768/1024/1280/1440/1920 px.');
+  console.log('PASS: Chromium receipt-loss reconciliation, booking/payment flow, responsive 320(reflow proxy)/360/390/768/1024/1280/1440/1920 px.');
 }finally{
   await browser?.close();
   await new Promise(resolve=>server.close(resolve));
