@@ -6,6 +6,11 @@ import {bookingDraftError} from './booking-editor-guards.js';
 import {todayAttention} from './today-attention.js';
 import {stayMetrics} from './stay-metrics.js';
 const $ = selector => document.querySelector(selector);
+$('#skip-to-main').onclick=()=>{
+  const main=$('#workspace-main');
+  main.focus({preventScroll:true});
+  main.scrollIntoView({block:'start'});
+};
 let currentUser=null;
 const can=permission=>Boolean(currentUser&&(currentUser.permissions.includes('*')||currentUser.permissions.includes(permission)));
 const VIEW_ACCESS={dashboard:'profile.read',bookings:'bookings.read',rooms:'rooms.read',guests:'guests.read',invoices:'invoices.read',restaurant:'restaurant.read','business-settings':'settings.read',profile:'profile.read'};

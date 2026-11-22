@@ -2,49 +2,58 @@
    Existing markup, routing, permission checks and financial calculations are unchanged.
    Tokens are semantic; retain explicit status words rather than relying on color. */
 :root {
-  --hs-sky:#e7effb; --hs-ivory:#faf7f2; --hs-surface:#fffefa;
-  --hs-gold:#b7824f; --hs-ink:#17263e; --hs-muted:#59677a;
-  --hs-sage:#207e6c; --hs-peach:#f5e7db; --hs-border:#e7e4df;
-  --hs-gold-hover:#a36f3f; --hs-focus:#245da8;
-  --hs-danger:#a12837; --hs-warning:#8d531b;
-  --hs-radius:18px; --hs-control-radius:10px;
-  --hs-shadow:0 8px 28px rgba(30,42,65,.055);
+  /* SHIZUKA Quiet Precision. These are the single source of truth for new UI. */
+  --sh-washi:#f8f6f1; --sh-paper:#fffefb; --sh-indigo:#192b42;
+  --sh-moss:#20675b; --sh-brass:#a77c4a; --sh-vermilion:#a33d39;
+  --sh-stone:#e5e0d7; --sh-slate:#5c6977; --sh-focus:#245da8;
+  --sh-space-1:4px; --sh-space-2:8px; --sh-space-3:12px;
+  --sh-space-4:16px; --sh-space-5:20px; --sh-space-6:24px;
+  --sh-space-8:32px; --sh-space-10:40px; --sh-space-12:48px;
+  --sh-space-16:64px; --sh-control-height:44px;
+  --sh-card-radius:16px; --sh-field-radius:10px;
+  /* Compatibility aliases avoid rewriting established domain styles. */
+  --hs-sky:#e7effb; --hs-ivory:var(--sh-washi); --hs-surface:var(--sh-paper);
+  --hs-gold:var(--sh-brass); --hs-ink:var(--sh-indigo); --hs-muted:var(--sh-slate);
+  --hs-sage:var(--sh-moss); --hs-peach:#f5e7db; --hs-border:var(--sh-stone);
+  --hs-gold-hover:#91683c; --hs-focus:var(--sh-focus);
+  --hs-danger:var(--sh-vermilion); --hs-warning:#8d531b;
+  --hs-radius:var(--sh-card-radius); --hs-control-radius:var(--sh-field-radius);
+  --hs-shadow:0 3px 14px rgba(25,43,66,.045);
   color:var(--hs-ink);background:var(--hs-ivory);
   font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 }
-body{
-  color:var(--hs-ink);
-  background:radial-gradient(ellipse 65% 35% at 30% 0%,rgba(211,225,250,.62),transparent 75%),
-             radial-gradient(ellipse 55% 35% at 100% 8%,rgba(249,212,181,.35),transparent 80%),
-             var(--hs-ivory);
-}
-main{min-width:0;max-width:1600px;padding:32px clamp(18px,3vw,44px)}
-.sidebar{background:#192b42;color:#f9f7f1;width:246px;padding:25px 15px;border-right:1px solid rgba(255,255,255,.08)}
+body{color:var(--hs-ink);background:var(--hs-ivory)}
+main{min-width:0;max-width:1600px;padding:var(--sh-space-8)}
+.sidebar{background:var(--sh-indigo);color:#f9f7f1;width:246px;padding:var(--sh-space-6) var(--sh-space-4);border-right:1px solid rgba(255,255,255,.08)}
 .brand{padding:8px 10px 28px}.brandmark{background:var(--hs-gold);color:#192b42}
 .brand small{color:#d5dfeb}
 .sidebar nav{display:grid;gap:5px}
-.sidebar nav a{justify-content:flex-start;gap:10px;color:#e1e9f2;line-height:1.35;padding:12px 14px;border-radius:var(--hs-control-radius);font-size:13px}
+.sidebar nav a{justify-content:flex-start;align-items:center;gap:var(--sh-space-3);min-height:var(--sh-control-height);color:#e1e9f2;line-height:1.35;padding:var(--sh-space-3) var(--sh-space-4);border-radius:var(--hs-control-radius);font-size:13px}
+.sidebar .nav-icon{display:block;flex:0 0 20px;width:20px;height:20px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .sidebar nav a:hover{background:rgba(255,255,255,.1);color:white}
 .sidebar nav a.active{background:#36506b;color:white;box-shadow:inset 3px 0 var(--hs-gold)}
 .sidebar-bottom{border-color:#38506a;color:#e1e9f2}
 .sidebar-bottom small{color:#c4d0dc}
-header{margin-bottom:24px;align-items:flex-start}
-h1{font-family:Georgia,serif;font-size:clamp(29px,2.5vw,39px);color:var(--hs-ink);line-height:1.14}
-h1 em{color:#916237}
+header{margin-bottom:var(--sh-space-6);align-items:flex-start;gap:var(--sh-space-4)}
+header h1{font-family:inherit;font-size:clamp(28px,2.5vw,32px);font-weight:680;letter-spacing:-.035em;line-height:1.2;color:var(--hs-ink);margin:var(--sh-space-2) 0}
+header h1 em{font-style:normal;color:#79532d}
+.login-card h1{font-family:Georgia,serif}
 .eyebrow{color:#805126}
 header p,.panel p{color:var(--hs-muted);line-height:1.5}
-.primary,.secondary{border-radius:var(--hs-control-radius);transition:background-color .15s,border-color .15s;min-height:42px}
+.primary,.secondary{border-radius:var(--hs-control-radius);transition:background-color .15s,border-color .15s;min-height:var(--sh-control-height)}
 .primary{background:var(--hs-ink);border-color:var(--hs-ink);color:white}
 .primary:hover{background:#30496a;border-color:#30496a}
 .secondary{background:var(--hs-surface);border-color:#cbd4dd;color:var(--hs-ink)}
 .secondary:hover{background:var(--hs-sky)}
 .stats article,.panel,.home-kpi,.login-card{border:1px solid var(--hs-border);background:var(--hs-surface);border-radius:var(--hs-radius);box-shadow:var(--hs-shadow)}
-.panel{padding:clamp(16px,2vw,25px)}
-.panel h2,dialog h2{color:var(--hs-ink)}
+.panel{padding:var(--sh-space-6);margin-bottom:var(--sh-space-6)}
+.panel h2,dialog h2{font-family:inherit;font-size:21px;font-weight:650;letter-spacing:-.025em;line-height:1.3;color:var(--hs-ink)}
+.panel .panel-head{gap:var(--sh-space-4);margin-bottom:var(--sh-space-5)}
 .stats label,.muted,.booking-row small,.room-row small{color:var(--hs-muted)}
 .stats b,.money,.home-kpi strong,.home-collections strong{font-variant-numeric:tabular-nums}
 .panel input,.panel select,.panel textarea,.form-grid input,.form-grid select,.settings-grid input,.settings-grid textarea{
   border-radius:var(--hs-control-radius);border-color:#cbd4dd;color:var(--hs-ink);background:var(--hs-surface);
+  min-height:var(--sh-control-height);
 }
 :where(button,a,input,select,textarea,summary):focus-visible{
   outline:3px solid var(--hs-focus);outline-offset:3px;box-shadow:none;
@@ -73,7 +82,7 @@ dialog::backdrop{background:rgba(23,38,62,.72)}
   .sidebar nav a{font-size:12px;justify-content:flex-start;padding:11px 9px;overflow-wrap:anywhere}
   .sidebar .sidebar-bottom{display:block;font-size:11px}
   .sidebar nav a:first-letter{font-size:inherit}
-  main{padding:24px 18px}
+  main{padding:var(--sh-space-6)}
 }
 /* Mobile displays all authorized destinations in a scrollable, labelled nav.
    Hidden permission-denied links remain hidden by app.js and [hidden]. */
@@ -85,10 +94,10 @@ dialog::backdrop{background:rgba(23,38,62,.72)}
   .sidebar nav{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding:2px 0 10px}
   .sidebar nav a{flex:none;font-size:12px;white-space:nowrap;padding:10px 12px;min-height:42px;align-items:center}
   .sidebar .sidebar-bottom{display:none}
-  main{padding:20px 12px;max-width:none}
+  main{padding:var(--sh-space-4);max-width:none}
   header{gap:12px}
   .header-actions{flex-wrap:wrap}
-  .panel{padding:16px 13px}
+  .panel{padding:var(--sh-space-4)}
   .booking-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
   .booking-row .row-actions{grid-column:1/-1}
   .booking-row .row-actions button{flex:1 1 auto;min-height:40px}
@@ -111,12 +120,12 @@ dialog::backdrop{background:rgba(23,38,62,.72)}
 @media(max-width:700px){
   .sidebar nav{display:none}
   body main{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
-  #mobile-shortcuts{position:fixed;left:0;right:0;bottom:0;z-index:75;display:flex;align-items:stretch;justify-content:space-around;gap:2px;padding:5px max(8px,env(safe-area-inset-right,0px)) calc(5px + env(safe-area-inset-bottom,0px));background:#fffdf9;border-top:1px solid #dce6e0;box-shadow:0 -8px 25px rgba(22,40,56,.11)}
+  #mobile-shortcuts{position:fixed;left:0;right:0;bottom:0;z-index:75;display:flex;align-items:stretch;justify-content:space-around;gap:var(--sh-space-1);padding:var(--sh-space-1) max(var(--sh-space-2),env(safe-area-inset-right,0px)) calc(var(--sh-space-1) + env(safe-area-inset-bottom,0px));background:var(--hs-surface);border-top:1px solid var(--hs-border);box-shadow:0 -4px 16px rgba(22,40,56,.09)}
   #mobile-shortcuts a,#mobile-shortcuts button{flex:1 1 0;min-width:0;min-height:53px;display:flex;align-items:center;justify-content:center;text-align:center;padding:7px 4px;border:0;background:transparent;color:#304a5a;font-size:12px;font-weight:650;text-decoration:none;border-radius:9px;line-height:1.25}
   #mobile-shortcuts a.active{background:#e9f1ed;color:#153c30;box-shadow:inset 0 -3px #b69054}
   #mobile-shortcuts button[aria-expanded="true"]{background:#e9f1ed}
-  #mobile-shortcuts a:focus-visible,#mobile-shortcuts button:focus-visible,#mobile-more-panel a:focus-visible{outline:3px solid #a78146;outline-offset:-3px}
-  #mobile-more-panel{position:fixed;z-index:74;bottom:calc(64px + env(safe-area-inset-bottom,0px));right:8px;left:8px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;background:#fffdf9;padding:13px;border:1px solid #dce6e0;box-shadow:0 -8px 25px rgba(22,40,56,.12);border-radius:13px}
+  #mobile-shortcuts a:focus-visible,#mobile-shortcuts button:focus-visible,#mobile-more-panel a:focus-visible{outline:3px solid var(--hs-focus);outline-offset:-3px}
+  #mobile-more-panel{position:fixed;z-index:74;bottom:calc(64px + env(safe-area-inset-bottom,0px));right:var(--sh-space-2);left:var(--sh-space-2);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sh-space-2);background:var(--hs-surface);padding:var(--sh-space-4);border:1px solid var(--hs-border);box-shadow:0 -4px 16px rgba(22,40,56,.09);border-radius:var(--hs-control-radius)}
   #mobile-more-panel a{display:flex;align-items:center;justify-content:center;text-align:center;border-radius:9px;background:#f0f5f0;min-height:48px;color:#234338;font-weight:650;font-size:12px;text-decoration:none;padding:9px}
   #mobile-more-panel a.active{background:#dae9de}
 }
@@ -128,3 +137,8 @@ dialog::backdrop{background:rgba(23,38,62,.72)}
 #connection-status[data-state="lost"]::before{background:#c34c38}
 #connection-status[data-state="checking"],#connection-status[data-state="login"]{background:#f8f4ea;color:#755d2c;border-color:#e8ddc2}
 #connection-status[data-state="checking"]::before,#connection-status[data-state="login"]::before{background:#b49453}
+
+/* Keyboard-only shortcut: avoids changing the hash/router or current financial task. */
+.skip-link{position:fixed;top:-100px;left:var(--sh-space-4);z-index:1000;border:2px solid var(--hs-focus);border-radius:var(--hs-control-radius);background:var(--hs-surface);color:var(--hs-ink);padding:var(--sh-space-3) var(--sh-space-4);font-size:14px;font-weight:650}
+.skip-link:focus-visible{top:var(--sh-space-2);outline:3px solid var(--hs-focus);outline-offset:2px}
+#workspace-main:focus{outline:none}
