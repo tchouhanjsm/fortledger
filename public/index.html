@@ -196,14 +196,14 @@
           <p class="muted">Unmatched charges are saved for review and will not appear in a guest folio until linked.</p>
         </div>
       </div>
-      <section id="restaurant-review" class="restaurant-review" aria-label="Review unsaved food bill" hidden>
-        <h3>Review bill before saving</h3>
+      <section id="restaurant-review" class="restaurant-review" aria-labelledby="restaurant-review-heading" hidden>
+        <h3 id="restaurant-review-heading" tabindex="-1">Review bill before saving</h3>
         <p class="muted">Unsaved draft — correct quantities, remove items or add more from the menu. Printing is available only after saving.</p>
         <div id="restaurant-review-items"></div>
         <p id="restaurant-review-payment" class="muted"></p>
         <div id="restaurant-review-total" class="form-preview" aria-live="polite"></div>
       </section>
-      <p id="restaurant-message" role="status"></p>
+      <p id="restaurant-message" role="status" aria-live="polite" tabindex="-1"></p>
       <div class="restaurant-bill-actions">
         <button type="button" class="primary" id="review-restaurant-bill">Review bill</button>
         <button type="button" class="secondary" id="edit-restaurant-bill" hidden>Continue editing</button>
