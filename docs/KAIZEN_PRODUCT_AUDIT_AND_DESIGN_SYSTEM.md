@@ -42,7 +42,8 @@ No Japanese decorations; preserve the hotel's Indian hospitality identity and us
 | P1 | Design issue | No primary in-house front-desk queue; statuses otherwise available in generic filter | **Resolved #109:** arrivals / in-house / departures / all, overdue stays retained |
 | P1 | Design issue | Bill review caused a focused button to disappear with no replacement focus | **Resolved #111:** focus review heading, return to menu search, announce/focus receipt result |
 | P2 | Operational risk | A saved and paid food receipt cannot be amended with attributable reversal | **Pending:** design append-only correction/credit with accountant and audit controls |
-| P2 | Design issue | CSV is the only practical way to set menu items inactive or update one item | **Pending:** manager-only per-item controls, preserve historical snapshots |
+| P2 | Design issue | No operator UI to pause or restore an individual dish | **Resolved #112:** manager-only, audited per-item availability with stale-state rejection; historical snapshots preserved |
+| P2 | Design issue | Single-item price or GST edits still require CSV | **Pending:** small manager-only price editor with explicit price/tax review and confirmation |
 | P2 | Operational need | No dedicated method-by-method restaurant export with close reconciliation | **Pending:** lightweight read-only CSV/report, not a second ledger |
 | P0 release gate | Unverified physical requirement | Mac backup/restore, Epson paper, HTTPS staff network, actual staff signoff, GST | **Pending physical / professional acceptance**, not verifiable in CI |
 
@@ -84,14 +85,19 @@ These are source values/standards, **not a verified WCAG 2.2 AA certification**.
 - **#109 front desk:** true in-house/overdue queue, plain-language next action, work-queue and browser regressions.
 - **#110 restaurant/payment:** manager-only price changes, reviewed menu price/GST invariant, original bill replay after price update, cashier browser role tests.
 - **#111 quality/documentation:** actual keyboard focus for draft/review/save and operator-centered source audit.
+- **#112 menu availability:** manager-only searchable active/inactive items, optimistic version check, audit events, accurate disabled-item cart recovery, real browser role/task journey.
 
 Every PR was reviewed against current `main` and merged only after its Ubuntu Node tests, Windows Node tests, and Chromium smoke jobs were green. This is genuine **synthetic test evidence**, not hotel production acceptance. No screenshots of actual hotel guest data have been created, published or claimed; before/after human visual walkthrough remains a physical-device task.
 
 ## Next priority after these batches
 
 1. Audited post-save restaurant correction/credit with precise tax/accounting effects and owner/manager boundaries.
-2. Simple manager-only item visibility/price editing, explicit inactive items, menu search and import history.
+2. Manager-only single-item price/GST editor with safe signed preview; #112 already added item visibility/availability and search.
 3. Read-only daily reconciliation export aligned to financial closing.
 4. Mac staff test, Epson print, backup restore on replacement Mac, staff network isolation, accountant signoff, owner go/no-go.
 
 **Release verdict remains NOT RELEASED.** Local-first, zero recurring service cost and a simple bill-only restaurant experience take priority over extra screens, framework rewrites or enterprise modules.
+
+## Post-audit Kaizen follow-up
+
+PR #112 adds per-item pause/restore controls and tests the manager's mobile-width journey. Saved-bill corrections and reconciliation export are not included. The original source-audit results remain scoped to the 22 November 2026 main snapshot; practical live Mac, staff, printer and accountant verification remain outstanding.

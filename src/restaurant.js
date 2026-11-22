@@ -178,6 +178,33 @@ export function importMenuCsv(db,csv,options={}){
   return result;
 }
 export function listMenu(db){return db.prepare('SELECT * FROM menu_items WHERE active=1 ORDER BY category,name').all();}
+export function listMenuForManagement(db){
+  return db.prepare('SELECT id,name,category,price_paise,tax_rate,active FROM menu_items ORDER BY category,name,id').all();
+}
+// Manager changes are optimistic, transactional and auditable: a stale control
+// cannot overwrite another operator's choice, and old receipt snapshots remain intact.
+export function setMenuItemAvailability(db,itemId,{active,expected_active}={},actor){
+  if(!Number.isSafeInteger(itemId)||itemId<1)throw new Error('Invalid menu item ID');
+  if(typeof active!=='boolean'||typeof expected_active!=='boolean')
+    throw new Error('Current and new menu availability must be explicit');
+  if(!actor||!['owner','manager'].includes(actor.role))
+    throw new Error('Only owner or manager may change menu availability');
+  return db.transaction(()=>{
+    const previous=db.prepare('SELECT id,name,category,price_paise,tax_rate,active FROM menu_items WHERE id=?').get(itemId);
+    if(!previous)throw new Error('Menu item not found');
+    if(Boolean(previous.active)!==expected_active)
+      throw new Error('Menu availability changed since review; refresh before saving');
+    if(Boolean(previous.active)!==active){
+      db.prepare('UPDATE menu_items SET active=? WHERE id=?').run(Number(active),itemId);
+      recordAudit(db,actor,active?'menu_item.enabled':'menu_item.disabled','menu_item',itemId,{
+        item_name:previous.name,category:previous.category,
+        previous_active:expected_active,active
+      });
+    }
+    return {...previous,active:Number(active)};
+  })();
+}
+
 export function listRestaurantBills(db){
   // Read-only settlement state: never infer payment from room assignment alone.
   return db.prepare(`SELECT b.*,s.method AS settlement_method,s.created_at AS settled_at
@@ -250,7 +277,7 @@ export function createRestaurantBill(db,input,actor=null,{requireReviewedPrices=
       const id=Number(line.menu_item_id),quantity=Number(line.quantity);
       if(!Number.isSafeInteger(id)||id<1||!Number.isInteger(quantity)||quantity<1||quantity>100)
         throw new Error('Invalid item ID or quantity');
-      const item=get.get(id);if(!item)throw new Error('Menu item not found');
+      const item=get.get(id);if(!item)throw new Error('Menu item not found or unavailable; refresh the menu and review the bill before saving');
       if((line.unit_price_paise!==undefined&&line.unit_price_paise!==item.price_paise)||
          (line.tax_rate!==undefined&&line.tax_rate!==item.tax_rate))
         throw new Error('Menu price or GST rate changed since review; refresh and verify the bill before saving');

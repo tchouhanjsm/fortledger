@@ -222,6 +222,17 @@
   </div>
   <p id="restaurant-history-count" class="muted" role="status"></p><div id="restaurant-history"></div><button id="restaurant-history-more" class="secondary" type="button" hidden>Show more bills</button></div>
   <details class="menu-import" id="menu-import-section"><summary>3. Menu management — import or update prices (CSV)</summary>
+    <details id="menu-availability-section" class="menu-availability-section">
+      <summary>Temporarily hide or restore individual dishes</summary>
+      <p class="muted">Unavailable dishes cannot be added to new bills. Existing saved receipts and their prices never change. Only owner and manager can make these changes.</p>
+      <div class="menu-availability-tools">
+        <label>Find a dish<input id="menu-availability-search" type="search" placeholder="Search dishes or categories"></label>
+        <button type="button" id="menu-availability-refresh" class="secondary">Refresh availability</button>
+      </div>
+      <p id="menu-availability-message" role="status" aria-live="polite"></p>
+      <p id="menu-availability-count" class="muted"></p>
+      <div id="menu-availability-items"></div>
+    </details>
     <p class="muted">Choose a CSV exported from Excel or Numbers. We recognise Item Name, Category, Price and GST/Tax Rate columns in any order. Prices must include tax.</p>
     <p><a href="/menu-template.csv" download>Download a sample CSV template</a></p>
     <div class="menu-import-actions"><input type="file" id="menu-csv" accept=".csv,text/csv"><button type="button" id="preview-menu" class="secondary">Check file</button><button type="button" id="import-menu" class="primary" disabled>Import verified menu</button></div>
