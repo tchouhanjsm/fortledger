@@ -273,3 +273,10 @@ All five increments completed in this development session were reviewed and merg
 - Existing maintenance ledger holds open blocks, not a complete immutable historical inventory-time series: historical outage denominators must be interpreted cautiously.
 - Backend access is owner/manager only. New tests cover two-room multi-night overlaps, cancelled stays, maintenance overlap, invalid dates, overcommitment detection and role denial.
 - No schema migration; no third-party analytics subscription.
+
+## 2026-11-22 — Owner Update Center and guarded Windows desktop launcher
+- Confirmed the existing Windows updater already verifies the Git origin, clean tracked tree, stopped port, pre-update SQLite snapshot and tests, but has no installer UI and uses a now-obsolete `npm install` path.
+- Added an owner-only, loopback-only, non-mutating remote version check in My Profile. Dirty/untracked checkouts (including the historical untracked lockfile), wrong branch/origin and offline remote fail visibly rather than claiming the latest code is installed.
+- Added `Update FortLedger.cmd` and an external PowerShell quick updater. It refuses an active app, requires a recent independently protected encrypted backup *and* successful encrypted restore drill, reuses the verified Windows updater, and starts the normal persistent-data launcher only after tests pass. It never deletes live files or triggers a money write.
+- Updated Windows setup/update to use the already-committed dependency lockfile via `npm ci`; updated older documentation. In-app update **installation** remains intentionally pending a safe supervisor rather than hiding a background process behind a payment-capable server.
+- Physical Windows and Mac validation, replacement-device encrypted recovery, printer hardware, tax compliance and production release remain unfinished.
