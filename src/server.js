@@ -1,5 +1,6 @@
 import {updateRoomDefinition} from './room-definition.js';
 import express from 'express';
+import {randomBytes} from 'node:crypto';
 import path from 'node:path';
 import https from 'node:https';
 import {backupFreshness} from './backup-freshness.js';
@@ -16,7 +17,7 @@ import { bookingTotals, nightsBetween, toPaise } from './finance.js';
 import { createProforma,getInvoice,listInvoices } from './invoices.js';
 import { streamProformaPdf } from './invoice-pdf.js';
 import { getBusinessSettings,updateBusinessSettings } from './business-settings.js';
-import {importMenuCsv,parseMenuCsv,listMenu,createRestaurantBill,restaurantBillRequest,listRestaurantBills,linkManualRoomCharge} from './restaurant.js';
+import {importMenuCsv,planMenuImport,listMenu,createRestaurantBill,restaurantBillRequest,listRestaurantBills,linkManualRoomCharge} from './restaurant.js';
 import {getGuestFolio,settleRoomBill,settleCombined} from './folio.js';
 import {adjustedAccommodation,recordAccommodationAdjustment} from './accommodation-adjustments.js';
 import { NET_PAYMENTS_SQL, paymentHistory,recordRefund } from './payment-ledger.js';
@@ -45,6 +46,7 @@ function requireFinancialRequestId(body){
 export function createApp(db,{authRecord=null,authFile=null,network=null,businessDate=null}={}) {
   if(network?.mode==='lan'&&!authRecord)throw new Error('LAN access requires configured authentication');
   const app = express();
+  const menuPreviewKey=randomBytes(32); // invalidated safely on every server restart
   app.disable('x-powered-by');
   // Fail closed against hostile Host headers and DNS rebinding on the
   // single-machine alpha. Private staff-LAN mode requires a separate review.
@@ -199,17 +201,18 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   });
   app.get('/api/restaurant/menu',(_req,res)=>res.json(listMenu(db)));
   app.post('/api/restaurant/menu/preview',(req,res,next)=>{
-    try{
-      const items=parseMenuCsv(req.body?.csv);
-      const categoryCounts=Object.fromEntries([...new Set(items.map(item=>item.category))]
-        .sort((a,b)=>a.localeCompare(b)).map(category=>[category,
-          items.filter(item=>item.category===category).length]));
-      const taxRates=[...new Set(items.map(item=>item.tax_rate))].sort((a,b)=>a-b);
-      res.json({count:items.length,preview:items,category_counts:categoryCounts,tax_rates:taxRates});
-    }catch(error){next(error);}
+    try{res.json(planMenuImport(db,req.body?.csv,{signingKey:menuPreviewKey}));}
+    catch(error){next(error);}
   });
   app.post('/api/restaurant/menu/import',(req,res,next)=>{
-    try{res.json(importMenuCsv(db,req.body.csv));}catch(error){next(error);}
+    try{
+      res.json(importMenuCsv(db,req.body?.csv,{
+        require_preview:true,signingKey:menuPreviewKey,
+        preview_token:req.body?.preview_token,
+        confirm_import:req.body?.confirm_import,
+        approve_suspicious:req.body?.approve_suspicious
+      }));
+    }catch(error){next(error);}
   });
   app.get('/api/restaurant/bills/:id/print-status',(req,res)=>{
     res.json({status:getPrintStatus(db,Number(req.params.id))});
