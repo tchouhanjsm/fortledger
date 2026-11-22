@@ -1,6 +1,7 @@
 import { toPaise } from './finance.js';
 import {createHash} from 'node:crypto';
 import {ensurePrintSchema} from './printer.js';
+import {recordAudit} from './financial-audit.js';
 export function ensureRestaurantSchema(db){
   db.exec(`
     CREATE TABLE IF NOT EXISTS menu_items (
@@ -122,7 +123,7 @@ export function restaurantBillRequest(db,requestId){
   const row=db.prepare('SELECT bill_id FROM restaurant_bill_requests WHERE request_id=?').get(requestId);
   return row?{recorded:true,id:row.bill_id}:{recorded:false};
 }
-export function createRestaurantBill(db,input){
+export function createRestaurantBill(db,input,actor=null){
   if(!input||!Array.isArray(input.items)||input.items.length===0||input.items.length>50)throw new Error('Add 1–50 menu lines');
   const requestId=input.request_id;
   if(requestId!==undefined&&(typeof requestId!=='string'||!/^[A-Za-z0-9_-]{16,80}$/.test(requestId)))
@@ -184,6 +185,14 @@ export function createRestaurantBill(db,input){
     const response={id:Number(result.lastInsertRowid),payment_method,booking_id,manual_room,manual_guest,items,total_paise,tax_paise};
     if(requestId)db.prepare('INSERT INTO restaurant_bill_requests(request_id,bill_id,fingerprint,response_json) VALUES(?,?,?,?)')
       .run(requestId,response.id,fingerprint,JSON.stringify(response));
+    if(actor&&(!Number.isSafeInteger(actor.id)||actor.id<0||
+      typeof actor.username!=='string'||!actor.username||
+      typeof actor.role!=='string'||!actor.role))
+      throw new Error('Invalid restaurant bill actor');
+    if(actor)recordAudit(db,actor,'restaurant_bill.created','restaurant_bill',response.id,{
+      payment_method,booking_id,manual_room,amount_paise:total_paise,
+      request_id:requestId||null
+    });
     return {...response,already_recorded:false};
   })();
 }
