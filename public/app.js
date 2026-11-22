@@ -1476,12 +1476,12 @@ function renderCart(){
     const minus=label('button','−','secondary');minus.type='button';
     minus.disabled=Boolean(pendingRestaurantBill);
     minus.setAttribute('aria-label','Remove one '+item.name);
-    minus.onclick=()=>{entry.quantity--;if(entry.quantity<1)cart=cart.filter(x=>x!==entry);renderCart();};
+    minus.onclick=()=>{if(pendingRestaurantBill)return;entry.quantity--;if(entry.quantity<1)cart=cart.filter(x=>x!==entry);renderCart();};
     const count=label('strong',String(entry.quantity));count.setAttribute('aria-label',entry.quantity+' portions');
     const plus=label('button','+','secondary');plus.type='button';
     plus.setAttribute('aria-label','Add one '+item.name);
     plus.disabled=entry.quantity>=100||Boolean(pendingRestaurantBill);
-    plus.onclick=()=>{if(entry.quantity<100)entry.quantity++;renderCart();};
+    plus.onclick=()=>{if(pendingRestaurantBill)return;if(entry.quantity<100)entry.quantity++;renderCart();};
     const remove=label('button','Remove','secondary');remove.type='button';
     remove.disabled=Boolean(pendingRestaurantBill);
     remove.setAttribute('aria-label','Remove '+item.name+' from bill');
@@ -1645,6 +1645,7 @@ $('#save-restaurant-bill').onclick=async()=>{
       '? Cash/UPI/card means payment has been manually confirmed. Saved bills cannot be edited or deleted.'))return;
     body.request_id=crypto.randomUUID();
     pendingRestaurantBill=body;
+    renderCart();
   }else if(!confirm('A previous bill submission was not confirmed. Check the saved bills first. Retry the EXACT original bill with the same request ID? Changes to the current cart will not be submitted.')){
     return;
   }
@@ -1676,6 +1677,7 @@ $('#save-restaurant-bill').onclick=async()=>{
     pendingRestaurantBill=null;
     restaurantReviewOpen=false;
     cart=[];
+    renderCart();
     message.replaceChildren();
     message.append(document.createTextNode('Bill #'+saved.id+' saved once. Payment was recorded manually; FortLedger did not verify a bank transfer. '));
     const link=label('a','Open saved receipt #'+saved.id);
