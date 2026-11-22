@@ -1,11 +1,14 @@
 /* Real Chromium smoke: disposable in-memory hotel, no external API or actual guests. */
 import assert from 'node:assert/strict';
+import {mkdirSync} from 'node:fs';
 import {chromium} from 'playwright';
 import {openDatabase} from '../src/database.js';
 import {createApp} from '../src/server.js';
 import {importMenuCsv} from '../src/restaurant.js';
 import {runAuthenticatedBrowserSmoke} from './auth-smoke.mjs';
 
+const screenshots=process.env.FORTLEDGER_CAPTURE_SCREENSHOTS==='1';
+if(screenshots)mkdirSync('browser-artifacts',{recursive:true});
 const db=openDatabase(':memory:');
 importMenuCsv(db,'name,category,price,tax_rate\nMasala Chai,Hot Drinks,80,5');
 const server=createApp(db).listen(0,'127.0.0.1');
@@ -17,7 +20,8 @@ const base='http://127.0.0.1:'+server.address().port;
 let browser;
 try{
   browser=await chromium.launch({headless:true});
-  for(const width of [360,390,768,1024,1280,1440,1920]){
+  // 320 CSS pixels is a 640px-at-200%-zoom reflow proxy, not an actual native zoom certification.
+  for(const width of [320,360,390,768,1024,1280,1440,1920]){
     const page=await browser.newPage({viewport:{width,height:850}});
     const errors=[];
     page.on('pageerror',error=>errors.push(error.message));
@@ -27,6 +31,22 @@ try{
     const heading=await page.locator('#workspace-title').textContent();
     assert.ok(heading?.length>2,'Workspace header should be populated');
     assert.equal(await page.locator('#bookings').isVisible(),true);
+    // Icons and skip action must be real keyboard-accessible controls without
+    // changing the route or creating any financial activity.
+    assert.equal(await page.locator('#skip-to-main').count(),1);
+    if(width===1440){
+      const icons=page.getByRole('navigation',{name:'Primary'}).locator('a .nav-icon');
+      assert.equal(await icons.count(),8);
+      assert.deepEqual(await icons.evaluateAll(els=>els.map(el=>Math.round(el.getBoundingClientRect().width))),
+        Array(8).fill(20));
+      await page.locator('#skip-to-main').focus();
+      await page.keyboard.press('Enter');
+      assert.equal(await page.evaluate(()=>document.activeElement?.id),'workspace-main');
+      assert.equal(await page.locator('#bookings').isVisible(),true);
+    }
+    if(screenshots&&(width===390||width===1440)){
+      await page.screenshot({path:'browser-artifacts/shizuka-bookings-'+width+'.png',fullPage:true});
+    }
     assert.equal(await page.locator('#dashboard').isVisible(),false,
       'Hidden dashboard should not be exposed by responsive CSS');
     const manifest=await page.locator('link[rel="manifest"]').getAttribute('href');
@@ -195,6 +215,9 @@ try{
       // POST response. The UI must lookup the UUID, not create a second bill.
       await page.evaluate(()=>{window.location.hash='restaurant';});
       await page.locator('#restaurant').waitFor({state:'visible'});
+      if(screenshots){
+        await page.screenshot({path:'browser-artifacts/shizuka-restaurant-1440.png',fullPage:true});
+      }
       const chip=page.locator('#menu-categories').getByRole('button',{name:'Hot Drinks'});
       await chip.click();
       assert.equal(await chip.getAttribute('aria-pressed'),'true');
@@ -332,7 +355,7 @@ try{
   assert.equal(db.prepare('SELECT count(*) AS n FROM bookings').get().n,2);
   assert.equal(db.prepare('SELECT count(*) AS n FROM booking_create_requests').get().n,2);
   await runAuthenticatedBrowserSmoke(browser);
-  console.log('PASS: Chromium receipt-loss reconciliation, booking/payment flow, responsive 360/390/768/1024/1280/1440/1920 px.');
+  console.log('PASS: Chromium receipt-loss reconciliation, booking/payment flow, responsive 320(reflow proxy)/360/390/768/1024/1280/1440/1920 px.');
 }finally{
   await browser?.close();
   await new Promise(resolve=>server.close(resolve));
