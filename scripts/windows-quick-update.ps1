@@ -13,8 +13,11 @@ if (Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue) {
 # The one-click path requires independently protected encrypted backup readiness.
 # A timestamp-only file check is insufficient: inspect the latest actual artifact.
 $env:FORTLEDGER_DATA_DIR = Join-Path $env:LOCALAPPDATA 'FortLedger\data'
-if (-not $env:FORTLEDGER_BACKUP_DIR -or -not $env:FORTLEDGER_BACKUP_PASSPHRASE) {
-  throw 'Encrypted backup settings are required for the quick updater. Configure an independent protected backup first, or use the documented manual update procedure.'
+if (-not $env:FORTLEDGER_BACKUP_DIR) {
+  $env:FORTLEDGER_BACKUP_DIR = (Read-Host 'Absolute encrypted backup folder (external protected drive)').Trim()
+}
+if (-not $env:FORTLEDGER_BACKUP_DIR) {
+  throw 'Choose an independently protected encrypted backup folder before updating.'
 }
 $backupDir = $env:FORTLEDGER_BACKUP_DIR
 if (-not [IO.Path]::IsPathRooted($backupDir)) {
@@ -34,6 +37,21 @@ if ($backupAbsolute.Equals($root,[StringComparison]::OrdinalIgnoreCase) -or
     $backupAbsolute.StartsWith($dataAbsolute+[IO.Path]::DirectorySeparatorChar,
       [StringComparison]::OrdinalIgnoreCase)) {
   throw 'Encrypted backup must be outside both the active hotel database and Git application folders.'
+}
+if (-not $env:FORTLEDGER_BACKUP_PASSPHRASE) {
+  # Prompt privately when opened from Windows Explorer; do not require a
+  # passphrase saved in a shared script, environment file or application repo.
+  $secret = Read-Host 'Encrypted backup passphrase (not displayed)' -AsSecureString
+  $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
+  try {
+    $env:FORTLEDGER_BACKUP_PASSPHRASE =
+      [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
+  } finally {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)
+  }
+}
+if (-not $env:FORTLEDGER_BACKUP_PASSPHRASE) {
+  throw 'Backup passphrase is required for a verified update.'
 }
 Write-Host 'Verifying that the latest encrypted backup can be restored in isolation...' -ForegroundColor Cyan
 & npm.cmd run recovery:encrypted-drill -- $backups[0].FullName
