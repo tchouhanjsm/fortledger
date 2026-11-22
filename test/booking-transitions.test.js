@@ -5,7 +5,7 @@ import {createApp} from '../src/server.js';
 
 async function fixture(work){
   const db=openDatabase(':memory:');
-  const server=createApp(db).listen(0,'127.0.0.1');
+  const server=createApp(db,{businessDate:()=> '2026-12-01'}).listen(0,'127.0.0.1');
   await new Promise(resolve=>server.once('listening',resolve));
   const base='http://127.0.0.1:'+server.address().port;
   const json=async(route,method='GET',body)=>{
@@ -42,10 +42,10 @@ test('checkout requires human acknowledgment of balance and retains overdue foli
   const created=await json('/api/bookings','POST',{...booking,room_ids:[1,2]});
   const id=created.value.id;
   await json('/api/bookings/'+id+'/status','PATCH',{status:'checked_in'});
-  const blocked=await json('/api/bookings/'+id+'/status','PATCH',{status:'checked_out'});
+  const blocked=await json('/api/bookings/'+id+'/status','PATCH',{status:'checked_out',date_override:true,reason:'Confirmed guest departure before booked date'});
   assert.equal(blocked.status,400);
   assert.match(blocked.value.error,/balance must be acknowledged/);
-  const checkout=await json('/api/bookings/'+id+'/status','PATCH',{status:'checked_out',acknowledge_balance:true});
+  const checkout=await json('/api/bookings/'+id+'/status','PATCH',{status:'checked_out',acknowledge_balance:true,date_override:true,reason:'Confirmed guest departure before booked date'});
   assert.equal(checkout.status,200);
   assert.ok(checkout.value.warnings.length);
   assert.equal(db.prepare('SELECT status FROM bookings WHERE id=?').get(id).status,'checked_out');
