@@ -1698,6 +1698,7 @@ $('#review-restaurant-bill').onclick=()=>{
   restaurantReviewOpen=true;
   $('#restaurant-message').textContent='Review and edit the items above. Confirm & save only when the final bill is correct.';
   renderRestaurantReview();
+  $('#restaurant-review-heading').focus({preventScroll:true});
   $('#restaurant-review').scrollIntoView({block:'nearest'});
 };
 $('#edit-restaurant-bill').onclick=()=>{
@@ -1705,6 +1706,7 @@ $('#edit-restaurant-bill').onclick=()=>{
   restaurantReviewOpen=false;
   renderRestaurantReview();
   $('#restaurant-message').textContent='Draft remains unsaved. Add or remove items, then review it again.';
+  $('#menu-search').focus({preventScroll:true});
 };
 $('#clear-restaurant-cart').onclick=()=>{
   if(pendingRestaurantBill){
@@ -1793,13 +1795,15 @@ $('#save-restaurant-bill').onclick=async()=>{
     link.href='/api/restaurant/bills/'+encodeURIComponent(saved.id)+'/receipt';
     link.target='_blank';link.rel='noopener';
     message.append(link);
+    message.focus({preventScroll:true});
     try{
       const updated=await load();
       if(updated===false)message.append(document.createTextNode(' A newer workspace refresh is in progress.'));
     }catch(error){
       message.append(document.createTextNode(' Refresh failed: '+error.message+'. The bill is already saved; use Refresh to reload, not Save again.'));
     }
-  }catch(error){message.textContent='Bill was not saved: '+error.message;}
+  }catch(error){message.textContent='Bill was not saved: '+error.message;
+    message.focus({preventScroll:true});}
   finally{restaurantBillSubmitting=false;button.disabled=false;}
 };
 let validatedMenuCsv=null,menuImportGeneration=0,menuImportRows=[],menuImportInFlight=false;
