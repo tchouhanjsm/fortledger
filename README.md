@@ -82,3 +82,6 @@ Favor simple, reversible, tested improvements rather than rebuilding a seven-roo
 
 ### Windows one-double-click onboarding
 After cloning, open the FortLedger folder in Windows Explorer. Use **`Install FortLedger.cmd`** once (Node.js 22.x and Git required), **`Start FortLedger.cmd`** to operate locally, **`Configure FortLedger Backups.cmd`** to save a DPAPI-protected separate-drive backup configuration, **`Diagnose FortLedger.cmd`** to inspect readiness, and the existing **`Update FortLedger.cmd`** after stopping the server for a manual update. The supervised owner Update Center can also restart safely when its checks pass. Never initialize a new Windows ledger to replace your Mac records; see [Windows setup](docs/WINDOWS_SETUP.md). All production acceptance gates remain in force.
+
+### Private hotel Wi-Fi on staff phones
+The Windows desktop installer remains **localhost-only** unless a hotel owner/IT explicitly provisions a valid private-IP HTTPS certificate and the staff-subnet Windows Firewall rule. Only then can phones on the separate **staff Wi-Fi** open an address like `https://192.168.10.15:3000`. Staff phones must trust the certificate issuer. The Windows tray offers an opt-in setup and a safe disable action. Do not open guest Wi-Fi or router internet forwarding; see [staff-only phone access](docs/WINDOWS_STAFF_WIFI.md).

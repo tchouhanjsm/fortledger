@@ -621,7 +621,7 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
       db.close();
     }
     if(process.platform==='win32'&&process.env.FORTLEDGER_DESKTOP_INSTALLER==='1'&&
-       !tls&&host==='127.0.0.1'&&port===3000){
+       port===3000&&(network.mode==='lan'||(!tls&&host==='127.0.0.1'))){
       // Local GUI tray launcher owns stdin. It asks the server to stop without
       // killing an in-progress bill, booking, SQLite write or receipt response.
       let quitting=false,buffer='';
