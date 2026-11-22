@@ -36,7 +36,7 @@ test('new AES-GCM credential companion is independently encrypted, decryptable a
   const restoredAuth=path.join(root,'restored-admin-auth.json');
   assert.equal(decryptEncryptedCredentialCompanion(encrypted.file,restoredAuth,secret),true);
   assert.equal(verifyPassword('synthetic-original-owner-password-123',loadPasswordRecord(restoredAuth)),true);
-  assert.throws(()=>decryptEncryptedCredentialCompanion(encrypted.file,restoredAuth,secret),/exists/);
+  assert.throws(()=>decryptEncryptedCredentialCompanion(encrypted.file,restoredAuth,secret),/already exist|overwrite/);
   const drill=rehearseEncryptedRecovery({backup:encrypted.file,passphrase:secret,auth,live});
   assert.equal(drill.ok,true);
   assert.equal(drill.owner_credential_recoverable,true);
