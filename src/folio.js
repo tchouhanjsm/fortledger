@@ -92,7 +92,7 @@ export function settleRoomBill(db,bookingId,billId,method,actor=null,{request_id
     if(actor)recordAudit(db,actor,'settlement.recorded','restaurant_settlement',billId,
       {booking_id:bookingId,amount_paise:bill.total_paise,method,settlement_group:group});
     return {restaurant_bill_id:billId,settled_paise:bill.total_paise,method,settlement_group:group};
-  })();
+  });
 }
 export function settleCombined(db,bookingId,method,actor=null,{
   accommodation_method=method,bank_reference='',request_id
@@ -134,5 +134,5 @@ export function settleCombined(db,bookingId,method,actor=null,{
     return {booking_id:bookingId,settlement_group:group,method,accommodation_method,
       accommodation_paid_paise:amount,restaurant_paid_paise:folio.restaurant_due_paise,
       total_paid_paise:folio.combined_due_paise,restaurant_bills_settled:count};
-  })();
+  });
 }
