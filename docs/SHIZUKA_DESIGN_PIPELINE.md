@@ -49,3 +49,13 @@ Source audit and Node tests are reproducible. CI can save **after-change** Chrom
 Screenshot notes: screenshot collection crops to the configured CSS viewport width and scrolls to the top; an intentionally horizontally scrollable calendar remains usable inside its own region. Artifact capture is an inspection aid, not evidence that visual mismatches are all eliminated.
 
 Follow-up visual inspection of the real synthetic Chromium reservation-panel PNG found the final desktop queue chip cut off. Desktop work queues now wrap instead of concealing filters horizontally; narrow mobile retains intentional, labeled horizontal scrolling.
+
+## Phase 2 implementation — shared controls and safe confirmation (22 November 2026)
+
+The source audit found that `public/login.html` loaded only the earlier green-era `styles.css`, so authenticated workspaces and sign-in used different visual languages. The base file also duplicated primary/secondary buttons, labels, inputs, close buttons, form previews and dialog-action layouts already owned by SHIZUKA. Those **shared presentation declarations** are now consolidated into `public/heritage-sky.css` and the login loads that same offline stylesheet.
+
+One shared native `<dialog>` confirmation component is now reused for **clearing an unsaved restaurant draft** and **manager dish availability**. Both are non-ledger destructive choices. Financial save/payment/refund/settlement confirmations remain under their existing audited workflows, with server guards unchanged. The shared component includes an explanation, action-specific labels, Escape/Cancel, keyboard-focus handling, a single-flight guard and no untrusted HTML injection.
+
+Shared input sizing deliberately excludes checkbox and radio controls. The two daily close acknowledgements retain ordinary checkbox dimensions and full clickable label rows. Booking, proforma, folio and draft dialog elements gain explicit accessible names. Forms, buttons, error messages and overlays use SHIZUKA spacing and colors rather than legacy per-screen green styling.
+
+Acceptance gates: Node tests for helper concurrency/focus/cancel and CSS ownership, Chromium login CSS parity, real mobile manager confirmation cancel/save, real unsaved bill cancel, existing booking/payment/invoice checks. Mac Safari, actual screen readers, and historical visual baselines are **still not certified**. Next phase: improve primary workspaces and continue targeted CSS cleanup without replacing business logic.
