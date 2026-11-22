@@ -9,6 +9,15 @@ import {runAuthenticatedBrowserSmoke} from './auth-smoke.mjs';
 
 const screenshots=process.env.FORTLEDGER_CAPTURE_SCREENSHOTS==='1';
 if(screenshots)mkdirSync('browser-artifacts',{recursive:true});
+async function captureViewportWidth(page,width,name){
+  // Retain the entire working page vertically but never expand PNG width
+  // to include an intentionally scrollable calendar's offscreen columns.
+  await page.evaluate(()=>window.scrollTo(0,0));
+  const height=await page.evaluate(()=>
+    Math.max(document.body.scrollHeight,document.documentElement.scrollHeight));
+  await page.screenshot({path:'browser-artifacts/'+name+'.png',
+    clip:{x:0,y:0,width,height}});
+}
 const db=openDatabase(':memory:');
 importMenuCsv(db,'name,category,price,tax_rate\nMasala Chai,Hot Drinks,80,5');
 const server=createApp(db).listen(0,'127.0.0.1');
@@ -31,6 +40,9 @@ try{
     const heading=await page.locator('#workspace-title').textContent();
     assert.ok(heading?.length>2,'Workspace header should be populated');
     assert.equal(await page.locator('#bookings').isVisible(),true);
+    if(screenshots&&(width===390||width===1440)){
+      await captureViewportWidth(page,width,'shizuka-bookings-'+width);
+    }
     // Icons and skip action must be real keyboard-accessible controls without
     // changing the route or creating any financial activity.
     assert.equal(await page.locator('#skip-to-main').count(),1);
@@ -44,8 +56,19 @@ try{
       assert.equal(await page.evaluate(()=>document.activeElement?.id),'workspace-main');
       assert.equal(await page.locator('#bookings').isVisible(),true);
     }
-    if(screenshots&&(width===390||width===1440)){
-      await page.screenshot({path:'browser-artifacts/shizuka-bookings-'+width+'.png',fullPage:true});
+    if(width===1440){
+      const layout=await page.evaluate(()=>{
+        const box=selector=>document.querySelector(selector)?.getBoundingClientRect();
+        const heading=box('#bookings > .panel-head h2'),
+          filters=box('#bookings .booking-filters'),
+          queue=box('#booking-quick-queues');
+        return {headingWidth:heading?.width,headingHeight:heading?.height,
+          filtersWidth:filters?.width,filtersScroll:document.querySelector('#bookings .booking-filters')?.scrollWidth,
+          queueWidth:queue?.width};
+      });
+      assert.ok(layout.headingWidth>=200,'The reservation heading must not be squeezed by filters');
+      assert.ok(layout.headingHeight<=32,'Reservation heading should fit on one line at 1440px');
+      assert.ok(layout.filtersScroll<=layout.filtersWidth+2,'Booking filters must not clip controls');
     }
     assert.equal(await page.locator('#dashboard').isVisible(),false,
       'Hidden dashboard should not be exposed by responsive CSS');
@@ -216,7 +239,7 @@ try{
       await page.evaluate(()=>{window.location.hash='restaurant';});
       await page.locator('#restaurant').waitFor({state:'visible'});
       if(screenshots){
-        await page.screenshot({path:'browser-artifacts/shizuka-restaurant-1440.png',fullPage:true});
+        await captureViewportWidth(page,width,'shizuka-restaurant-1440');
       }
       const chip=page.locator('#menu-categories').getByRole('button',{name:'Hot Drinks'});
       await chip.click();
