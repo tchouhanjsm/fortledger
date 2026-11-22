@@ -287,7 +287,7 @@
       </div>
       <p id="update-center-versions" class="muted"></p>
       <div id="update-center-windows" hidden>
-        <p class="muted">Windows: after finishing bills and stopping the app, double-click <strong>Update FortLedger.cmd</strong> in your existing FortLedger folder. It makes a verified backup, fast-forwards the approved repository, runs tests and starts the app again. It refuses active servers and unsafe changes.</p>
+        <p class="muted">Windows: after finishing bills and stopping the app, double-click <strong>Update FortLedger.cmd</strong> in your existing FortLedger folder. It verifies a recent independently protected encrypted backup by restoring it in isolation, then makes a verified snapshot, fast-forwards main, runs tests and starts the app again. It refuses active servers, unverified backups and unsafe changes.</p>
       </div>
       <div id="update-center-mac" hidden>
         <p class="muted">Mac: finish active work, verify an independent protected backup, stop the server, then follow <a href="https://github.com/tchouhanjsm/fortledger/blob/main/docs/MAC_RELEASE_PREFLIGHT.md" target="_blank" rel="noopener noreferrer">the Mac safe-update guide</a>. Browser checks do not install updates.</p>
