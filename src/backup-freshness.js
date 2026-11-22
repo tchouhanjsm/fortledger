@@ -20,8 +20,11 @@ export function backupFreshness({env=process.env,now=new Date()}={}){
       detail:'Backup timestamps need review'};
     if(ageHours>36)return {state:'stale',needs_attention:true,
       detail:'Latest backup file is older than 36 hours'};
-    return {state:'recent',needs_attention:false,
-      detail:'A recent encrypted backup file exists; restore integrity is not confirmed'};
+    const localOnly=env.FORTLEDGER_BACKUP_LOCAL_ONLY==='1';
+    return {state:'recent',needs_attention:localOnly,
+      detail:localOnly?
+        'Recent encrypted emergency backup exists on THIS Windows PC only. A separate protected drive is still required for disaster recovery and software upgrades.':
+        'A recent encrypted backup file exists; restore integrity is not confirmed'};
   }catch{return {state:'unavailable',needs_attention:true,
     detail:'Cannot inspect the configured encrypted backup directory'};}
 }
