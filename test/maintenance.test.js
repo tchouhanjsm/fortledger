@@ -14,7 +14,7 @@ const booking=(from='2026-12-01',to='2026-12-03',count=1,ids=[])=>({
 });
 async function fixture(fn){
   const db=openDatabase(':memory:');
-  const server=createApp(db).listen(0,'127.0.0.1');
+  const server=createApp(db,{businessDate:()=> '2026-12-01'}).listen(0,'127.0.0.1');
   await new Promise(resolve=>server.once('listening',resolve));
   const base='http://127.0.0.1:'+server.address().port;
   const api=async(route,method='GET',body)=>{
@@ -77,7 +77,7 @@ test('no double booking after maintenance: allocated checkin is still guarded',(
   // Existing booking can check in; maintenance starts after checkout.
   assert.equal((await api('/api/bookings/'+a.data.id+'/status','PATCH',{status:'checked_in'})).status,200);
   assert.equal((await api('/api/bookings/'+a.data.id+'/status','PATCH',{
-    status:'checked_out',acknowledge_balance:true
+    status:'checked_out',acknowledge_balance:true,date_override:true,reason:'Guest physically departed before departure date'
   })).status,200);
   assert.equal((await api('/api/bookings','POST',booking('2026-12-02','2026-12-03',1,[1]))).status,409);
 }));
