@@ -199,7 +199,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null}={}) {
     }catch(error){next(error);}
   });
   app.post('/api/restaurant/bills/:id/link-booking',(req,res,next)=>{
-    try{res.json(linkManualRoomCharge(db,Number(req.params.id),Number(req.body?.booking_id)));}
+    try{res.json(linkManualRoomCharge(db,Number(req.params.id),Number(req.body?.booking_id),
+      {actor:req.actor,override:req.body?.override===true,reason:req.body?.reason??''}));}
     catch(error){next(error);}
   });
   app.get('/api/restaurant/bills/request/:requestId',(req,res,next)=>{
