@@ -56,6 +56,8 @@ function Save-FortLedgerBackupSettings {
         [string]$AppRoot = '',
         [string]$SettingsFile = (Get-FortLedgerBackupSettingsFile))
   if ($env:OS -ne 'Windows_NT') { throw 'DPAPI settings are supported only on Windows.' }
+  # Windows PowerShell 5.1 does not always preload the Framework DPAPI types.
+  Add-Type -AssemblyName System.Security -ErrorAction Stop
   $destination=Assert-FortLedgerBackupSeparation -Directory $Directory -DataDirectory $DataDirectory -AppRoot $AppRoot
   $plain=Convert-FortLedgerSecureText $Passphrase
   if ($plain.Length -lt 16) { throw 'Encrypted backup passphrase must be at least 16 characters.' }
@@ -101,6 +103,7 @@ function Import-FortLedgerBackupSettings {
   if (-not (Test-Path -LiteralPath $SettingsFile -PathType Leaf)) { return $false }
   if ($env:OS -ne 'Windows_NT') { throw 'Windows DPAPI settings cannot be opened on another operating system.' }
   try {
+    Add-Type -AssemblyName System.Security -ErrorAction Stop
     $stored=Get-Content -LiteralPath $SettingsFile -Raw | ConvertFrom-Json
     if ($stored.version -ne 1 -or -not $stored.directory -or -not $stored.passphrase_dpapi) {
       throw 'Invalid encrypted backup settings format.'
