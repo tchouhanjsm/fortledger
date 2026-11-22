@@ -31,7 +31,7 @@ test('assigned rooms near arrival have exact, non-mutating readiness reasons',()
   assert.match(results[2].reason,/cleaning in progress, out of service today/);
   assert.deepEqual({bookings,rooms,maintenance},before);
 });
-test('tomorrow is not marked out of service based on today's flag',()=>{
+test('tomorrow does not inherit the current-day out-of-service flag',()=>{
   const result=arrivalReadinessExceptions({today,bookings:[booking(3,tomorrow,[3])],
     rooms:[{...rooms[2],housekeeping_status:'ready'}]});
   assert.deepEqual(result,[]);
