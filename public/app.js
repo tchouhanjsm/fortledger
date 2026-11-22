@@ -1087,9 +1087,16 @@ function previewInvoice(){
   const lines=readInvoiceLines();
   const total=lines.reduce((sum,l)=>sum+(Number(l.rooms)||0)*(Number(l.nights)||0)*(Number(l.rate)||0),0);
   const invoice=$('#invoice-totals');
-  const paid=bookings.find(b=>b.id===invoiceBookingId)?.paid_paise||0;
-  invoice.textContent=lines.length+' line(s) · Total '+money(Math.round(total*100))+
-    ' · Advance '+money(paid)+' · Due '+money(Math.max(0,Math.round(total*100)-paid));
+  const booking=bookings.find(b=>b.id===invoiceBookingId);
+  const paid=booking?.paid_paise||0;
+  const contracted=booking?.total_paise;
+  const proposed=Math.round(total*100);
+  const mismatch=Number.isSafeInteger(contracted)&&proposed!==contracted;
+  invoice.textContent=lines.length+' line(s) · Total '+money(proposed)+
+    ' · Advance '+money(paid)+' · Due '+money(Math.max(0,proposed-paid))+
+    (mismatch?' · Must equal booked stay '+money(contracted):' · Matches booking');
+  const issue=$('#invoice-form').querySelector('[type=submit]');
+  if(issue)issue.disabled=mismatch||!lines.length;
 }
 function createInvoice(booking){
   const existing=invoices.find(x=>x.booking_id===booking.id);
