@@ -25,6 +25,9 @@ function requestFingerprint(booking,initialPaise,method){
     category:booking.category,meal_plan:booking.meal_plan,
     nightly_rate_paise:booking.nightly_rate_paise,guest_id:booking.guest_id,
     room_ids:[...booking.room_ids].sort((a,b)=>a-b),
+    // Preserve exact historic empty-note fingerprints for lost-response retry.
+    ...(booking.pickup_notes?{pickup_notes:booking.pickup_notes}:{}),
+    ...(booking.stay_notes?{stay_notes:booking.stay_notes}:{}),
     amount_paid_paise:initialPaise,advance_method:initialPaise>0?method:null
   };
   return createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
@@ -53,8 +56,8 @@ export function createBookingSafely(db,{booking,initialPaise,method,requestId,ac
     const {room_ids,...sqlBooking}=booking;
     const id=allocateEntityId(db,'booking');
     db.prepare(`INSERT INTO bookings
-      (id,guest_name,company_name,checkin,checkout,rooms_count,room_id,category,meal_plan,nightly_rate_paise,guest_id)
-      VALUES (@id,@guest_name,@company_name,@checkin,@checkout,@rooms_count,@room_id,@category,@meal_plan,@nightly_rate_paise,@guest_id)`).run({...sqlBooking,id});
+      (id,guest_name,company_name,checkin,checkout,rooms_count,room_id,category,meal_plan,nightly_rate_paise,guest_id,pickup_notes,stay_notes)
+      VALUES (@id,@guest_name,@company_name,@checkin,@checkout,@rooms_count,@room_id,@category,@meal_plan,@nightly_rate_paise,@guest_id,@pickup_notes,@stay_notes)`).run({...sqlBooking,id});
     const allocate=db.prepare('INSERT INTO booking_room_allocations(booking_id,room_id) VALUES(?,?)');
     for(const roomId of room_ids)allocate.run(id,roomId);
     if(initialPaise>0){
