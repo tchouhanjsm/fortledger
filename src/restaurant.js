@@ -109,9 +109,20 @@ export function parseMenuCsv(csv){
 export function importMenuCsv(db,csv){
   const normalized=parseMenuCsv(csv);
   db.transaction(()=>{
-    const upsert=db.prepare(`INSERT INTO menu_items(name,category,price_paise,tax_rate,active) VALUES(@name,@category,@price_paise,@tax_rate,1)
-       ON CONFLICT(name,category) DO UPDATE SET price_paise=excluded.price_paise,tax_rate=excluded.tax_rate,active=1`);
-    for(const item of normalized)upsert.run(item);
+    // Keep existing stable menu IDs (historic bill snapshots refer to them).
+    // An existing mixed-case spelling is the same menu item, but a legacy DB
+    // containing two such rows is ambiguous and requires operator resolution.
+    const matched=db.prepare(`SELECT id FROM menu_items
+      WHERE name=? COLLATE NOCASE AND category=? COLLATE NOCASE`);
+    const update=db.prepare(`UPDATE menu_items SET price_paise=?,tax_rate=?,active=1 WHERE id=?`);
+    const insert=db.prepare(`INSERT INTO menu_items(name,category,price_paise,tax_rate,active)
+      VALUES(@name,@category,@price_paise,@tax_rate,1)`);
+    for(const item of normalized){
+      const rows=matched.all(item.name,item.category);
+      if(rows.length>1)throw new Error('Multiple existing menu items differ only by capitalization; resolve duplicate menu items before importing '+item.name);
+      if(rows.length)update.run(item.price_paise,item.tax_rate,rows[0].id);
+      else insert.run(item);
+    }
   })();
   return {imported:normalized.length};
 }
