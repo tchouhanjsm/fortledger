@@ -14,5 +14,5 @@ if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch '^v22\.') {
 Write-Host 'FortLedger uses persistent data in:' $env:FORTLEDGER_DATA_DIR -ForegroundColor Cyan
 Write-Host 'After startup open http://127.0.0.1:3000 in this computer only.'
 Write-Host 'To stop safely press Ctrl+C in this terminal.' -ForegroundColor Yellow
-& npm.cmd start
-if ($LASTEXITCODE -ne 0) { throw 'FortLedger startup failed; run npm run doctor to investigate.' }
+& node .\scripts\windows-supervisor.mjs
+if ($LASTEXITCODE -ne 0) { throw 'FortLedger supervised startup stopped unexpectedly; run npm run doctor and inspect the update journal.' }
