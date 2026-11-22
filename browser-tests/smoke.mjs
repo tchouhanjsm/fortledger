@@ -4,6 +4,7 @@ import {chromium} from 'playwright';
 import {openDatabase} from '../src/database.js';
 import {createApp} from '../src/server.js';
 import {importMenuCsv} from '../src/restaurant.js';
+import {runAuthenticatedBrowserSmoke} from './auth-smoke.mjs';
 
 const db=openDatabase(':memory:');
 importMenuCsv(db,'name,category,price,tax_rate\nMasala Chai,Hot Drinks,80,5');
@@ -242,6 +243,7 @@ try{
   }
   assert.equal(db.prepare('SELECT count(*) AS n FROM bookings').get().n,2);
   assert.equal(db.prepare('SELECT count(*) AS n FROM booking_create_requests').get().n,2);
+  await runAuthenticatedBrowserSmoke(browser);
   console.log('PASS: Chromium receipt-loss reconciliation, booking/payment flow, responsive 360/390/768/1024/1280/1440/1920 px.');
 }finally{
   await browser?.close();
