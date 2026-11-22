@@ -41,7 +41,8 @@ export async function runAuthenticatedBrowserSmoke(browser){
         assert.equal(me.status(),200);
         assert.equal((await me.json()).role,user.role);
         const forbidden=await context.request.post(base+'/api/finance/closing',{
-          data:{business_date:'2027-04-01',opening_cash:0,counted_cash:0,request_id:randomUUID()}
+          data:{business_date:user.role==='manager'?'2027-04-02':'2027-04-01',
+            opening_cash:0,counted_cash:0,request_id:randomUUID()}
         });
         assert.equal(forbidden.status(),['cashier','frontdesk'].includes(user.role)?403:201,
           'Financial closing role boundary at '+user.role);
