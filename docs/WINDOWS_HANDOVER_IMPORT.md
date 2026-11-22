@@ -31,6 +31,8 @@ The snapshot must be transferred privately on a suitably encrypted external driv
 3. Confirm it prints **VERIFIED BACKUP**, seven rooms, and the expected approximate booking count; inspect the new `update-...` directory for all three files. Keep this folder on the encrypted drive. Its `RECOVERY.txt` marker is a format sanity check, not a digital signature.
 4. After validation, fully stop the Mac app and leave its database and original owner password file untouched as the recovery source.
 
+**Important for older Mac checkouts (including PR #83):** the revised snapshot helper finalizes a standalone SQLite backup so no `-wal` or `-shm` companions are needed. A snapshot made with older code may be refused. First finish the Mac's separately verified encrypted-backup and safe code-update procedure; then **create a new snapshot** using the current helper. Never delete WAL/shm sidecars from an older backup to force it through the importer.
+
 ## On the new Windows machine — BEFORE first setup
 
 1. Install Git for Windows and Node.js **22.x**, then create and clone the official repo as described in [Windows setup](WINDOWS_SETUP.md). Do **not** run `Install FortLedger.cmd` or `Start FortLedger.cmd` yet.
