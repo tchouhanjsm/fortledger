@@ -1101,12 +1101,17 @@ async function renderProfile(){
     }
   }
 }
+let approvedUpdateSha=null;
 $('#update-center-check').onclick=async()=>{
   if(!can('system.update'))return;
   const button=$('#update-center-check'),message=$('#update-center-state');
   const versions=$('#update-center-versions');
   button.disabled=true;message.textContent='Checking GitHub main…';
   versions.textContent='';
+  approvedUpdateSha=null;
+  $('#update-center-readiness').hidden=true;
+  $('#update-center-install').hidden=true;
+  $('#update-center-install').disabled=true;
   try{
     const state=await api('/api/system/updates');
     message.textContent=state.message;
@@ -1116,10 +1121,58 @@ $('#update-center-check').onclick=async()=>{
       ' · GitHub main: '+short(state.remote);
     $('#update-center-windows').hidden=state.platform!=='windows';
     $('#update-center-mac').hidden=state.platform!=='mac';
+    if(state.platform==='windows'&&state.state==='new_revision'){
+      const readiness=await api('/api/system/updates/readiness');
+      const panel=$('#update-center-readiness'),list=$('#update-center-blockers');
+      panel.hidden=false;list.replaceChildren();
+      for(const blocker of readiness.blockers||[])list.append(label('li',blocker));
+      const ready=Boolean(readiness.ready)&&
+        /^[a-f0-9]{40}$/i.test(readiness.target_sha||'');
+      $('#update-center-readiness-status').textContent=ready?
+        'Verified GitHub commit, protected backup configuration and external supervisor are ready.':
+        'Automatic installation is blocked until the listed safety checks pass.';
+      if(ready){
+        approvedUpdateSha=readiness.target_sha;
+        $('#update-center-install').hidden=false;
+        $('#update-center-install').disabled=false;
+        const ci=$('#update-center-ci');ci.replaceChildren();
+        if(/^https:\/\/github\.com\/tchouhanjsm\/fortledger\/actions\/runs\/[0-9]+$/.test(readiness.ci_run_url||'')){
+          const link=label('a','View passed Windows, Linux and browser checks');
+          link.href=readiness.ci_run_url;link.target='_blank';link.rel='noopener noreferrer';ci.append(link);
+        }
+      }else $('#update-center-ci').textContent='';
+    }
   }catch(error){
     message.dataset.state='unavailable';
     message.textContent='Update check failed: '+error.message;
   }finally{button.disabled=false;}
+};
+$('#update-center-install').onclick=async()=>{
+  if(!can('system.update')||!/^[a-f0-9]{40}$/i.test(approvedUpdateSha||''))return;
+  const accepted=await confirmAction({
+    title:'Install verified FortLedger update?',
+    detail:'Confirm all staff have finished their booking or bill forms. The local Windows supervisor will reject new financial writes, let active requests finish, verify the encrypted backup and run tests before restarting. No payment is created by this action. If the update becomes uncertain, inspect the ledger before retrying.',
+    confirmLabel:'Finish work & update'
+  });
+  if(!accepted)return;
+  const button=$('#update-center-install');
+  button.disabled=true;
+  $('#update-center-readiness-status').textContent='Contacting the local supervisor…';
+  try{
+    const response=await api('/api/system/updates/install',{
+      method:'POST',body:JSON.stringify({
+        confirmation:'stop_after_current_requests',
+        target_sha:approvedUpdateSha
+      })
+    });
+    if(!response.accepted)throw new Error('The local supervisor did not accept the request');
+    $('#update-center-readiness-status').textContent=
+      'Update accepted. Finish of active requests and verified installation are underway outside this browser. When localhost returns, reload and sign in. Do not issue a second update request.';
+  }catch(error){
+    $('#update-center-readiness-status').textContent=
+      'Update acceptance could not be confirmed: '+error.message+
+      '. Inspect the supervisor terminal before clicking again or recording another financial transaction.';
+  }finally{approvedUpdateSha=null;}
 };
 $('#profile-password-form').onsubmit=async event=>{
   event.preventDefault();
