@@ -119,6 +119,14 @@ export function openDatabase(filename = databasePath()) {
     // only missing restaurant support objects, and publish v8 last.
     if(current<8)db.transaction(()=>{
       ensureRestaurantSchema(db);
+      // IF NOT EXISTS alone cannot detect a malformed pre-existing table.
+      // Compile all columns used by the idempotent bill read/write paths before
+      // marking this database compatible with the current application.
+      try{
+        db.prepare('SELECT request_id,bill_id,fingerprint,response_json,created_at FROM restaurant_bill_requests LIMIT 0').all();
+      }catch{
+        throw new Error('Incompatible restaurant bill request schema; no migration applied. Inspect database with npm run doctor and restore a verified backup if necessary');
+      }
       const violations=db.pragma('foreign_key_check');
       if(violations.length)throw new Error('Database has foreign key violations; restaurant schema upgrade was not applied');
       db.pragma('user_version = 8');
