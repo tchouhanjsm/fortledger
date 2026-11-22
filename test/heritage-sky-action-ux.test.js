@@ -5,7 +5,7 @@ const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../public/heritage-sky-operations.css',import.meta.url),'utf8');
 test('routine booking actions stay primary; sensitive secondary actions stay accessible',()=>{
   assert.match(js,/actions\.append\(edit,payment,folioButton,more\)/);
-  assert.match(js,/moreItems\.append\(history,refundButton,proforma\)/);
+  assert.match(js,/moreItems\.append\(notesButton,history,refundButton,proforma\)/);
   assert.match(js,/moreTitle\.setAttribute\('aria-label','More actions for booking #'/);
   assert.match(js,/payment\.disabled=!can\('payments\.write'\)/);
   assert.match(js,/refundButton\.disabled=!can\('refunds\.write'\)/);
