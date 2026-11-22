@@ -85,3 +85,6 @@ After cloning, open the FortLedger folder in Windows Explorer. Use **`Install Fo
 
 ### Private hotel Wi-Fi on staff phones
 The Windows desktop installer remains **localhost-only** unless a hotel owner/IT explicitly provisions a valid private-IP HTTPS certificate and the staff-subnet Windows Firewall rule. Only then can phones on the separate **staff Wi-Fi** open an address like `https://192.168.10.15:3000`. Staff phones must trust the certificate issuer. The Windows tray offers an opt-in setup and a safe disable action. Do not open guest Wi-Fi or router internet forwarding; see [staff-only phone access](docs/WINDOWS_STAFF_WIFI.md).
+
+### Automatic Windows emergency snapshots
+On installer-managed Windows computers without configured off-device backups, FortLedger now creates encrypted same-PC emergency snapshots with a per-user DPAPI-protected key. These protect against some local mistakes, **not** PC theft or disk failure; they never satisfy external-backup gates for an update. Configure an independently protected drive and preserve its passphrase separately. See [Windows installer and recovery](docs/WINDOWS_DESKTOP_INSTALLER.md).
