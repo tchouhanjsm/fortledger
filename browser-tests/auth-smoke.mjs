@@ -17,6 +17,9 @@ export async function runAuthenticatedBrowserSmoke(browser){
     {username:'cashierqa',password:'synthetic-test-cashier-password-strong',role:'cashier'}
   ];
   const server=createApp(db,{authRecord:createPasswordRecord(ownerPassword),
+    prepareUpgradeBackup:async()=>({state:'prepared',
+      isolated_restore_verified:true,owner_credential_recoverable:true,
+      detail:'Synthetic protected backup prepared and independently rehearsed.'}),
     checkUpdates:async()=>({platform:'windows',state:'new_revision',available:true,
       current:'aaaaaaaaaaaa',remote:'bbbbbbbbbbbb',message:'Synthetic GitHub update detected.'}),
     updateService:{inspect:async()=>({platform:'windows',ready:true,state:'new_revision',
@@ -69,6 +72,14 @@ export async function runAuthenticatedBrowserSmoke(browser){
         await page.waitForFunction(()=>document.querySelector('#profile-name')?.textContent!=='Loading profile');
         assert.equal(await page.locator('#update-center').isVisible(),user.role==='owner');
         if(user.role==='owner'){
+          assert.equal(await page.locator('#backup-center-prepare').isVisible(),true);
+          await page.locator('#backup-center-prepare').click();
+          await page.waitForFunction(()=>
+            document.querySelector('#backup-center-prepare-state')?.dataset.state==='prepared');
+          assert.match(await page.locator('#backup-center-prepare-state').textContent(),
+            /Synthetic protected backup prepared/);
+          assert.equal(db.prepare('SELECT COUNT(*) n FROM bookings').get().n,0,
+            'Preparing a backup does not create a booking, bill or payment');
           await page.locator('#update-center-check').click();
           await page.waitForFunction(()=>
             document.querySelector('#update-center-state')?.dataset.state==='new_revision');
@@ -89,6 +100,8 @@ export async function runAuthenticatedBrowserSmoke(browser){
           assert.equal(await page.locator('#update-center-install').isEnabled(),true,
             'Cancelling update keeps owner controls usable');
         }else{
+          assert.equal(await page.locator('#backup-center-prepare').isVisible(),false,
+            'Staff never see protected backup preparation');
           assert.equal((await context.request.get(base+'/api/system/updates')).status(),403);
         }
         const forbidden=await context.request.post(base+'/api/finance/closing',{
