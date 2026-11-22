@@ -16,6 +16,7 @@
     "doctor": "node src/doctor.js",
     "recovery:drill": "node src/recovery-drill.js",
     "test:browser": "node browser-tests/smoke.mjs",
+    "perf:baseline": "node scripts/benchmark-readonly.mjs",
     "recovery:encrypted-drill": "node src/encrypted-recovery-drill.js",
     "release:check": "node src/release-readiness.js",
     "printer:test-slip": "node src/epson-diagnostic-slip.js",

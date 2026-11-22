@@ -331,3 +331,9 @@ All five increments completed in this development session were reviewed and merg
 - Reconciles integer-paise method totals with report totals; mismatches fail visibly instead of silently adjusting financial records. Includes refund-heavy negative net day cases and role boundary tests.
 - No additional financial mutations, migration, closing snapshots or unattended settlement. Original immutable close, review acknowledgment and accountant sign-off boundaries remain unchanged.
 - Documentation: docs/KAIZEN_V3_CLOSING_PREPARATION.md. CI results and physical acceptance must be recorded separately after the PR head completes checks.
+
+## 2026-11-22 — V3 Kaizen performance measurement foundation
+- Added disposable in-memory seven-room workloads with 28 vs 700 synthetic historical reservations, measuring local end-to-end read-only API p50/p95/max and a booking-date SQLite EXPLAIN query plan.
+- Ubuntu CI publishes informational measurements without imposing ungrounded latency thresholds. No production database, cloud API, guest records, financial event writes or persistent files are used.
+- Pure quantile validation and source guard tests included. Results do not certify physical Windows/Chromium page navigation, idle CPU, PDF throughput or actual encrypted backup restore.
+- Run npm run perf:baseline; methodology and rollback docs/KAIZEN_V3_PERFORMANCE_BASELINE.md.
