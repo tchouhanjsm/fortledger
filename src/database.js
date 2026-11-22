@@ -23,7 +23,7 @@ export function openDatabase(filename = databasePath()) {
   try {
     db.pragma('foreign_keys = ON');
     const current = db.pragma('user_version', {simple:true});
-    if(current > 7)throw new Error('Database schema '+current+' is newer than this FortLedger version (7); update the app before opening it');
+    if(current > 8)throw new Error('Database schema '+current+' is newer than this FortLedger version (8); update the app before opening it');
     if(current < 0)throw new Error('Invalid database schema version');
     // Version 0 includes all legacy pre-versioned FortLedger installations.
     // A single SQLite transaction makes the baseline upgrade all-or-nothing.
@@ -112,6 +112,16 @@ export function openDatabase(filename = databasePath()) {
     if(current<7)db.transaction(()=>{
       ensureBookingCreateSchema(db);
       db.pragma('user_version = 7');
+    })();
+    // Version 8: Existing schema-v7 hotel installations did not rerun the
+    // restaurant schema initializer after retry-safe bill requests were added.
+    // Upgrade transactionally: preserve historical bills and their IDs, create
+    // only missing restaurant support objects, and publish v8 last.
+    if(current<8)db.transaction(()=>{
+      ensureRestaurantSchema(db);
+      const violations=db.pragma('foreign_key_check');
+      if(violations.length)throw new Error('Database has foreign key violations; restaurant schema upgrade was not applied');
+      db.pragma('user_version = 8');
     })();
     // Additive v7 support table: existing v7 installations also need tombstones
     // without modifying historical booking or payment records.
