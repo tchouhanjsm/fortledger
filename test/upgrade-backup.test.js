@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
 import {openDatabase} from '../src/database.js';
 import {savePasswordRecord,createPasswordRecord} from '../src/auth.js';
 import {createStaff} from '../src/staff.js';
@@ -11,7 +12,7 @@ import {requiredPermission} from '../src/access.js';
 import {createApp} from '../src/server.js';
 import {prepareVerifiedUpgradeBackup,UpgradeBackupRefusal,isSeparateBackupVolume}
   from '../src/upgrade-backup.js';
-import {credentialCompanionPath} from '../src/encrypted-backups.js';
+import {credentialCompanionPath,createEncryptedBackup} from '../src/encrypted-backups.js';
 
 const passphrase='synthetic-independent-update-backup-secret-123';
 async function fixture(cb){
@@ -124,3 +125,20 @@ test('prepare endpoint is owner-only, localhost-only, serializes clicks and wait
     db.close();
   }
 });
+
+test('Windows installer rejects a decryptable legacy SQLite-only backup without original owner credentials',()=>fixture(async({backup,live,auth,db})=>{
+  const good=await createEncryptedBackup(db,backup,passphrase,{authFile:auth});
+  const old=await createEncryptedBackup(db,backup,passphrase);
+  const drill=path.resolve('src/encrypted-recovery-drill.js');
+  const env={...process.env,FORTLEDGER_BACKUP_PASSPHRASE:passphrase,
+    FORTLEDGER_AUTH_FILE:auth,FORTLEDGER_DB:live};
+  const run=file=>spawnSync(process.execPath,[drill,file,'--require-owner-companion'],
+    {env,encoding:'utf8',timeout:20000});
+  const accepted=run(good.file);
+  assert.equal(accepted.status,0,'Verified encrypted pair should qualify: '+accepted.stderr);
+  const refused=run(old.file);
+  assert.notEqual(refused.status,0,'Legacy SQLite-only archive must not qualify');
+  assert.match(refused.stderr,/owner credential companion is missing/);
+  const guard=fs.readFileSync(new URL('../scripts/windows-installer-guard.ps1',import.meta.url),'utf8');
+  assert.match(guard,/--require-owner-companion/);
+}));
