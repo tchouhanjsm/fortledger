@@ -5,7 +5,7 @@ import Database from 'better-sqlite3';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {authPath,databasePath} from './data-paths.js';
-import {decryptBackupFile} from './encrypted-backups.js';
+import {decryptBackupFile,decryptEncryptedCredentialCompanion} from './encrypted-backups.js';
 import {restoreDatabase,validateBackup} from './restore.js';
 
 function snapshotFingerprint(file){
@@ -50,6 +50,11 @@ export function rehearseEncryptedRecovery({backup,passphrase,
     const restored=restoreDatabase(candidate,target,{confirm:true});
     const after=snapshotFingerprint(target);
     const inspected=validateBackup(target);
+    // New snapshots carry an independently encrypted owner-password hash.
+    // Old .flbk files remain readable but are explicitly incomplete for
+    // replacement-device owner credential recovery.
+    const protectedOwner=decryptEncryptedCredentialCompanion(
+      backup,path.join(scratch,'owner-credentials-from-artifact.json'),passphrase);
     if(before.hash!==after.hash||before.tables!==after.tables||
       original.rooms!==restored.rooms||original.bookings!==inspected.bookings)
       throw new Error('Recovered SQLite content differs from authenticated backup');
@@ -63,6 +68,7 @@ export function rehearseEncryptedRecovery({backup,passphrase,
     }
     return {ok:true,rooms:inspected.rooms,bookings:inspected.bookings,
       schema_tables:before.tables,admin_auth_copied:authVerified,
+      owner_credential_recoverable:protectedOwner,
       disclaimer:'Isolated encrypted-artifact rehearsal only; no physical replacement device, external-drive independence or Windows restore certified'};
   }finally{fs.rmSync(scratch,{recursive:true,force:true});}
 }
@@ -75,6 +81,8 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
     console.log('PASS: authenticated encrypted backup restored into isolated disposable database.');
     console.log('Rooms:',result.rooms,'Bookings:',result.bookings,'Schema tables:',result.schema_tables);
     console.log('Administrator credentials verified:',result.admin_auth_copied?'yes':'no');
+    console.log('Original owner credential separately encrypted in this backup:',
+      result.owner_credential_recoverable?'yes':'NO — retain independent owner-auth copy');
     console.log('Not a physical replacement-device certification.');
   }catch(error){console.error('FAIL: encrypted recovery rehearsal:',error.message);process.exitCode=1;}
 }

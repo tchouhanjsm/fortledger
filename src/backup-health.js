@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {authPath,databasePath} from './data-paths.js';
 import {backupFreshness} from './backup-freshness.js';
-import {verifyEncryptedBackupFile} from './encrypted-backups.js';
+import {verifyEncryptedBackupFile,verifyEncryptedCredentialCompanion} from './encrypted-backups.js';
 
 const MATCH=/^fortledger-.*\.flbk$/;
 
@@ -17,7 +17,7 @@ export function verifyLocalBackupHealth({
   const basic=backupFreshness({env,now});
   const result={state:basic.state,configured:!['unconfigured','invalid'].includes(basic.state),
     recent:basic.state==='recent',restorable:false,owner_auth_present:false,
-    independent_drive:false,detail:basic.detail};
+    independent_drive:false,owner_credential_recoverable:false,detail:basic.detail};
   if(basic.state!=='recent')return result;
   try{
     const root=fs.realpathSync(env.FORTLEDGER_BACKUP_DIR);
@@ -35,13 +35,19 @@ export function verifyLocalBackupHealth({
     if(!options.length)throw new Error('No encrypted file');
     const validated=restore(options[0].file,env.FORTLEDGER_BACKUP_PASSPHRASE);
     if(validated?.rooms!==7)throw new Error('Room inventory mismatch');
+    const ownerArtifact=verifyEncryptedCredentialCompanion(
+      options[0].file,env.FORTLEDGER_BACKUP_PASSPHRASE);
     result.restorable=true;
-    result.state=result.independent_drive&&result.owner_auth_present?'verified':'attention';
+    result.owner_credential_recoverable=ownerArtifact.verified;
+    result.state=result.independent_drive&&result.owner_auth_present&&
+      result.owner_credential_recoverable?'verified':'attention';
     result.detail=result.state==='verified'?
       'Latest encrypted SQLite backup decrypted, passed integrity checks and contains seven rooms. Full replacement-device recovery still needs separate testing.':
-      'Backup SQLite passed integrity checks, but storage separation or original owner credentials need review.';
+      'Backup SQLite passed integrity checks, but separate-drive storage or a recoverable encrypted owner credential is missing. Keep the original admin-auth.json independently protected.';
   }catch{
     result.state='failed';
+    result.restorable=false;
+    result.owner_credential_recoverable=false;
     result.detail='Latest encrypted backup could not be independently decrypted and validated. Do not install updates until a verified backup exists.';
   }
   return result;
