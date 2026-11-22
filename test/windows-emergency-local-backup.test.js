@@ -22,6 +22,15 @@ test('automatic local encrypted backup is a same-PC emergency copy, never disgui
     assert.equal(local.state,'recent');
     assert.equal(local.needs_attention,true);
     assert.match(local.detail,/THIS Windows PC|separate protected drive/i);
+    const nearFuture=new Date(Date.now()+1000);
+    fs.utimesSync(marker,nearFuture,nearFuture);
+    assert.equal(backupFreshness({env}).state,'recent',
+      'One-second NTFS timestamp jitter must not disable fresh backup checks');
+    const farFuture=new Date(Date.now()+120000);
+    fs.utimesSync(marker,farFuture,farFuture);
+    assert.equal(backupFreshness({env}).state,'invalid',
+      'Meaningfully future-dated backup is never trusted');
+    fs.utimesSync(marker,prior,prior);
     const external=backupFreshness({env:{...env,FORTLEDGER_BACKUP_LOCAL_ONLY:'0'}});
     assert.equal(external.state,'recent');
     assert.equal(external.needs_attention,false);
