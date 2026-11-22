@@ -1448,13 +1448,19 @@ function renderRestaurantReview(){
   $('#review-restaurant-bill').hidden=restaurantReviewOpen;
   $('#edit-restaurant-bill').hidden=!restaurantReviewOpen;
   $('#save-restaurant-bill').hidden=!restaurantReviewOpen;
-  $('#save-restaurant-bill').disabled=!cart.length||restaurantBillSubmitting;
+  const unavailable=cart.some(entry=>!menu.some(item=>item.id===entry.menu_item_id));
+  $('#save-restaurant-bill').disabled=!cart.length||restaurantBillSubmitting||
+    (unavailable&&!pendingRestaurantBill);
   if(!restaurantReviewOpen)return;
   const list=$('#restaurant-review-items');list.replaceChildren();
   let total=0,tax=0;
   for(const entry of cart){
     const item=menu.find(x=>x.id===entry.menu_item_id);
-    if(!item)continue;
+    if(!item){
+      list.append(label('p','Menu item #'+entry.menu_item_id+
+        ' is no longer available. Continue editing and remove it before saving.','muted'));
+      continue;
+    }
     const line=item.price_paise*entry.quantity;
     const taxable=Math.round(line*100/(100+item.tax_rate));
     total+=line;tax+=line-taxable;
@@ -1480,7 +1486,20 @@ function renderRestaurantReview(){
 function renderCart(){
   const list=$('#cart-items');list.replaceChildren();
   for(const entry of cart){
-    const item=menu.find(x=>x.id===entry.menu_item_id);if(!item)continue;
+    const item=menu.find(x=>x.id===entry.menu_item_id);
+    if(!item){
+      const unavailable=label('div',undefined,'cart-row');
+      unavailable.append(label('span','Item #'+entry.menu_item_id+
+        ' is unavailable · '+entry.quantity+' portion(s). Remove to continue.'));
+      const remove=label('button','Remove unavailable item','secondary');
+      remove.type='button';remove.disabled=Boolean(pendingRestaurantBill);
+      remove.setAttribute('aria-label','Remove unavailable menu item #'+entry.menu_item_id);
+      remove.onclick=()=>{
+        if(pendingRestaurantBill)return;
+        cart=cart.filter(x=>x!==entry);renderCart();
+      };
+      unavailable.append(remove);list.append(unavailable);continue;
+    }
     const row=label('div',undefined,'cart-row');
     const text=label('span',item.name+' · '+money(item.price_paise));
     const controls=label('div',undefined,'cart-actions');
@@ -1507,7 +1526,10 @@ function renderCart(){
   const quantity=cart.reduce((sum,x)=>sum+x.quantity,0);
   $('#cart-count').textContent=quantity+' item'+(quantity===1?'':'s');
   $('#clear-restaurant-cart').disabled=!cart.length||Boolean(pendingRestaurantBill);
-  $('#cart-total').textContent='Total (inclusive) '+money(total);
+  const unavailable=cart.some(entry=>!menu.some(item=>item.id===entry.menu_item_id));
+  $('#cart-total').textContent=unavailable?
+    'Bill needs review · available items subtotal '+money(total):
+    'Total (inclusive) '+money(total);
   renderRestaurantReview();
 }
 let restaurantHistoryLimit=15,restaurantBillFilter='all';
