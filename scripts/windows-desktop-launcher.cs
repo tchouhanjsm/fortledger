@@ -241,11 +241,76 @@ namespace FortLedgerDesktop
         "Private staff-Wi-Fi TLS configuration is invalid. Ask the owner/IT to correct it before starting.");}
     }
 
+    private void ConfigureEmergencyLocalBackup(ProcessStartInfo psi)
+    {
+      // No owner action needed for same-machine emergency snapshots. This is
+      // explicitly NOT a replacement for an external encrypted drive.
+      string profile=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "FortLedger");
+      string folder=Path.Combine(profile,"local-backups");
+      string settingsFile=Path.Combine(profile,"local-backup-settings.json");
+      Directory.CreateDirectory(folder);
+      if((new DirectoryInfo(folder).Attributes & FileAttributes.ReparsePoint)!=0)
+        throw new InvalidOperationException("Local backup folder is a redirected link; ask the owner to inspect it.");
+      string passphrase;
+      if(File.Exists(settingsFile))
+      {
+        try
+        {
+          var saved=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(
+            File.ReadAllText(settingsFile));
+          if(Convert.ToInt32(saved["version"])!=1)throw new InvalidOperationException();
+          byte[] sealedBytes=Convert.FromBase64String(Convert.ToString(saved["passphrase_dpapi"]));
+          byte[] plain=ProtectedData.Unprotect(sealedBytes,null,DataProtectionScope.CurrentUser);
+          try{passphrase=Encoding.UTF8.GetString(plain);}
+          finally{Array.Clear(plain,0,plain.Length);}
+          if(passphrase.Length<16)throw new InvalidOperationException();
+        }
+        catch{throw new InvalidOperationException(
+          "Local emergency backup key cannot be unlocked. Do not reset it or delete old backups; contact the owner.");}
+      }
+      else
+      {
+        // Without the original DPAPI secret old encrypted backups are not
+        // recoverable. Never silently replace an existing backup key.
+        if(Directory.GetFiles(folder,"fortledger-*.flbk").Length>0)
+          throw new InvalidOperationException(
+            "Local encrypted backups exist without their key. Do not generate a replacement backup password.");
+        byte[] key=new byte[32];
+        using(RandomNumberGenerator rng=RandomNumberGenerator.Create())rng.GetBytes(key);
+        try{passphrase=Convert.ToBase64String(key);}
+        finally{Array.Clear(key,0,key.Length);}
+        byte[] bytes=Encoding.UTF8.GetBytes(passphrase);
+        byte[] sealedKey;
+        try{sealedKey=ProtectedData.Protect(bytes,null,DataProtectionScope.CurrentUser);}
+        finally{Array.Clear(bytes,0,bytes.Length);}
+        string json=new JavaScriptSerializer().Serialize(new Dictionary<string,object>{
+          {"version",1},{"passphrase_dpapi",Convert.ToBase64String(sealedKey)}
+        });
+        using(FileStream stream=new FileStream(settingsFile,FileMode.CreateNew,
+            FileAccess.Write,FileShare.None))
+        using(StreamWriter writer=new StreamWriter(stream,new UTF8Encoding(false)))
+          writer.Write(json);
+        MessageBox.Show("Encrypted same-PC emergency backups have been enabled automatically. " +
+          "They do not protect against Windows disk failure. The owner must configure a separate " +
+          "protected backup drive before relying on updates.",
+          "FortLedger backup protection",MessageBoxButtons.OK,MessageBoxIcon.Warning);
+      }
+      psi.EnvironmentVariables["FORTLEDGER_BACKUP_DIR"]=folder;
+      psi.EnvironmentVariables["FORTLEDGER_BACKUP_PASSPHRASE"]=passphrase;
+      psi.EnvironmentVariables["FORTLEDGER_BACKUP_LOCAL_ONLY"]="1";
+      passphrase=null;
+    }
+
     private void ReadBackups(ProcessStartInfo psi)
     {
       string config = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "FortLedger", "backup-settings.json");
-      if (!File.Exists(config)) return; // Alpha fresh install: owner sets backup drive separately.
+      if (!File.Exists(config))
+      {
+        ConfigureEmergencyLocalBackup(psi);
+        return;
+      }
       try
       {
         var settings = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(File.ReadAllText(config));
