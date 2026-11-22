@@ -82,7 +82,12 @@ try {
   $env:FORTLEDGER_BACKUP_PASSPHRASE=$null
   $ok=Import-FortLedgerBackupSettings -SettingsFile $file -DataDirectory $data
   if(-not $ok -or $env:FORTLEDGER_BACKUP_DIR -ne $dir -or
-    $env:FORTLEDGER_BACKUP_PASSPHRASE -ne $pass) {throw 'DPAPI reloading failed'}
+    $env:FORTLEDGER_BACKUP_PASSPHRASE -ne $pass) {
+    $directoryMatch=($env:FORTLEDGER_BACKUP_DIR -eq $dir)
+    $passphraseMatch=($env:FORTLEDGER_BACKUP_PASSPHRASE -ceq $pass)
+    $length=($env:FORTLEDGER_BACKUP_PASSPHRASE+'').Length
+    throw "DPAPI reload mismatch (loaded=$ok; directory-match=$directoryMatch; secret-match=$passphraseMatch; decrypted-length=$length; expected-length=$($pass.Length))"
+  }
   $env:FORTLEDGER_BACKUP_PASSPHRASE=$null
   $env:FORTLEDGER_BACKUP_DIR=$null
   $json=Get-Content $file -Raw | ConvertFrom-Json
