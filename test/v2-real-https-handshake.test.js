@@ -37,7 +37,8 @@ test('synthetic real HTTPS handshake enforces cookies, exact Host and Origin', {
   let server;
   try{
     const network=settings(files),tls=readLanTlsCredentials(network);
-    const app=createApp(db,{network,authRecord:createPasswordRecord('synthetic-owner-password-strong')});
+    const app=createApp(db,{network,authRecord:createPasswordRecord('synthetic-owner-password-strong'),
+      checkUpdates:async()=>({platform:'windows',state:'installer_managed',available:false})});
     server=https.createServer({cert:tls.cert,key:tls.key,minVersion:'TLSv1.2'},app)
       .listen(0,'127.0.0.1');
     await new Promise(resolve=>server.once('listening',resolve));
@@ -77,6 +78,23 @@ test('synthetic real HTTPS handshake enforces cookies, exact Host and Origin', {
     const me=await request('/api/me',{cookie});
     assert.equal(me.status,200);
     assert.equal(JSON.parse(me.body).role,'owner');
+    // In installer mode, a trusted staff-HTTPS owner may READ the official
+    // installer feed; never allow installing/restarting over a phone session.
+    const priorDesktop=process.env.FORTLEDGER_DESKTOP_INSTALLER;
+    process.env.FORTLEDGER_DESKTOP_INSTALLER='1';
+    try{
+      const official=await request('/api/system/updates',{cookie});
+      assert.equal(official.status,200);
+      assert.equal(JSON.parse(official.body).state,'installer_managed');
+      const installAttempt=await request('/api/system/updates/install',{
+        method:'POST',cookie,origin:'https://'+privateIp+':3000',body:{
+          confirmation:'stop_after_current_requests',target_sha:'a'.repeat(40)
+        }});
+      assert.equal(installAttempt.status,403);
+    }finally{
+      if(priorDesktop===undefined)delete process.env.FORTLEDGER_DESKTOP_INSTALLER;
+      else process.env.FORTLEDGER_DESKTOP_INSTALLER=priorDesktop;
+    }
     const denied=await request('/api/auth/logout',{method:'POST',
       origin:'https://evil.example',cookie,body:{}});
     assert.equal(denied.status,403);
