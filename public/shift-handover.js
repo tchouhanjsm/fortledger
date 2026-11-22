@@ -1,3 +1,4 @@
+import {arrivalReadinessExceptions} from './arrival-readiness.js';
 /** Read-only, role-scoped shift handover from the already loaded hotel records.
  * No alert is a second source of booking, room or financial truth. */
 export function shiftHandover({today,bookings=[],rooms=[],maintenanceIssues=[],
@@ -8,11 +9,11 @@ export function shiftHandover({today,bookings=[],rooms=[],maintenanceIssues=[],
     throw new Error('Valid hotel business date required');
   const tomorrow=new Date(Date.parse(today+'T00:00:00Z')+86400000).toISOString().slice(0,10);
   const alerts=[],seen=new Set();
-  const add=(kind,id,title,reason,severity='normal')=>{
+  const add=(kind,id,title,reason,severity='normal',source={})=>{
     const key=kind+':'+id;
     if(seen.has(key))return;
     seen.add(key);
-    alerts.push({key,kind,record_id:id,title,reason,severity});
+    alerts.push({...source,key,kind,record_id:id,title,reason,severity});
   };
   if(access.bookings){
     for(const b of bookings){
@@ -41,6 +42,18 @@ export function shiftHandover({today,bookings=[],rooms=[],maintenanceIssues=[],
           ' recorded; review before the next guest interaction');
     }
   }
+  if(access.bookings&&access.rooms){
+    for(const check of arrivalReadinessExceptions({
+      today,bookings,rooms,
+      maintenanceIssues:access.maintenance?maintenanceIssues:[],
+      includeMaintenance:Boolean(access.maintenance)
+    })){
+      const booking=bookings.find(b=>b.id===check.booking_id);
+      add('readiness',check.booking_id,'Booking #'+check.booking_id+
+        ' · '+(booking?.guest_name||'Arrival'),check.reason,check.severity,
+        {first_room_id:check.first_room_id});
+    }
+  }
   if(access.rooms){
     for(const room of rooms){
       if(!room.active)continue;
@@ -65,7 +78,8 @@ export function shiftHandover({today,bookings=[],rooms=[],maintenanceIssues=[],
     for(const b of restaurantBills){
       if(b.payment_method==='room'&&b.booking_id==null)
         add('restaurant',b.id,'Unmatched food bill #'+b.id,
-          'Verify the guest room before linking this receivable; no payment is assumed');
+          'Room '+(b.manual_room||'unverified')+
+          ': verify the actual guest before linking this receivable; no payment is assumed');
     }
   }
   if(access.finance){
@@ -75,9 +89,19 @@ export function shiftHandover({today,bookings=[],rooms=[],maintenanceIssues=[],
           'Recorded day-end snapshot changed or remains under investigation');
     }
   }
-  if(access.health&&backupStatus?.needs_attention)
+  if(access.health&&backupStatus?.needs_attention){
+    const reasons={
+      unconfigured:'Protected encrypted backups are not configured',
+      invalid:'Encrypted backup configuration or timestamps need inspection',
+      missing:'No protected encrypted backup file was found',
+      stale:'Last encrypted backup is older than 36 hours',
+      unavailable:'Configured backup storage could not be inspected',
+      recent:'Only a same-PC emergency snapshot is available; off-device recovery is still required'
+    };
     add('backup','latest','Backup recovery needs review',
-      'Backup health requires operator inspection; same-PC snapshots are not off-device recovery');
+      (reasons[backupStatus.state]||'Backup requires owner inspection')+
+      '. A recent file alone does not prove a successful isolated restore');
+  }
   const rank={urgent:0,normal:1};
   alerts.sort((a,b)=>rank[a.severity]-rank[b.severity]||
     a.kind.localeCompare(b.kind)||String(a.record_id).localeCompare(String(b.record_id),'en',{numeric:true}));
