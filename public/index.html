@@ -285,6 +285,11 @@
         <button type="button" id="backup-center-check" class="secondary">Verify latest backup</button>
         <p id="backup-center-state" role="status" aria-live="polite">Not verified in this session.</p>
       </div>
+      <div class="update-center-actions" id="backup-upgrade-preparation">
+        <button type="button" id="backup-center-prepare" class="primary">Prepare safe update backup</button>
+        <p id="backup-center-prepare-state" role="status" aria-live="polite">Creates and tests a fresh encrypted backup on your separately protected drive. This does not install an update.</p>
+      </div>
+      <p class="muted">Only the owner on this computer can prepare a backup. Same-PC emergency backups cannot qualify for a software upgrade.</p>
       <p class="muted">A successful database check does not replace off-device recovery testing. Original owner credentials must also be protected separately.</p>
     </section>
     <section id="update-center" class="update-center" aria-labelledby="update-center-title" hidden>
