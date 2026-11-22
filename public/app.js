@@ -58,7 +58,7 @@ const dateISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+
 const addDays = (d,days) => { const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+days);return x; };
 const fmtDay = iso => new Date(iso+'T12:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 const statusOptions=['reserved','checked_in','checked_out','cancelled'];
-let rooms=[],bookings=[],invoices=[],businessSettings=null,menu=[],restaurantBills=[],maintenanceIssues=[],guests=[],backupStatus=null,cart=[],editingId=null,weekStart=new Date(),calendarMode='week';
+let rooms=[],bookings=[],invoices=[],businessSettings=null,menu=[],restaurantBills=[],maintenanceIssues=[],guests=[],backupStatus=null,closeAttention=[],cart=[],editingId=null,weekStart=new Date(),calendarMode='week';
 weekStart=addDays(weekStart,-((weekStart.getDay()+6)%7));
 let connectionState='checking';
 function setConnectionStatus(state){
@@ -616,6 +616,22 @@ function renderTodayAttention(today){
     warning.onclick=()=>{window.location.hash='business-settings';};
     items.append(warning);
   }
+  if(can('finance.read')&&closeAttention.length){
+    panel.hidden=false;
+    const warning=label('button',undefined,'today-attention-action secondary');
+    warning.type='button';
+    warning.append(label('strong',String(closeAttention.length)),
+      label('span','Daily closings need discrepancy review'));
+    warning.setAttribute('aria-label','Open financial closing review for '+closeAttention[0].business_date);
+    warning.onclick=()=>{
+      window.location.hash='business-settings';
+      const date=$('#daily-close-form').elements.namedItem('business_date');
+      date.value=closeAttention[0].business_date;
+      renderDailyClose();
+      $('#daily-close-form').scrollIntoView({block:'start'});
+    };
+    items.append(warning);
+  }
 }
 function renderDashboard(){
   if(!currentUser)return;
@@ -827,6 +843,37 @@ async function renderDailyClose(){
       ' · Difference '+money(close.discrepancy_paise)+
       ' · By '+close.actor_username));
     summary.append(label('p','This is a recorded cash snapshot, not verified bank reconciliation.','muted'));
+    if(close.stale){
+      summary.append(label('p','Review: '+close.review.status+
+        (close.review.reviewer?' · Last reviewed by '+close.review.reviewer:'')+
+        (close.review.reason?' · '+close.review.reason:''),'muted'));
+      if(can('finance.write')){
+        for(const [disposition,text] of [['acknowledged','Acknowledge reviewed change'],
+          ['investigate','Flag for investigation']]){
+          const reviewButton=label('button',text,'secondary');
+          reviewButton.type='button';
+          reviewButton.onclick=async()=>{
+            const reason=prompt('Provide a reason for '+disposition+' (at least 10 characters):');
+            if(reason===null)return;
+            if(reason.trim().length<10){alert('Provide a meaningful review reason.');return;}
+            if(!confirm('Record immutable review of the changed close for '+day+
+              '? This does not change the original closing or money ledger.'))return;
+            reviewButton.disabled=true;
+            try{
+              await api('/api/finance/closing/review',{method:'POST',body:JSON.stringify({
+                business_date:day,disposition,reason:reason.trim()
+              })});
+              await load();
+              await renderDailyClose();
+            }catch(error){
+              $('#daily-close-message').textContent=error.message;
+              reviewButton.disabled=false;
+            }
+          };
+          summary.append(reviewButton);
+        }
+      }
+    }
     button.disabled=true;
   }catch(error){
     if(/No closing recorded/.test(error.message))summary.append(label('p','No close recorded for this date.','muted'));
@@ -870,11 +917,12 @@ async function load(){
     allowed('restaurant.read')?api('/api/restaurant/bills'):Promise.resolve([]),
     allowed('maintenance.read')?api('/api/maintenance'):Promise.resolve([]),
     allowed('guests.read')?api('/api/guests'):Promise.resolve([]),
-    allowed('system.health.read')?api('/api/system/backup-status'):Promise.resolve(null)
+    allowed('system.health.read')?api('/api/system/backup-status'):Promise.resolve(null),
+    allowed('finance.read')?api('/api/finance/closing/attention'):Promise.resolve([])
   ]);
   if(revision!==workspaceLoadRevision)return false;
   currentUser=operator;
-  [rooms,bookings,invoices,businessSettings,menu,restaurantBills,maintenanceIssues,guests,backupStatus]=snapshot;
+  [rooms,bookings,invoices,businessSettings,menu,restaurantBills,maintenanceIssues,guests,backupStatus,closeAttention]=snapshot;
   renderMenu();refreshRestaurantGuestPicker();renderCart();renderRestaurantHistory();
   if(businessSettings){
     for(const [key,value] of Object.entries(businessSettings)){
