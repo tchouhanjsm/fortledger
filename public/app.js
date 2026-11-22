@@ -1101,14 +1101,20 @@ async function renderProfile(){
     }
   }
 }
-let approvedUpdateSha=null;
+let approvedUpdateSha=null,installerDownloadUrl=null;
+$('#update-center-download').onclick=()=>{
+  if(!can('system.update')||!installerDownloadUrl)return;
+  // User-initiated host action, never an automatic executable download/run.
+  window.open(installerDownloadUrl,'_blank','noopener,noreferrer');
+};
 $('#update-center-check').onclick=async()=>{
   if(!can('system.update'))return;
   const button=$('#update-center-check'),message=$('#update-center-state');
   const versions=$('#update-center-versions');
   button.disabled=true;message.textContent='Checking installation status…';
   versions.textContent='';
-  approvedUpdateSha=null;
+  approvedUpdateSha=null;installerDownloadUrl=null;
+  $('#update-center-download').hidden=true;
   $('#update-center-readiness').hidden=true;
   $('#update-center-install').hidden=true;
   $('#update-center-install').disabled=true;
@@ -1120,7 +1126,12 @@ $('#update-center-check').onclick=async()=>{
     const installerManaged=state.state==='installer_managed';
     versions.textContent=installerManaged?'Windows desktop installer distribution':(
       'Installed: '+short(state.current)+' · GitHub main: '+short(state.remote));
-    $('#update-center-desktop').hidden=!installerManaged;
+    $('#update-center-desktop').hidden=!['installer_managed','installer_update_available','installer_check_unavailable'].includes(state.state);
+    const verifiedUrl=/^https:\/\/github\.com\/tchouhanjsm\/fortledger\/actions\/runs\/[0-9]+\/artifacts\/[0-9]+$/.test(state.download_url||'');
+    if(state.platform==='windows'&&state.state==='installer_update_available'&&state.available===true&&verifiedUrl){
+      installerDownloadUrl=state.download_url;
+      $('#update-center-download').hidden=false;
+    }
     $('#update-center-windows').hidden=state.platform!=='windows'||installerManaged;
     $('#update-center-mac').hidden=state.platform!=='mac';
     if(state.platform==='windows'&&state.state==='new_revision'){
