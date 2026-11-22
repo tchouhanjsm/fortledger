@@ -4,6 +4,19 @@ on:
   push:
     branches: [main]
 jobs:
+  lockfile-export:
+    if: github.event_name == 'pull_request' && github.head_ref == 'build/v2-lockfile-ci'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Resolve vetted dependency lockfile through npm registry
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Export generated lockfile to CI logs for repository commit
+        run: |
+          node -e "const fs=require('node:fs');const b=fs.readFileSync('package-lock.json').toString('base64');console.log('LOCKFILE_EXPORT_BEGIN');for(let i=0;i<b.length;i+=3000)console.log('LOCKFILE_CHUNK:'+b.slice(i,i+3000));console.log('LOCKFILE_EXPORT_END');"
   test:
     strategy:
       fail-fast: false
