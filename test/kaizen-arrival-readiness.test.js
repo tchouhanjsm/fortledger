@@ -62,7 +62,7 @@ test('role boundaries and source navigation keep all money writes outside briefi
   assert.ok(owner.some(x=>x.first_room_id===1));
   const frontend=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
   assert.match(frontend,/workspaceNavigator\.navigate\('rooms',room\?/);
-  assert.match(frontend,/restaurant-bill-\+entry\.record_id/);
+  assert.match(frontend,/restaurant-bill-'\+entry\.record_id/);
   assert.match(frontend,/workspaceNavigator\.navigate\('profile','backup-center'\)/);
   assert.match(frontend,/article\.id='restaurant-bill-'\+bill\.id/);
 });
