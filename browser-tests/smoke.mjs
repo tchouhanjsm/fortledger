@@ -274,6 +274,45 @@ try{
       assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bills').get().n,1,
         'Read-only refresh and receipt search must not recreate bills');
       await page.unroute('**/api/restaurant/bills');
+      // Simulate a delayed PREVIEW for one CSV, then choose another file.
+      // The stale response must not authorize importing the first menu.
+      await page.locator('#menu-import-section').evaluate(node=>{node.open=true;});
+      const fileControl=page.locator('#menu-csv');
+      await page.route('**/api/restaurant/menu/preview',async route=>{
+        const csv=route.request().postDataJSON()?.csv||'';
+        if(csv.includes('Old Stale Menu'))
+          await new Promise(resolve=>setTimeout(resolve,450));
+        await route.continue();
+      });
+      await fileControl.setInputFiles({name:'first.csv',mimeType:'text/csv',
+        buffer:Buffer.from('name,category,price,tax_rate\\nOld Stale Menu,Hot Drinks,75,5')});
+      await page.locator('#preview-menu').click();
+      await fileControl.setInputFiles({name:'second.csv',mimeType:'text/csv',
+        buffer:Buffer.from('name,category,price,tax_rate\\nMasala Chai,Hot Drinks,90,5\\nNew Juice,Drinks,60,5')});
+      await page.waitForTimeout(650);
+      assert.equal(await page.locator('#import-menu').isDisabled(),true);
+      assert.equal(await page.locator('#menu-import-review-controls').isVisible(),false);
+      await page.locator('#preview-menu').click();
+      await page.waitForFunction(()=>
+        document.querySelector('#menu-import-message')?.textContent?.includes('rows inspected'));
+      assert.equal(await page.locator('#menu-import-review-controls').isVisible(),true);
+      assert.equal(await page.locator('#menu-import-preview tbody tr').count(),2);
+      assert.equal(await page.locator('#menu-import-preview').getByText('Old Stale Menu').count(),0);
+      await page.locator('#menu-import-change').selectOption('updated');
+      assert.match(await page.locator('#menu-import-row-count').textContent(),/1 of 2/);
+      await page.locator('#menu-import-change').selectOption('new');
+      assert.match(await page.locator('#menu-import-row-count').textContent(),/1 of 2/);
+      await page.locator('#menu-import-change').selectOption('all');
+      page.once('dialog',dialog=>dialog.accept());
+      await page.locator('#import-menu').click();
+      await page.waitForFunction(()=>
+        document.querySelector('#menu-import-message')?.textContent?.includes('Menu import recorded'));
+      assert.equal(db.prepare("SELECT price_paise FROM menu_items WHERE name='Masala Chai'").get().price_paise,9000);
+      assert.equal(db.prepare("SELECT COUNT(*) n FROM menu_items WHERE name='New Juice'").get().n,1);
+      assert.equal(db.prepare("SELECT COUNT(*) n FROM menu_items WHERE name='Old Stale Menu'").get().n,0);
+      assert.equal(db.prepare('SELECT items_snapshot FROM restaurant_bills WHERE id=1').get().items_snapshot.includes('8000'),true,
+        'Historical restaurant receipt price remains immutable');
+      await page.unroute('**/api/restaurant/menu/preview');
     }
     assert.deepEqual(errors,[],'Uncaught browser errors at '+width+'px: '+errors.join('; '));
     await page.close();
