@@ -16,7 +16,10 @@ export async function runAuthenticatedBrowserSmoke(browser){
     {username:'deskqa',password:'synthetic-test-desk-password-strong',role:'frontdesk'},
     {username:'cashierqa',password:'synthetic-test-cashier-password-strong',role:'cashier'}
   ];
-  const server=createApp(db,{authRecord:createPasswordRecord(ownerPassword)}).listen(0,'127.0.0.1');
+  const server=createApp(db,{authRecord:createPasswordRecord(ownerPassword),
+    checkUpdates:async()=>({platform:'windows',state:'new_revision',available:true,
+      current:'aaaaaaaaaaaa',remote:'bbbbbbbbbbbb',message:'Synthetic GitHub update detected.'})
+  }).listen(0,'127.0.0.1');
   await new Promise(resolve=>server.once('listening',resolve));
   const base='http://127.0.0.1:'+server.address().port;
   try{
@@ -47,6 +50,24 @@ export async function runAuthenticatedBrowserSmoke(browser){
         const me=await context.request.get(base+'/api/me');
         assert.equal(me.status(),200);
         assert.equal((await me.json()).role,user.role);
+        // Update Center must be owner-only and only inspect revisions; even the
+        // synthetic 390px browser never executes an updater or changes the DB.
+        await page.goto(base+'/#profile');
+        await page.locator('#profile').waitFor({state:'visible'});
+        await page.waitForFunction(()=>document.querySelector('#profile-name')?.textContent!=='Loading profile');
+        assert.equal(await page.locator('#update-center').isVisible(),user.role==='owner');
+        if(user.role==='owner'){
+          await page.locator('#update-center-check').click();
+          await page.waitForFunction(()=>
+            document.querySelector('#update-center-state')?.dataset.state==='new_revision');
+          assert.match(await page.locator('#update-center-state').textContent(),
+            /Synthetic GitHub update detected/);
+          assert.match(await page.locator('#update-center-versions').textContent(),
+            /Installed: aaaaaaaaaaaa.*GitHub main: bbbbbbbbbbbb/);
+          assert.equal(await page.locator('#update-center-windows').isVisible(),true);
+        }else{
+          assert.equal((await context.request.get(base+'/api/system/updates')).status(),403);
+        }
         const forbidden=await context.request.post(base+'/api/finance/closing',{
           data:{business_date:user.role==='manager'?'2027-04-02':'2027-04-01',
             opening_cash:0,counted_cash:0,request_id:randomUUID()}
