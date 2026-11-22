@@ -1,7 +1,15 @@
 # Run from the installed repository. Keep this terminal open while using FortLedger.
 $ErrorActionPreference = 'Stop'
 Set-Location (Resolve-Path (Join-Path $PSScriptRoot '..'))
+if (-not $env:LOCALAPPDATA) { throw 'Windows local application data folder is required.' }
 $env:FORTLEDGER_DATA_DIR = Join-Path $env:LOCALAPPDATA 'FortLedger\data'
+$root=(Get-Location).Path
+. (Join-Path $PSScriptRoot 'windows-backup-settings.ps1')
+$backupReady=Import-FortLedgerBackupSettings -DataDirectory $env:FORTLEDGER_DATA_DIR -AppRoot $root
+if (-not $backupReady) {
+  Write-Warning 'Protected external backups not configured; supervised updates remain disabled.'
+  Write-Warning 'Run Configure FortLedger Backups.cmd and restart this launcher.'
+}
 $legacyDatabase = Join-Path (Get-Location) 'data\fortledger.sqlite'
 $persistentDatabase = Join-Path $env:FORTLEDGER_DATA_DIR 'fortledger.sqlite'
 if ((Test-Path -LiteralPath $legacyDatabase) -and -not (Test-Path -LiteralPath $persistentDatabase)) {
