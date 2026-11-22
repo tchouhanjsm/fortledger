@@ -15,6 +15,7 @@ export function may(role,permission){
 export function requiredPermission(method,path){
   if(path==='/health')return 'profile.read';
   if(path==='/system/backup-status')return method==='GET'?'system.health.read':null;
+  if(path==='/system/updates')return method==='GET'?'system.update':null;
   if(path==='/me')return method==='GET'?'profile.read':'profile.write';
   if(path==='/me/password')return method==='POST'?'profile.write':null;
   if(path.startsWith('/staff'))return 'staff.admin';

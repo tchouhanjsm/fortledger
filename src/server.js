@@ -4,6 +4,7 @@ import {randomBytes} from 'node:crypto';
 import path from 'node:path';
 import https from 'node:https';
 import {backupFreshness} from './backup-freshness.js';
+import {updateStatus} from './update-status.js';
 import { fileURLToPath } from 'node:url';
 import {authGate,loadPasswordRecord,DEFAULT_AUTH_FILE} from './auth.js';
 import {renderRestaurantReceipt} from './restaurant-receipt.js';
@@ -44,7 +45,7 @@ function requireFinancialRequestId(body){
     !/^[A-Za-z0-9_-]{16,80}$/.test(body.request_id))
     throw new Error('Unique request_id (16–80 safe characters) required for financial POST; reuse unchanged ID on retry');
 }
-export function createApp(db,{authRecord=null,authFile=null,network=null,businessDate=null}={}) {
+export function createApp(db,{authRecord=null,authFile=null,network=null,businessDate=null,checkUpdates=updateStatus}={}) {
   if(network?.mode==='lan'&&!authRecord)throw new Error('LAN access requires configured authentication');
   const app = express();
   const menuPreviewKey=randomBytes(32); // invalidated safely on every server restart
@@ -74,6 +75,16 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.use('/api',gate.authorize);
   app.get('/api/me',(req,res)=>res.json({...req.actor,permissions:ROLE_PERMISSIONS[req.actor.role]||[]}));
   app.get('/api/system/backup-status',(_req,res)=>res.json(backupFreshness()));
+  // Read-only inspection only. Never let a browser request execute a Git merge,
+  // npm installation, data migration, process restart, or a remote network command.
+  app.get('/api/system/updates',async(req,res,next)=>{
+    try{
+      if(!authRecord||network?.mode==='lan'||
+        !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress))
+        return res.status(403).json({error:'Update checks require local owner sign-in on this device'});
+      res.json(await checkUpdates());
+    }catch(error){next(error);}
+  });
   app.post('/api/me/password',gate.changePassword);
   app.patch('/api/me',(req,res,next)=>{
     try{res.json(updateOwnProfile(db,req.actor,req.body?.display_name));}

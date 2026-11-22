@@ -34,9 +34,9 @@ If Windows denies permission under `C:\`, use a folder you own, e.g. `$HOME\Fort
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows-setup.ps1
 ```
 
-The script verifies Node 22, creates `%LOCALAPPDATA%\FortLedger\data`, runs `npm install --no-audit --no-fund` and `npm test`, and prompts for a **local 12+ character admin password** only if one does not exist.
+The script verifies Node 22, creates `%LOCALAPPDATA%\FortLedger\data`, runs reproducible `npm ci --no-audit --no-fund` and `npm test`, and prompts for a **local 12+ character admin password** only if one does not exist.
 
-On this repo there is currently **no tracked package-lock.json**, so we deliberately use `npm install` rather than `npm ci`. The script avoids generating a machine-local lock file. A committed lockfile is a future release improvement.
+A committed `package-lock.json` is now present. The setup and update scripts use `npm ci` to install the tested dependency versions. If an older checkout has an untracked local lockfile, preserve it outside the repository before a reviewed first update; the updater now refuses such conflicts.
 
 ## 4. Start and sign in
 
@@ -57,6 +57,12 @@ This folder is **outside `C:\FortLedger\app`**, and cannot be replaced by `git p
 
 ## 5. Update when we merge a new feature
 
+**Owner Update Center:** Sign in as owner and open **My Profile → Application updates → Check for updates**. The check reports the local and GitHub revisions without installing code. Cashier, front desk and manager cannot access it.
+
+**Windows one-double-click upgrade (after stopping the app):** Open the trusted installed FortLedger folder in Windows Explorer, then double-click **`Update FortLedger.cmd`**. Create a desktop shortcut to that file once if you prefer. It requires a recent encrypted off-device backup and a successful restore drill, then runs the normal safe updater and opens a new server window. The app must be stopped first; running transactions are **never** forcibly interrupted. It cannot bypass protected backups, a dirty Git checkout, invalid Git origin, or a database mismatch. Details: [Update Center safety contract](UPDATE_CENTER.md).
+
+**Manual fallback:**
+
 1. Finish the current booking / sale and **stop FortLedger with Ctrl+C**.
 2. In PowerShell, return to the existing checkout (`Set-Location C:\FortLedger\app` if using that path).
 3. Run:
@@ -66,11 +72,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows-update
 ```
 
 This safely performs **in order**:
-1. Confirms Node 22, correct origin repository, clean tracked Git files and the `main` branch.
+1. Confirms Node 22, correct origin repository, clean tracked **and untracked** Git files and the `main` branch.
 2. Checks the default local app port is not listening. Stop any custom-port instance manually too.
 3. Creates and **validates an SQLite-consistent backup before touching code**, in `%LOCALAPPDATA%\FortLedger\update-backups\update-<timestamp>\`. Also preserves an admin-auth copy.
 4. Fetches and fast-forwards `main` (no forced reset / no deletion of guest records).
-5. Runs `npm install` and the full test suite.
+5. Runs reproducible `npm ci` and the full test suite.
 6. Only after success, reports the new code is ready to start.
 
 Then restart with the same `windows-start.ps1` command and confirm a **synthetic** old booking, invoice and room charge still look correct. For readiness:
@@ -89,7 +95,7 @@ On startup the Node application adds compatible missing SQLite tables/columns as
 The pre-update backup protects upgrades, but **not a complete hard-drive failure** because by default it resides under the same Windows profile. For actual operations, set a separate encrypted-backup directory (for example, an external `E:\FortLedgerBackups` drive) and a long, separately stored backup passphrase. FortLedger supports startup and every-24-hours encrypted snapshots **while the app is running**. Do not put that passphrase in Git or in a shared `.ps1` file. See the README's encrypted-backup section. Perform a test restore onto a second folder/computer before relying on backups.
 
 ### Important current limits
-- No MSI installer, Windows background service, auto-start or auto-update has been built yet. The above installation is a reliable developer/alpha workflow with no recurring software subscriptions.
+- No MSI installer, Windows background service, silent update or **in-browser update installation** has been built yet. The owner can inspect GitHub status inside the app, and an offline Windows desktop shortcut launches the deliberate update *after the operator stops the server and verifies encrypted backups*. No subscription is required.
 - **Updates are deliberate, not silent.** FortLedger keeps working offline; install only tested/merged commits when internet is available.
 - No legal final GST invoices, physical Epson TM-T82 acceptance or complete production security verification yet.
 - The GitHub repository is **public**. Keep real guest, financial and password data out of commits and only run non-production/sample data until the release gate is cleared.

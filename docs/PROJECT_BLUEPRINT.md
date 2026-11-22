@@ -112,3 +112,9 @@ Add a lightweight local guest profile with optional contact/company/preference f
 
 ## Phase 4B — Operational room performance
 A lightweight owner/manager report calculates booking occupancy, gross ADR and gross RevPAR from half-open hotel night intervals, not payment receipt dates. Denominator = active inventory minus room-nights blocked by **currently open** maintenance outages. Numerator = noncancelled reservation room-nights and associated GST-inclusive contracted nightly amounts. Labels explicitly distinguish booking pace from physical occupancy, tax-exclusive accounting revenue and cash receipts. A statutory tax rate / revenue-recognition model and immutable historic room availability must be validated before conventional net room revenue/ADR/RevPAR are considered complete.
+
+## Update experience decision — 2026-11-22
+- Keep the app local-first with no paid updater service. Owner only can inspect current and GitHub-main revision from a read-only Update Center; staff and unauthenticated sessions may not inspect the device's update state.
+- Provide a guarded one-double-click Windows desktop launcher that only runs after the operator closes the live app and verifies a recent independently protected encrypted backup. The launcher uses the existing backup/restore, safe Git fast-forward, lockfile and test contracts, then starts the original Windows persistent-data launcher.
+- No auto-install from a browser or silent mid-transaction update. A future native updater must supervise process shutdown, preserve restore state, authenticate the operator, pin a verified release and fail closed on errors; do not introduce it as a quick web POST endpoint.
+- Physical Mac remains on the existing manual preflight path. Older installations cannot self-update to a feature they do not yet contain; one manually verified bootstrap sync is always required.

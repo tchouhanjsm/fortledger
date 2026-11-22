@@ -201,3 +201,16 @@ dialog::backdrop{background:rgba(23,38,62,.72)}
 .skip-link{position:fixed;top:-100px;left:var(--sh-space-4);z-index:1000;border:2px solid var(--hs-focus);border-radius:var(--hs-control-radius);background:var(--hs-surface);color:var(--hs-ink);padding:var(--sh-space-3) var(--sh-space-4);font-size:14px;font-weight:650}
 .skip-link:focus-visible{top:var(--sh-space-2);outline:3px solid var(--hs-focus);outline-offset:2px}
 #workspace-main:focus{outline:none}
+
+/* Owner-only read-only update guidance; never mix app updates into money workflows. */
+.update-center{margin:var(--sh-space-6) 0;padding:var(--sh-space-5);
+  border:1px solid var(--hs-border);border-radius:var(--hs-radius);background:var(--hs-surface)}
+.update-center h3{color:var(--hs-ink)!important;margin:0 0 var(--sh-space-3)!important}
+.update-center-actions{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sh-space-4)}
+#update-center-state{font-size:13px;color:var(--hs-muted);margin:0}
+#update-center-state[data-state="up_to_date"]{color:var(--sh-moss)}
+#update-center-state[data-state="blocked"],#update-center-state[data-state="unavailable"]{color:var(--sh-vermilion)}
+#update-center-versions{font-size:12px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.update-center>div>p{line-height:1.5}
+@media(max-width:600px){.update-center{padding:var(--sh-space-4)}
+  .update-center-actions>*{flex:1 1 100%}}
