@@ -67,6 +67,10 @@ export async function runAuthenticatedBrowserSmoke(browser){
           assert.equal(await page.locator('#bookings').isVisible(),false);
           assert.equal(await page.locator('#menu-import-section').isVisible(),false,
             'Cashiers may bill but must not access menu price administration');
+          assert.equal(await page.locator('#restaurant-reconciliation-section').isVisible(),false,
+            'Restaurant exports must stay finance-reader only');
+          assert.equal((await context.request.get(base+
+            '/api/finance/restaurant/reconciliation.csv?date=2026-11-22')).status(),403);
         }else if(user.role==='frontdesk'){
           assert.equal((await context.request.get(base+'/api/bookings')).status(),200);
           assert.equal((await context.request.get(base+'/api/guests')).status(),200);
@@ -78,6 +82,17 @@ export async function runAuthenticatedBrowserSmoke(browser){
             // Real 390px keyboard/touch journey, not just a direct HTTP toggle.
             await page.goto(base+'/#restaurant');
             await page.locator('#restaurant').waitFor({state:'visible'});
+            // A real manager download never mutates the restaurant bill ledger.
+            await page.locator('#restaurant-reconciliation-section > summary').click();
+            await page.locator('#restaurant-reconciliation-date').fill('2026-11-22');
+            const billsBefore=db.prepare('SELECT COUNT(*) n FROM restaurant_bills').get().n;
+            const csvDownload=page.waitForEvent('download');
+            await page.locator('#restaurant-reconciliation-download').click();
+            const download=await csvDownload;
+            assert.equal(download.suggestedFilename(),'fortledger-restaurant-2026-11-22.csv');
+            assert.match(await page.locator('#restaurant-reconciliation-message').textContent(),
+              /Verify operator-recorded receipts/);
+            assert.equal(db.prepare('SELECT COUNT(*) n FROM restaurant_bills').get().n,billsBefore);
             // A draft prepared before the manager pauses an item remains visible,
             // removable and cannot silently become an incorrect zero-value bill.
             const menuItemId=listMenu(db)[0].id;
