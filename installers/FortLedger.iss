@@ -37,6 +37,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Files]
 Source: "..\dist\windows\app\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\scripts\windows-installer-guard.ps1"; Flags: dontcopy
+Source: "..\scripts\windows-verify-owner-companion.mjs"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\FortLedger"; Filename: "{app}\FortLedger.exe"; WorkingDir: "{app}"; Comment: "Open the local hotel application"
@@ -53,9 +54,11 @@ var
 begin
   Result := '';
   ExtractTemporaryFile('windows-installer-guard.ps1');
+  ExtractTemporaryFile('windows-verify-owner-companion.mjs');
   Parameters := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' +
     ExpandConstant('{tmp}\windows-installer-guard.ps1') + '" -InstallDirectory "' +
-    ExpandConstant('{app}') + '"';
+    ExpandConstant('{app}') + '" -Verifier "' +
+    ExpandConstant('{tmp}\windows-verify-owner-companion.mjs') + '"';
   if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
               Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
   begin

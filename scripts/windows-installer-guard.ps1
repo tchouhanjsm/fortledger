@@ -1,6 +1,7 @@
 # Pre-copy installer safety gate. Runs BEFORE any program files can be updated.
 # Existing hotel SQLite and administrator credentials are NEVER touched here.
-param([Parameter(Mandatory=$true)][string]$InstallDirectory)
+param([Parameter(Mandatory=$true)][string]$InstallDirectory,
+      [Parameter(Mandatory=$true)][string]$Verifier)
 $ErrorActionPreference='Stop'
 $live=Join-Path $env:LOCALAPPDATA 'FortLedger\data'
 $db=Join-Path $live 'fortledger.sqlite'
@@ -40,9 +41,20 @@ try {
       throw 'A recent separate-drive encrypted backup (36 hours or less) is required before updating.'
     }
     $env:FORTLEDGER_DATA_DIR=$live
-    & $node $drill $latest.FullName
+    # Legacy SQLite-only snapshots are not sufficient to recover owner login
+    # on a replacement PC, even if SQLite itself decrypts successfully.
+    if (-not (Test-Path -LiteralPath $Verifier -PathType Leaf)) {
+      throw 'The verified installer is missing its independent owner credential verifier.'
+    }
+    & $node $drill $latest.FullName --require-owner-companion
     if ($LASTEXITCODE -ne 0) {
       throw 'Encrypted backup restore verification failed; application files were not updated.'
+    }
+    # The included verifier comes from the NEW setup: an older installed drill
+    # cannot silently ignore the strict owner-companion requirement.
+    & $node $Verifier $latest.FullName
+    if ($LASTEXITCODE -ne 0) {
+      throw 'Original owner credential companion could not be authenticated. No app files were replaced.'
     }
   }
   exit 0

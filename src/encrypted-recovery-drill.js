@@ -74,10 +74,15 @@ export function rehearseEncryptedRecovery({backup,passphrase,
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const backup=process.argv[2];
+  const requireOwnerCompanion=process.argv[3]==='--require-owner-companion';
   try{
+    if(process.argv[3]&&process.argv[3]!=='--require-owner-companion')
+      throw new Error('Unknown recovery drill option');
     const result=rehearseEncryptedRecovery({
       backup,passphrase:process.env.FORTLEDGER_BACKUP_PASSPHRASE
     });
+    if(requireOwnerCompanion&&!result.owner_credential_recoverable)
+      throw new Error('The owner credential companion is missing; this backup is incomplete for a Windows installer upgrade');
     console.log('PASS: authenticated encrypted backup restored into isolated disposable database.');
     console.log('Rooms:',result.rooms,'Bookings:',result.bookings,'Schema tables:',result.schema_tables);
     console.log('Administrator credentials verified:',result.admin_auth_copied?'yes':'no');

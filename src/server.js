@@ -5,6 +5,7 @@ import path from 'node:path';
 import https from 'node:https';
 import {backupFreshness} from './backup-freshness.js';
 import {verifyLocalBackupHealth} from './backup-health.js';
+import {prepareVerifiedUpgradeBackup,UpgradeBackupRefusal} from './upgrade-backup.js';
 import {updateStatus} from './update-status.js';
 import {inspectUpdateReadiness,createSupervisedUpdateIpc} from './update-readiness.js';
 import { fileURLToPath } from 'node:url';
@@ -48,11 +49,12 @@ function requireFinancialRequestId(body){
     !/^[A-Za-z0-9_-]{16,80}$/.test(body.request_id))
     throw new Error('Unique request_id (16–80 safe characters) required for financial POST; reuse unchanged ID on retry');
 }
-export function createApp(db,{authRecord=null,authFile=null,network=null,businessDate=null,checkUpdates=updateStatus,updateService=null,checkBackupHealth=verifyLocalBackupHealth}={}) {
+export function createApp(db,{authRecord=null,authFile=null,network=null,businessDate=null,checkUpdates=updateStatus,updateService=null,checkBackupHealth=verifyLocalBackupHealth,
+  prepareUpgradeBackup=prepareVerifiedUpgradeBackup}={}) {
   if(network?.mode==='lan'&&!authRecord)throw new Error('LAN access requires configured authentication');
   const app = express();
   const menuPreviewKey=randomBytes(32); // invalidated safely on every server restart
-  let updateDraining=false,installPending=false;
+  let updateDraining=false,installPending=false,upgradeBackupPending=null;
   app.use((req,res,next)=>{
     if(updateDraining&&['POST','PUT','PATCH','DELETE'].includes(req.method)){
       res.setHeader('Cache-Control','no-store');
@@ -97,6 +99,28 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   // npm installation, data migration, process restart, or a remote network command.
   const updateOwnerLocal=req=>Boolean(authRecord&&network?.mode!=='lan'&&
     ['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress));
+  // Backup preparation deliberately does not use the Git updater. It creates
+  // only a new independently protected encrypted snapshot, never a booking or
+  // database migration. Keep it alive during a graceful tray shutdown.
+  app.locals.waitForUpgradeBackup=()=>upgradeBackupPending?.catch(()=>{})??Promise.resolve();
+  app.post('/api/system/backup-prepare',async(req,res)=>{
+    if(req.actor?.role!=='owner'||!updateOwnerLocal(req))
+      return res.status(403).json({error:'Only the owner on this Windows PC can prepare an upgrade backup.'});
+    if(upgradeBackupPending)
+      return res.status(409).json({error:'An external backup preparation is already in progress.'});
+    const job=Promise.resolve().then(()=>prepareUpgradeBackup(db));
+    upgradeBackupPending=job;
+    try{
+      return res.json(await job);
+    }catch(error){
+      return res.status(error instanceof UpgradeBackupRefusal?409:500).json({
+        error:error instanceof UpgradeBackupRefusal?error.message:
+          'External backup verification failed. Hotel records were not modified; inspect the protected backup drive before upgrading.'
+      });
+    }finally{
+      if(upgradeBackupPending===job)upgradeBackupPending=null;
+    }
+  });
   app.get('/api/system/updates',async(req,res,next)=>{
     try{
       if(!updateOwnerLocal(req))
@@ -618,6 +642,7 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
     async function closeDataSafely(){
       backups?.stop();
       if(backups?.idle)await backups.idle();
+      await app.locals.waitForUpgradeBackup();
       db.close();
     }
     if(process.platform==='win32'&&process.env.FORTLEDGER_DESKTOP_INSTALLER==='1'&&
