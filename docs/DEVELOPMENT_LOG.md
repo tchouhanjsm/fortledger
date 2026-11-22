@@ -325,6 +325,13 @@ All five increments completed in this development session were reviewed and merg
 - Synthetic regression tests cover role isolation, event deduplication, source-state refresh, IST date boundaries and unchanged records. CI result and physical acceptance must be checked separately before merging.
 - Decision/limits: docs/KAIZEN_V3_AUDIT.md. Performance and real-device claims remain unverified; follow-on closing preparation, exceptions and profile benchmarks are proposed as separately reviewable PRs.
 
+## 2026-11-22 — V3 Kaizen Phase 2: read-only day closing preparation
+- Added optional, on-demand source review inside existing End-of-day cash closing panel. It requests the existing authenticated IST daily collections report only when staff open the disclosure or choose a date.
+- Displays cash, UPI, card, bank and legacy method amounts with accommodation, restaurant, refund and expense splits; distinguishes money collected from unlinked/unsettled room receivables and bank-verification evidence.
+- Reconciles integer-paise method totals with report totals; mismatches fail visibly instead of silently adjusting financial records. Includes refund-heavy negative net day cases and role boundary tests.
+- No additional financial mutations, migration, closing snapshots or unattended settlement. Original immutable close, review acknowledgment and accountant sign-off boundaries remain unchanged.
+- Documentation: docs/KAIZEN_V3_CLOSING_PREPARATION.md. CI results and physical acceptance must be recorded separately after the PR head completes checks.
+
 ## 2026-11-22 — V3 Kaizen performance measurement foundation
 - Added disposable in-memory seven-room workloads with 28 vs 700 synthetic historical reservations, measuring local end-to-end read-only API p50/p95/max and a booking-date SQLite EXPLAIN query plan.
 - Ubuntu CI publishes informational measurements without imposing ungrounded latency thresholds. No production database, cloud API, guest records, financial event writes or persistent files are used.

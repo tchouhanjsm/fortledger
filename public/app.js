@@ -5,6 +5,7 @@ import {createConfirmAction} from './ui-dialog.js';
 import {matchesWorkQueue,bookingNextActionCue} from './booking-work-queue.js';
 import {bookingDraftError} from './booking-editor-guards.js';
 import {todayAttention} from './today-attention.js';
+import {prepareDailyClosing} from './daily-close-preparation.js';
 import {shiftHandover} from './shift-handover.js';
 import {stayMetrics} from './stay-metrics.js';
 import {createOwnerUpdateNotice} from './update-notice.js';
@@ -942,6 +943,62 @@ $('#expense-form').onsubmit=async event=>{
 };
 $('#expense-form').oninput=()=>{delete $('#expense-form').dataset.pendingRequestId;};
 $('#expense-form').elements.namedItem('business_date').onchange=renderExpenseList;
+let closingPreparationRevision=0;
+async function renderDailyClosePreparation(){
+  if(!can('finance.read')||!$('#home-closing').open)return;
+  const form=$('#daily-close-form');
+  const day=form.elements.namedItem('business_date').value;
+  if(!day)return;
+  const version=++closingPreparationRevision;
+  const status=$('#daily-close-preparation-status');
+  const area=$('#daily-close-preparation-items');
+  area.replaceChildren();
+  status.textContent='Checking current recorded collections for '+day+'…';
+  try{
+    // Read existing daily ledger, not a parallel financial event stream.
+    const report=await api('/api/finance/daily?date='+encodeURIComponent(day));
+    if(version!==closingPreparationRevision||!$('#home-closing').open||
+       form.elements.namedItem('business_date').value!==day)return;
+    const preview=prepareDailyClosing(report);
+    const table=label('table',undefined,'daily-close-preview-table');
+    const head=label('thead'),headers=label('tr');
+    for(const heading of ['Method','Accommodation','Restaurant','Refunds','Expenses','Net received'])
+      headers.append(label('th',heading));
+    head.append(headers);table.append(head);
+    const body=label('tbody');
+    for(const item of preview.methods){
+      const row=label('tr');
+      row.append(label('th',item.method.toUpperCase()),
+        label('td',money(item.hotel_paise)),
+        label('td',money(item.restaurant_paise)),
+        label('td',money(item.refund_paise)),
+        label('td',money(item.expense_paise)),
+        label('td',money(item.net_collected_paise)));
+      body.append(row);
+    }
+    table.append(body);area.append(table);
+    area.append(label('p','Total recorded receipts: '+money(report.net_collections_paise)+
+      ' · Recorded expenses: '+money(report.expenses_paid_paise)+
+      ' · Net cash movement: '+money(report.net_cash_movement_paise),'muted'));
+    area.append(label('p','Cash method movement after recorded expenses: '+
+      money(preview.cash_net_movement_paise)+
+      ' (opening float and physical counted cash are not included).','muted'));
+    if(preview.warnings.length){
+      const problems=label('ul',undefined,'daily-close-preparation-warnings');
+      for(const issue of preview.warnings)problems.append(label('li',issue));
+      area.append(problems);
+    }
+    status.textContent=preview.disclaimer+' Updated from current ledger on opening this panel.';
+  }catch(error){
+    if(version!==closingPreparationRevision)return;
+    status.textContent='Closing preparation unavailable: '+error.message+
+      '. Review the original ledger before closing; no values were changed.';
+  }
+}
+$('#home-closing').addEventListener('toggle',()=>{
+  if($('#home-closing').open)void renderDailyClosePreparation();
+  else closingPreparationRevision++;
+});
 async function renderDailyClose(){
   if(!can('finance.read'))return;
   const form=$('#daily-close-form');
@@ -1020,7 +1077,10 @@ $('#daily-close-form').onsubmit=async event=>{
   }catch(error){message.textContent=error.message;button.disabled=false;}
 };
 $('#daily-close-form').oninput=()=>{delete $('#daily-close-form').dataset.pendingRequestId;};
-$('#daily-close-form').elements.namedItem('business_date').onchange=renderDailyClose;
+$('#daily-close-form').elements.namedItem('business_date').onchange=()=>{
+  void renderDailyClose();
+  if($('#home-closing').open)void renderDailyClosePreparation();
+};
 // Multiple refreshes can overlap with a saved booking/room update. Only the
 // latest complete response is allowed to replace the displayed hotel ledger.
 let workspaceLoadRevision=0;
