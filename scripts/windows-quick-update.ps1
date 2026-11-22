@@ -18,6 +18,8 @@ if (Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue) {
 # The one-click path requires independently protected encrypted backup readiness.
 # A timestamp-only file check is insufficient: inspect the latest actual artifact.
 $env:FORTLEDGER_DATA_DIR = Join-Path $env:LOCALAPPDATA 'FortLedger\data'
+. (Join-Path $PSScriptRoot 'windows-backup-settings.ps1')
+[void](Import-FortLedgerBackupSettings -DataDirectory $env:FORTLEDGER_DATA_DIR -AppRoot $root)
 if (-not $env:FORTLEDGER_BACKUP_DIR) {
   $env:FORTLEDGER_BACKUP_DIR = (Read-Host 'Absolute encrypted backup folder (external protected drive)').Trim()
 }
