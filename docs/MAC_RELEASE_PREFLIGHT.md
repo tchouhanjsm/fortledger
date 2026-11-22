@@ -32,7 +32,7 @@ With the process stopped and the data location verified:
 ```bash
 git status --short
 git pull --ff-only origin main
-npm install --no-audit --no-fund
+npm ci --no-audit --no-fund
 npm test
 npm run mac:preflight
 npm start
@@ -58,3 +58,7 @@ Use the existing local startup method if it sets environment variables (do not d
 ## Specific existing-database repair: restaurant bill requests (schema v8)
 
 A bill failure reporting `no such table: restaurant_bill_requests` indicates an older initialized database whose restaurant support table was not migrated. Updating only the app's HTML cannot repair it. **Back up, confirm the live database path, stop the old Node process, update to a release containing schema v8, and restart with the unchanged data environment.** Then rerun `npm run doctor`, which must report schema v8 and the required request table. Do not run raw SQL against the live hotel database or overwrite its historical restaurant bills. Full steps: [v8 restaurant schema repair](V8_RESTAURANT_BILL_SCHEMA_FIX.md).
+
+## Six-gate private acceptance register
+
+Generate a blank local evidence register using `npm run release:check -- --template`, store it outside the checkout and set `FORTLEDGER_RELEASE_EVIDENCE_FILE` to its absolute path before `npm run release:check -- --json`. The read-only checker shows progress but never automatically certifies real hardware or GST compliance. See [Mac release acceptance runbook](MAC_RELEASE_ACCEPTANCE_RUNBOOK.md). Do not send proof containing guest records, authentication secrets or financial details to GitHub.
