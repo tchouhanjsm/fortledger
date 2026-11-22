@@ -1,13 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import {networkInterfaces} from 'node:os';
 import {fileURLToPath} from 'node:url';
 import {dataDirectory,databasePath,authPath} from './data-paths.js';
-import {localListenerSettings} from './network-policy.js';
+import {localListenerSettings,readLanTlsCredentials} from './network-policy.js';
 import {diagnose} from './doctor.js';
 
 /** Read-only preflight. Do not copy a running WAL database, print secrets,
  * create directories, or change the environment used by FortLedger. */
-export function macPreflight({env=process.env,platform=process.platform,nodeVersion=process.versions.node}={}){
+export function macPreflight({env=process.env,platform=process.platform,
+  nodeVersion=process.versions.node,interfaces=networkInterfaces()}={}){
   const checks=[];
   const check=(name,status,detail)=>checks.push({name,status,detail});
   if(platform!=='darwin')check('Operating system','warn','This procedure targets macOS; no operating-system change is made');
@@ -28,8 +30,19 @@ export function macPreflight({env=process.env,platform=process.platform,nodeVers
     if(listener.mode==='lan'){
       check('Local listener','warn','Private HTTPS staff-LAN configured at '+listener.host+':'+listener.port+
         '; physical firewall, certificate trust and guest-network isolation are not verified');
-      check('LAN TLS files',fs.existsSync(listener.certPath)&&fs.existsSync(listener.keyPath)?'warn':'fail',
-        'Certificate/key presence only; validate with startup and actual staff device TLS before use');
+      const assigned=Object.values(interfaces).flat().some(item=>
+        item?.family==='IPv4'&&item.address===listener.host);
+      check('LAN interface address',assigned?'pass':'fail',assigned?
+        'Chosen private IP belongs to a network interface on this computer':
+        'Configured staff-LAN IP is not assigned to this computer; check Mac Wi-Fi or static IP');
+      try{
+        readLanTlsCredentials(listener);
+        check('LAN TLS credentials','pass',
+          'Certificate dates, exact IP SAN, private key match and TLS context validated; staff device trust is unverified');
+      }catch{
+        check('LAN TLS credentials','fail',
+          'Certificate/key missing, expired, mismatched, or invalid for configured IP; no LAN release');
+      }
     }else check('Local listener','pass','Loopback only, configured port '+listener.port);
   }catch(error){check('Local listener','fail',error.message);}
   const backupDir=env.FORTLEDGER_BACKUP_DIR;

@@ -36,3 +36,11 @@ Run `node --test test/v2-private-lan-https.test.js`, `npm test` and `npm run tes
 On actual Mac/phones, independently verify certificate trust, HTTPS-only login, Secure cookies, cross-origin denial, guest-Wi-Fi denial, staff revocation, simultaneous booking/room-charge/settlement integrity, disconnection/recovery, backup integrity, and Mac firewall configuration. Keep release status **NOT RELEASED** until physical and accountant gates are independently evidenced.
 
 **Limits:** There is no certificate issuance/renewal automation, device enrollment, built-in firewall management, VPN or service discovery. Authorization is per staff account; device reachability is controlled by network/firewall rules. Avoid operating LAN mode unless these prerequisites are met.
+
+## Automated deployment preflight and TLS regression (V2 next batch)
+
+`npm run mac:preflight` now checks that the configured private IPv4 address is **actually assigned to an interface on the Mac** and validates that the specified TLS certificate is current, has an exact IP subject alternative name, matches its private key and can form a TLS context. Missing/mismatched certificates or absent network interfaces cause the preflight to fail. The command reads credentials without copying them or writing to the hotel database.
+
+`node --test test/v2-real-https-handshake.test.js` generates an **ephemeral synthetic self-signed certificate** inside a temporary directory, then establishes a real encrypted Node HTTPS connection. It checks valid/bad Host responses, HTTP-vs-HTTPS Origin policies, authenticated session cookies, authenticated reads, and logout invalidation. The test uses a synthetic database; the temporary certificate/key are deleted. It does **not** contact the hotel network, printer or real phones, and is skipped when OpenSSL is unavailable. No test certificate should be installed or trusted on actual devices.
+
+**Still required at the hotel:** an independently trusted real certificate, physical firewall and Wi-Fi separation testing, real Mac and phone/browser sign-in/zoom tests, and evidence that a lost connection does not replay financial writes. Use only the actual hotel environment and intended staff accounts during that acceptance.
