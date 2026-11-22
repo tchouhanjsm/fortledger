@@ -980,6 +980,7 @@ async function load(){
   $('#preview-menu').hidden=!can('menu.manage');
   $('#staff-admin').hidden=currentUser.role!=='owner';
   $('#update-center').hidden=!can('system.update');
+  $('#backup-center').hidden=!can('system.update');
   $('#guest-create').hidden=!can('guests.write');
   const settingsSave=$('#business-form').querySelector('[type=submit]');
   if(settingsSave)settingsSave.disabled=!can('settings.admin');
@@ -1101,6 +1102,19 @@ async function renderProfile(){
     }
   }
 }
+$('#backup-center-check').onclick=async()=>{
+  if(!can('system.update'))return;
+  const button=$('#backup-center-check'),state=$('#backup-center-state');
+  button.disabled=true;state.textContent='Checking latest encrypted snapshot…';
+  try{
+    const report=await api('/api/system/backup-verify');
+    state.textContent=report.detail;
+    state.dataset.state=report.state;
+  }catch(error){
+    state.dataset.state='failed';
+    state.textContent='Backup verification could not be completed: '+error.message;
+  }finally{button.disabled=false;}
+};
 let approvedUpdateSha=null,installerDownloadUrl=null;
 $('#update-center-download').onclick=()=>{
   if(!can('system.update')||!installerDownloadUrl)return;
