@@ -223,6 +223,16 @@
     <p><a href="/menu-template.csv" download>Download a sample CSV template</a></p>
     <div class="menu-import-actions"><input type="file" id="menu-csv" accept=".csv,text/csv"><button type="button" id="preview-menu" class="secondary">Check file</button><button type="button" id="import-menu" class="primary" disabled>Import verified menu</button></div>
     <p id="menu-import-message" role="status" aria-live="polite"></p>
+    <div id="menu-import-review-controls" class="menu-review-controls" hidden>
+      <label>Find menu item<input id="menu-import-search" type="search" placeholder="Search reviewed rows"></label>
+      <label>Category<select id="menu-import-category"><option value="all">All categories</option></select></label>
+      <label>Change type<select id="menu-import-change">
+        <option value="all">All rows</option><option value="changes">Changes only</option>
+        <option value="new">New items</option><option value="updated">Updated items</option>
+        <option value="unchanged">Unchanged items</option><option value="suspicious">Needs review</option>
+      </select></label>
+      <p id="menu-import-row-count" class="muted" role="status"></p>
+    </div>
     <div id="menu-import-preview"></div>
   </details>
 </section>
