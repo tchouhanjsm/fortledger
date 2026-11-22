@@ -16,7 +16,7 @@ New-Item -ItemType Directory -Force -Path $stage,$destination | Out-Null
 Copy-Item -LiteralPath (Join-Path $root 'package.json'),(Join-Path $root 'package-lock.json') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $root 'src'),(Join-Path $root 'public') -Destination $stage -Recurse
 New-Item -ItemType Directory -Force -Path (Join-Path $stage 'scripts') | Out-Null
-foreach($name in @('windows-backup-settings.ps1','windows-configure-backups.ps1')){
+foreach($name in @('windows-backup-settings.ps1','windows-configure-backups.ps1','windows-configure-staff-lan.ps1')){
   Copy-Item -LiteralPath (Join-Path $root ('scripts\'+$name)) -Destination (Join-Path $stage 'scripts')
 }
 $nodeBinary=(Get-Command node.exe -ErrorAction Stop).Source

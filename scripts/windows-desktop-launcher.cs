@@ -43,10 +43,30 @@ namespace FortLedgerDesktop
         GC.KeepAlive(mutex);
       }
     }
+    internal static string AppUrl()
+    {
+      string path=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "FortLedger","lan-settings.json");
+      if(!File.Exists(path))return "http://127.0.0.1:3000/";
+      try
+      {
+        var cfg=new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(File.ReadAllText(path));
+        string host=Convert.ToString(cfg["host"]);
+        IPAddress ip;
+        if(Convert.ToInt32(cfg["version"])!=1 || Convert.ToInt32(cfg["port"])!=3000 ||
+           !IPAddress.TryParse(host,out ip) || ip.AddressFamily!=System.Net.Sockets.AddressFamily.InterNetwork)
+          return "http://127.0.0.1:3000/";
+        byte[] b=ip.GetAddressBytes();
+        bool local=(b[0]==10)||(b[0]==192&&b[1]==168)||
+          (b[0]==172&&b[1]>=16&&b[1]<=31);
+        return local?"https://"+host+":3000/":"http://127.0.0.1:3000/";
+      }
+      catch{return "http://127.0.0.1:3000/";}
+    }
     internal static void OpenApp()
     {
-      try { Process.Start("http://127.0.0.1:3000/"); }
-      catch { MessageBox.Show("Open http://127.0.0.1:3000 in your browser.", "FortLedger"); }
+      try { Process.Start(AppUrl()); }
+      catch { MessageBox.Show("Open "+AppUrl()+" in your browser.", "FortLedger"); }
     }
   }
 
@@ -71,6 +91,8 @@ namespace FortLedgerDesktop
       ContextMenuStrip menu = new ContextMenuStrip();
       menu.Items.Add("Open FortLedger", null, delegate { Program.OpenApp(); });
       menu.Items.Add("Configure encrypted backups (owner)", null, delegate { ConfigureBackups(); });
+      menu.Items.Add("Private hotel Wi-Fi HTTPS (owner/IT)", null, delegate { ConfigureStaffLan(); });
+      menu.Items.Add("Return to this computer only (owner/IT)", null, delegate { DisableStaffLan(); });
       menu.Items.Add(new ToolStripSeparator());
       menu.Items.Add("Close FortLedger safely", null, delegate { StopApp(); });
       tray.ContextMenuStrip = menu;
@@ -106,6 +128,7 @@ namespace FortLedgerDesktop
       psi.EnvironmentVariables["FORTLEDGER_DESKTOP_INSTALLER"] = "1";
       psi.RedirectStandardInput = true;
       ReadBackups(psi);
+      ReadLan(psi);
       server = Process.Start(psi);
       if (server == null) throw new InvalidOperationException("The local Node runtime could not start.");
       attempts = 0;
@@ -187,6 +210,37 @@ namespace FortLedgerDesktop
       }
     }
 
+    private void ReadLan(ProcessStartInfo psi)
+    {
+      string config=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "FortLedger","lan-settings.json");
+      if(!File.Exists(config))return; // Default remains strictly localhost-only.
+      try
+      {
+        var cfg=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(File.ReadAllText(config));
+        string host=Convert.ToString(cfg["host"]);
+        IPAddress ip;
+        if(Convert.ToInt32(cfg["version"])!=1||Convert.ToInt32(cfg["port"])!=3000||
+           !IPAddress.TryParse(host,out ip)||
+           ip.AddressFamily!=System.Net.Sockets.AddressFamily.InterNetwork)
+          throw new InvalidOperationException();
+        byte[] b=ip.GetAddressBytes();
+        if(!(b[0]==10||(b[0]==192&&b[1]==168)||(b[0]==172&&b[1]>=16&&b[1]<=31)))
+          throw new InvalidOperationException();
+        string cert=Path.GetFullPath(Convert.ToString(cfg["certPath"]));
+        string key=Path.GetFullPath(Convert.ToString(cfg["keyPath"]));
+        if(!File.Exists(cert)||!File.Exists(key))throw new InvalidOperationException();
+        psi.EnvironmentVariables["FORTLEDGER_LAN_ENABLED"]="1";
+        psi.EnvironmentVariables["FORTLEDGER_HOST"]=host;
+        psi.EnvironmentVariables["FORTLEDGER_TLS_CERT"]=cert;
+        psi.EnvironmentVariables["FORTLEDGER_TLS_KEY"]=key;
+        // The Node server checks certificate SAN/IP/date/private key pairing
+        // BEFORE opening or migrating the SQLite ledger.
+      }
+      catch{throw new InvalidOperationException(
+        "Private staff-Wi-Fi TLS configuration is invalid. Ask the owner/IT to correct it before starting.");}
+    }
+
     private void ReadBackups(ProcessStartInfo psi)
     {
       string config = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -239,7 +293,7 @@ namespace FortLedgerDesktop
     {
       try
       {
-        HttpWebRequest req=(HttpWebRequest)WebRequest.Create("http://127.0.0.1:3000/api/auth/status");
+        HttpWebRequest req=(HttpWebRequest)WebRequest.Create(Program.AppUrl()+"api/auth/status");
         req.Timeout=750;
         req.Proxy=null;
         using(HttpWebResponse response=(HttpWebResponse)req.GetResponse())
@@ -269,6 +323,43 @@ namespace FortLedgerDesktop
         MessageBox.Show("FortLedger is still starting. Use Open FortLedger from the system tray after it becomes available.",
           "FortLedger",MessageBoxButtons.OK,MessageBoxIcon.Information);
       }
+    }
+
+    private void DisableStaffLan()
+    {
+      if(MessageBox.Show("Disable phone access and return to localhost-only on the next restart? " +
+        "This will not change bookings, staff accounts or invoices.",
+        "Disable staff-Wi-Fi access",MessageBoxButtons.YesNo,MessageBoxIcon.Question)!=DialogResult.Yes)return;
+      try
+      {
+        string file=Path.Combine(root,"scripts","windows-configure-staff-lan.ps1");
+        var psi=new ProcessStartInfo("powershell.exe",
+          "-NoProfile -ExecutionPolicy Bypass -File \"" + file + "\" -Disable");
+        psi.WorkingDirectory=root;psi.UseShellExecute=true;psi.Verb="runas";
+        Process.Start(psi);
+        MessageBox.Show("After the owner/IT tool completes, safely close and reopen FortLedger to disable phone access.",
+          "Staff Wi-Fi access",MessageBoxButtons.OK,MessageBoxIcon.Information);
+      }
+      catch(Exception ex){MessageBox.Show(ex.Message,"Unable to disable staff Wi-Fi");}
+    }
+
+    private void ConfigureStaffLan()
+    {
+      try
+      {
+        string file=Path.Combine(root,"scripts","windows-configure-staff-lan.ps1");
+        if(!File.Exists(file))throw new FileNotFoundException("Private staff-Wi-Fi setup is unavailable");
+        var psi=new ProcessStartInfo("powershell.exe",
+          "-NoProfile -ExecutionPolicy Bypass -File \"" + file + "\"");
+        psi.WorkingDirectory=root;
+        psi.UseShellExecute=true;
+        psi.Verb="runas"; // Windows UAC; never silently open the firewall.
+        Process.Start(psi);
+        MessageBox.Show("After owner/IT configuration, safely close and reopen FortLedger. " +
+          "Every staff phone must trust the certificate issuer; verify guest Wi-Fi cannot connect.",
+          "Private hotel Wi-Fi",MessageBoxButtons.OK,MessageBoxIcon.Information);
+      }
+      catch(Exception ex){MessageBox.Show(ex.Message,"Staff Wi-Fi setup blocked");}
     }
 
     private void ConfigureBackups()
