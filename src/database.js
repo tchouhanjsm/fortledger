@@ -17,6 +17,7 @@ import {ensureDailyCloseSchema} from './daily-close.js';
 import {ensureMaintenanceSchema,blockedRoomIds} from './maintenance.js';
 import {ensureGuestSchema} from './guests.js';
 import {ensureBookingCreateSchema} from './booking-create.js';
+import {ensureFolioSettlementRequestSchema} from './folio.js';
 
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -24,7 +25,7 @@ export function openDatabase(filename = databasePath()) {
   try {
     db.pragma('foreign_keys = ON');
     const current = db.pragma('user_version', {simple:true});
-    if(current > 9)throw new Error('Database schema '+current+' is newer than this FortLedger version (9); update the app before opening it');
+    if(current > 10)throw new Error('Database schema '+current+' is newer than this FortLedger version (10); update the app before opening it');
     if(current < 0)throw new Error('Invalid database schema version');
     // Version 0 includes all legacy pre-versioned FortLedger installations.
     // A single SQLite transaction makes the baseline upgrade all-or-nothing.
@@ -141,6 +142,19 @@ export function openDatabase(filename = databasePath()) {
       if(violations.length)throw new Error('Entity ID upgrade rejected: foreign key violations');
       db.pragma('user_version = 9');
     })();
+    // Version 10: retry-safe write-ahead request records for combined and
+    // individual folio settlements. No historical settlement is rewritten.
+    if(current<10)db.transaction(()=>{
+      ensureFolioSettlementRequestSchema(db);
+      const violations=db.pragma('foreign_key_check');
+      if(violations.length)throw new Error('Folio settlement upgrade rejected: foreign key violations');
+      db.pragma('user_version = 10');
+    })();
+    try{
+      db.prepare('SELECT request_id,kind,booking_id,fingerprint,response_json,created_at FROM folio_settlement_requests LIMIT 0').all();
+    }catch{
+      throw new Error('Folio settlement request ledger is missing or incompatible; stop the app and restore a verified backup');
+    }
     // Fail closed if a v9 database's identity allocation table was removed.
     for(const type of ['booking','guest']){
       if(!db.prepare('SELECT 1 FROM entity_id_counters WHERE entity_type=?').get(type))
