@@ -17,6 +17,9 @@ jobs:
           node-version: 22
       - run: npm ci --no-audit --no-fund
       - run: npm test
+      - name: Synthetic read-only API baseline (informational, no performance gate)
+        if: runner.os == 'Linux'
+        run: npm run perf:baseline
       - name: Validate Windows PowerShell syntax
         if: runner.os == 'Windows'
         shell: pwsh

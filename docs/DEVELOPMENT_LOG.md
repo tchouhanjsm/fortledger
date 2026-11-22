@@ -332,6 +332,12 @@ All five increments completed in this development session were reviewed and merg
 - No additional financial mutations, migration, closing snapshots or unattended settlement. Original immutable close, review acknowledgment and accountant sign-off boundaries remain unchanged.
 - Documentation: docs/KAIZEN_V3_CLOSING_PREPARATION.md. CI results and physical acceptance must be recorded separately after the PR head completes checks.
 
+## 2026-11-22 — V3 Kaizen performance measurement foundation
+- Added disposable in-memory seven-room workloads with 28 vs 700 synthetic historical reservations, measuring local end-to-end read-only API p50/p95/max and a booking-date SQLite EXPLAIN query plan.
+- Ubuntu CI publishes informational measurements without imposing ungrounded latency thresholds. No production database, cloud API, guest records, financial event writes or persistent files are used.
+- Pure quantile validation and source guard tests included. Results do not certify physical Windows/Chromium page navigation, idle CPU, PDF throughput or actual encrypted backup restore.
+- Run npm run perf:baseline; methodology and rollback docs/KAIZEN_V3_PERFORMANCE_BASELINE.md.
+
 ## 2026-11-22 — V3 Phase 3: near-arrival room readiness and exact source navigation
 - Identified an operator blind spot: arrivals and dirty rooms were counted separately, leaving staff to guess which reservation was waiting for a specific unready room.
 - Added read-only, permission-scoped near-arrival readiness cues for named room allocations. Reports dirty/cleaning/inactive/missing rooms, TODAY-only out-of-service state and authorized maintenance conflicts anywhere across the booked interval.
