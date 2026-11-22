@@ -19,7 +19,7 @@ export function transitionBooking(db,id,status,{actor,acknowledge_balance=false,
   if(!actor)throw new Error('Authenticated actor required');
   if(typeof reason!=='string'||reason.length>300)throw new Error('Invalid transition reason');
   if(typeof override!=='boolean')throw new Error('Invalid date override');
-  if(typeof businessDate!=='string'||!/^\\d{4}-\\d{2}-\\d{2}$/.test(businessDate)||
+  if(typeof businessDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(businessDate)||
      !Number.isFinite(Date.parse(businessDate+'T00:00:00Z'))||
      new Date(businessDate+'T00:00:00Z').toISOString().slice(0,10)!==businessDate)
     throw new Error('Invalid hotel business date');
