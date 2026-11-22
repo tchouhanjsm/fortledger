@@ -1,3 +1,4 @@
+import {allocateEntityId} from './entity-identity.js';
 import {createHash} from 'node:crypto';
 import {assertAvailability} from './database.js';
 import {bookingTotals} from './finance.js';
@@ -50,10 +51,10 @@ export function createBookingSafely(db,{booking,initialPaise,method,requestId,ac
     validateGuestLink(db,booking.guest_id);
     assertAvailability(db,booking);
     const {room_ids,...sqlBooking}=booking;
-    const result=db.prepare(`INSERT INTO bookings
-      (guest_name,company_name,checkin,checkout,rooms_count,room_id,category,meal_plan,nightly_rate_paise,guest_id)
-      VALUES (@guest_name,@company_name,@checkin,@checkout,@rooms_count,@room_id,@category,@meal_plan,@nightly_rate_paise,@guest_id)`).run(sqlBooking);
-    const id=Number(result.lastInsertRowid);
+    const id=allocateEntityId(db,'booking');
+    db.prepare(`INSERT INTO bookings
+      (id,guest_name,company_name,checkin,checkout,rooms_count,room_id,category,meal_plan,nightly_rate_paise,guest_id)
+      VALUES (@id,@guest_name,@company_name,@checkin,@checkout,@rooms_count,@room_id,@category,@meal_plan,@nightly_rate_paise,@guest_id)`).run({...sqlBooking,id});
     const allocate=db.prepare('INSERT INTO booking_room_allocations(booking_id,room_id) VALUES(?,?)');
     for(const roomId of room_ids)allocate.run(id,roomId);
     if(initialPaise>0){
