@@ -337,3 +337,10 @@ All five increments completed in this development session were reviewed and merg
 - Ubuntu CI publishes informational measurements without imposing ungrounded latency thresholds. No production database, cloud API, guest records, financial event writes or persistent files are used.
 - Pure quantile validation and source guard tests included. Results do not certify physical Windows/Chromium page navigation, idle CPU, PDF throughput or actual encrypted backup restore.
 - Run npm run perf:baseline; methodology and rollback docs/KAIZEN_V3_PERFORMANCE_BASELINE.md.
+
+## 2026-11-22 — V3 Phase 3: near-arrival room readiness and exact source navigation
+- Identified an operator blind spot: arrivals and dirty rooms were counted separately, leaving staff to guess which reservation was waiting for a specific unready room.
+- Added read-only, permission-scoped near-arrival readiness cues for named room allocations. Reports dirty/cleaning/inactive/missing rooms, TODAY-only out-of-service state and authorized maintenance conflicts anywhere across the booked interval.
+- Focuses the exact existing physical room record. Unmatched food bill links focus the original bill. Backup warnings distinguish stale/unconfigured/local-only states and owner backup-center actions.
+- No check-in, room readiness, restaurant linking, payment, encrypted backup, database migration or application update is executed from the briefing.
+- Synthetic source/state and Chromium 390px tests added; independent real hotel, backup and printer acceptance remains required. See docs/KAIZEN_V3_ARRIVAL_READINESS.md.
