@@ -985,6 +985,8 @@ async function load(){
   const settingsSave=$('#business-form').querySelector('[type=submit]');
   if(settingsSave)settingsSave.disabled=!can('settings.admin');
   await renderProfile();
+  if(currentUser?.desktop_installer&&currentUser.role==='owner')void ownerCheckForInstaller();
+  else $('#owner-new-update').hidden=true;
   renderDashboard();
   await renderCollections();
   if(can('finance.read')){await renderExpenseList();await renderDailyClose();}
@@ -1115,6 +1117,29 @@ $('#backup-center-check').onclick=async()=>{
     state.textContent='Backup verification could not be completed: '+error.message;
   }finally{button.disabled=false;}
 };
+let ownerLastUpdateCheck=0,ownerUpdatePending=false;
+async function ownerCheckForInstaller(){
+  if(ownerUpdatePending||!currentUser?.desktop_installer||currentUser.role!=='owner')return;
+  const now=Date.now();
+  // Operator experience: once after sign-in, then at most every 4 hours.
+  // Failed/offline attempts never interrupt booking or POS operations.
+  if(now-ownerLastUpdateCheck<4*60*60*1000)return;
+  ownerLastUpdateCheck=now;ownerUpdatePending=true;
+  try{
+    const info=await api('/api/system/updates');
+    $('#owner-new-update').hidden=!(info.available===true&&
+      info.state==='installer_update_available');
+  }catch{$('#owner-new-update').hidden=true;}
+  finally{ownerUpdatePending=false;}
+}
+$('#owner-new-update').onclick=()=>{
+  if(currentUser?.role!=='owner')return;
+  window.location.hash='#profile';
+  $('#update-center-check').click(); // Explicit owner UI verifies latest artifact.
+};
+setInterval(()=>{
+  if(currentUser?.role==='owner'&&currentUser.desktop_installer)void ownerCheckForInstaller();
+},60*60*1000);
 let approvedUpdateSha=null,installerDownloadUrl=null;
 $('#update-center-download').onclick=()=>{
   if(!can('system.update')||!installerDownloadUrl)return;
