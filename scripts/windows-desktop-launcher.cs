@@ -55,8 +55,8 @@ namespace FortLedgerDesktop
     private readonly string root;
     private readonly string data;
     private readonly NotifyIcon tray;
-    private readonly Timer startTimer;
-    private readonly Timer stopTimer;
+    private readonly System.Windows.Forms.Timer startTimer;
+    private readonly System.Windows.Forms.Timer stopTimer;
     private Process server;
     private int attempts;
     private bool stopping;
@@ -76,10 +76,10 @@ namespace FortLedgerDesktop
       tray.ContextMenuStrip = menu;
       tray.DoubleClick += delegate { Program.OpenApp(); };
       tray.Visible = true;
-      startTimer = new Timer();
+      startTimer = new System.Windows.Forms.Timer();
       startTimer.Interval = 600;
       startTimer.Tick += CheckStarted;
-      stopTimer = new Timer();
+      stopTimer = new System.Windows.Forms.Timer();
       stopTimer.Interval = 700;
       stopTimer.Tick += CheckStopped;
       try { Launch(); }
