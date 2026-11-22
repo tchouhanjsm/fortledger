@@ -222,6 +222,16 @@
     <button type="button" class="secondary" data-bill-filter="unmatched" aria-pressed="false">Needs linking</button>
   </div>
   <p id="restaurant-history-count" class="muted" role="status"></p><div id="restaurant-history"></div><button id="restaurant-history-more" class="secondary" type="button" hidden>Show more bills</button></div>
+  <details id="restaurant-reconciliation-section" class="restaurant-reconciliation" hidden>
+    <summary>Daily restaurant reconciliation — download CSV</summary>
+    <p class="muted">Owner/manager only. Separates direct recorded receipts, newly created room charges and later recorded room settlements. Amounts are not bank-verified.</p>
+    <div class="restaurant-reconciliation-actions">
+      <label for="restaurant-reconciliation-date">Hotel business date (IST)</label>
+      <input id="restaurant-reconciliation-date" type="date" required>
+      <button id="restaurant-reconciliation-download" type="button" class="secondary">Download CSV</button>
+    </div>
+    <p id="restaurant-reconciliation-message" role="status" aria-live="polite"></p>
+  </details>
   <details class="menu-import" id="menu-import-section"><summary>3. Menu management — import or update prices (CSV)</summary>
     <details id="menu-availability-section" class="menu-availability-section">
       <summary>Temporarily hide or restore individual dishes</summary>
