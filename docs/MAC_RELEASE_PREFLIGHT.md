@@ -54,3 +54,7 @@ Use the existing local startup method if it sets environment variables (do not d
 - Doctor now checks both booking and restaurant request-replay tables needed to avoid duplicate financial records.
 - Added a full HTTP booking/checkout/room charge/settlement/cleaning integration test.
 - No new infrastructure, database migration, financial behavior change or kitchen-order features.
+
+## Specific existing-database repair: restaurant bill requests (schema v8)
+
+A bill failure reporting `no such table: restaurant_bill_requests` indicates an older initialized database whose restaurant support table was not migrated. Updating only the app's HTML cannot repair it. **Back up, confirm the live database path, stop the old Node process, update to a release containing schema v8, and restart with the unchanged data environment.** Then rerun `npm run doctor`, which must report schema v8 and the required request table. Do not run raw SQL against the live hotel database or overwrite its historical restaurant bills. Full steps: [v8 restaurant schema repair](V8_RESTAURANT_BILL_SCHEMA_FIX.md).
