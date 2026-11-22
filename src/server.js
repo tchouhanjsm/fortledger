@@ -155,7 +155,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null}={}) {
     try{res.json(getGuestFolio(db,Number(req.params.id)));}catch(error){next(error);}
   });
   app.post('/api/bookings/:id/folio/settle-combined',(req,res,next)=>{
-    try{res.status(201).json(settleCombined(db,Number(req.params.id),req.body.method,req.actor));}catch(error){next(error);}
+    try{res.status(201).json(settleCombined(db,Number(req.params.id),req.body.method,req.actor,
+      {accommodation_method:req.body.accommodation_method??req.body.method,bank_reference:req.body.bank_reference??''}));}catch(error){next(error);}
   });
   app.post('/api/bookings/:id/folio/room-bills/:billId/settle',(req,res,next)=>{
     try{res.status(201).json(settleRoomBill(db,Number(req.params.id),Number(req.params.billId),req.body.method,req.actor));}catch(error){next(error);}
