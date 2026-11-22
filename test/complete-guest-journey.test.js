@@ -9,7 +9,8 @@ test('complete hotel guest journey preserves idempotency, restaurant folio and r
   const db=openDatabase(':memory:');
   importMenuCsv(db,'name,category,price,tax_rate\nDinner,Food,250,0\n');
   const dinner=listMenu(db).find(item=>item.name==='Dinner');
-  const server=createApp(db).listen(0,'127.0.0.1');
+  let day='2027-01-10';
+  const server=createApp(db,{businessDate:()=>day}).listen(0,'127.0.0.1');
   await new Promise(resolve=>server.once('listening',resolve));
   const base='http://127.0.0.1:'+server.address().port;
   async function api(route,method='GET',body){
@@ -49,8 +50,9 @@ test('complete hotel guest journey preserves idempotency, restaurant folio and r
     assert.equal(settled.data.total_paid_paise,350000);
     const after=await api('/api/bookings/'+bookingId+'/folio');
     assert.equal(after.data.combined_due_paise,0);
-    assert.equal((await api('/api/bookings/'+bookingId+'/status','PATCH',{status:'checked_out'})).status,200);
+    assert.equal((await api('/api/bookings/'+bookingId+'/status','PATCH',{status:'checked_out',date_override:true,reason:'Guest voluntarily departed early after review'})).status,200);
     assert.equal((await api('/api/housekeeping')).data[0].status,'dirty');
+    day='2027-01-11';
     const blocked=await api('/api/bookings/'+next.data.id+'/status','PATCH',{status:'checked_in'});
     assert.equal(blocked.status,400);
     assert.match(blocked.data.error,/not ready/i);
