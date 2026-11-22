@@ -213,6 +213,8 @@ try{
       assert.equal(await page.locator('#save-restaurant-bill').isVisible(),false);
       await page.locator('#review-restaurant-bill').click();
       await page.locator('#restaurant-review').waitFor({state:'visible'});
+      assert.equal(await page.evaluate(()=>document.activeElement?.id),'restaurant-review-heading',
+        'Review must move keyboard focus into the visible unsaved bill');
       assert.match(await page.locator('#restaurant-review-total').textContent(),/80\.00/);
       assert.equal(db.prepare('SELECT COUNT(*) n FROM restaurant_bills').get().n,0,
         'Review is an unsaved draft');
@@ -226,6 +228,8 @@ try{
       await page.locator('#cart-items').getByRole('button',{name:'Remove one Masala Chai'}).click();
       assert.match(await page.locator('#restaurant-review-total').textContent(),/80\.00/);
       await page.locator('#edit-restaurant-bill').click();
+      assert.equal(await page.evaluate(()=>document.activeElement?.id),'menu-search',
+        'Continue editing must restore focus to the menu search');
       assert.equal(await page.locator('#restaurant-review').isVisible(),false);
       assert.equal(db.prepare('SELECT COUNT(*) n FROM restaurant_bills').get().n,0);
       await page.locator('#review-restaurant-bill').click();
@@ -245,6 +249,8 @@ try{
       assert.equal(db.prepare('SELECT COUNT(*) AS n FROM restaurant_bill_requests').get().n,1);
       const receiptLink=page.locator('#restaurant-message a').filter({hasText:'Open saved receipt #1'});
       await receiptLink.waitFor({state:'visible'});
+      assert.equal(await page.evaluate(()=>document.activeElement?.id),'restaurant-message',
+        'Saved receipt status should receive keyboard focus even after lost POST response');
       assert.match(await receiptLink.getAttribute('href'),/\/api\/restaurant\/bills\/1\/receipt/);
       // New restaurant workspace remains readable in a real 1440px browser:
       // collected means an actually recorded payment, never an unpaid room bill.
