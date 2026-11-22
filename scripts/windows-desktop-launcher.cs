@@ -121,6 +121,10 @@ namespace FortLedgerDesktop
       psi.UseShellExecute = false;
       psi.CreateNoWindow = true;
       psi.WindowStyle = ProcessWindowStyle.Hidden;
+      psi.EnvironmentVariables.Remove("FORTLEDGER_DB");
+      psi.EnvironmentVariables.Remove("FORTLEDGER_AUTH_FILE");
+      psi.EnvironmentVariables.Remove("FORTLEDGER_BACKUP_DIR");
+      psi.EnvironmentVariables.Remove("FORTLEDGER_BACKUP_PASSPHRASE");
       psi.EnvironmentVariables["FORTLEDGER_DATA_DIR"] = data;
       psi.EnvironmentVariables["FORTLEDGER_HOST"] = "127.0.0.1";
       psi.EnvironmentVariables["PORT"] = "3000";
@@ -224,7 +228,9 @@ namespace FortLedgerDesktop
         using (var client = new System.Net.Sockets.TcpClient())
         {
           IAsyncResult attempt=client.BeginConnect("127.0.0.1",3000,null,null);
-          return attempt.AsyncWaitHandle.WaitOne(150);
+          if(!attempt.AsyncWaitHandle.WaitOne(150))return false;
+          client.EndConnect(attempt);
+          return true;
         }
       }
       catch { return false; }
