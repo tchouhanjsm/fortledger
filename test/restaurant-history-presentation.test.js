@@ -30,7 +30,7 @@ test('saved restaurant bill listing shows real settlement state without altering
     assert.equal(rows.find(x=>x.id===unlinked.id).booking_id,null);
     assert.equal(rows.find(x=>x.id===linked.id).items[0].quantity,2);
     const paid=settleRoomBill(db,id,linked.id,'upi',null,{request_id:randomUUID()});
-    assert.equal(paid.restaurant_paid_paise,24000);
+    assert.equal(paid.settled_paise,24000);
     rows=listRestaurantBills(db);
     const updated=rows.find(x=>x.id===linked.id);
     assert.equal(updated.settlement_method,'upi');
