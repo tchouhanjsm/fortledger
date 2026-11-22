@@ -970,6 +970,7 @@ async function load(){
   $('#import-menu').hidden=!can('menu.manage');
   $('#preview-menu').hidden=!can('menu.manage');
   $('#staff-admin').hidden=currentUser.role!=='owner';
+  $('#update-center').hidden=!can('system.update');
   $('#guest-create').hidden=!can('guests.write');
   const settingsSave=$('#business-form').querySelector('[type=submit]');
   if(settingsSave)settingsSave.disabled=!can('settings.admin');
@@ -1091,6 +1092,26 @@ async function renderProfile(){
     }
   }
 }
+$('#update-center-check').onclick=async()=>{
+  if(!can('system.update'))return;
+  const button=$('#update-center-check'),message=$('#update-center-state');
+  const versions=$('#update-center-versions');
+  button.disabled=true;message.textContent='Checking GitHub main…';
+  versions.textContent='';
+  try{
+    const state=await api('/api/system/updates');
+    message.textContent=state.message;
+    message.dataset.state=state.state;
+    const short=sha=>/^[a-f0-9]{12}$/i.test(sha||'')?sha:'Unavailable';
+    versions.textContent='Installed: '+short(state.current)+
+      ' · GitHub main: '+short(state.remote);
+    $('#update-center-windows').hidden=state.platform!=='windows';
+    $('#update-center-mac').hidden=state.platform!=='mac';
+  }catch(error){
+    message.dataset.state='unavailable';
+    message.textContent='Update check failed: '+error.message;
+  }finally{button.disabled=false;}
+};
 $('#profile-password-form').onsubmit=async event=>{
   event.preventDefault();
   const form=event.currentTarget,message=$('#profile-password-message');
