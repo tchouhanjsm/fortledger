@@ -135,6 +135,21 @@ function renderBookings(){
         'Confirm the guest has physically arrived and the assigned room is ready for check-in?')){
         status.value=b.status;return;
       }
+      const day=hotelToday();
+      const offDateCheckin=next==='checked_in'&&(day<b.checkin||day>=b.checkout);
+      const earlyCheckout=next==='checked_out'&&day<b.checkout;
+      if(offDateCheckin||earlyCheckout){
+        if(!['owner','manager'].includes(currentUser?.role)){
+          alert('Only an owner or manager can approve a check-in outside stay dates or an early checkout.');
+          status.value=b.status;return;
+        }
+        const reason=prompt((offDateCheckin?'Check-in is outside the booked stay dates.':'Guest is checking out before the booked departure date.')+
+          '\\nHotel business date: '+day+' · Booked '+b.checkin+' to '+b.checkout+
+          '\\nProvide a review reason of at least 10 characters:');
+        if(reason===null){status.value=b.status;return;}
+        if(reason.trim().length<10){alert('A date exception requires a meaningful reason.');status.value=b.status;return;}
+        body.date_override=true;body.reason=reason.trim();
+      }
       if(next==='checked_out'){
         if(!confirm('Confirm the guest has physically departed? Checkout will mark assigned rooms as needing cleaning.')){
           status.value=b.status;return;

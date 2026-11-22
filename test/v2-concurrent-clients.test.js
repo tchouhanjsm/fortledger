@@ -8,7 +8,7 @@ import {importMenuCsv,listMenu} from '../src/restaurant.js';
 test('simultaneous staff clients cannot duplicate a booking, restaurant charge, or folio settlement',async()=>{
   const db=openDatabase(':memory:');
   importMenuCsv(db,'name,category,price,tax_rate\nTea,Drinks,150,5');
-  const server=createApp(db).listen(0,'127.0.0.1');
+  const server=createApp(db,{businessDate:()=> '2027-04-10'}).listen(0,'127.0.0.1');
   await new Promise(resolve=>server.once('listening',resolve));
   const base='http://127.0.0.1:'+server.address().port;
   const post=async(url,method,body)=>{

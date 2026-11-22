@@ -5,7 +5,9 @@ import {createApp} from '../src/server.js';
 import {createPasswordRecord} from '../src/auth.js';
 import {createStaff} from '../src/staff.js';
 test('checkout automatically marks room dirty; next arrival requires staff-confirmed readiness',async()=>{
-  const db=openDatabase(':memory:'),server=createApp(db).listen(0,'127.0.0.1');
+  const db=openDatabase(':memory:');
+  let day='2026-12-01';
+  const server=createApp(db,{businessDate:()=>day}).listen(0,'127.0.0.1');
   await new Promise(resolve=>server.once('listening',resolve));
   const base='http://127.0.0.1:'+server.address().port;
   const json=async(route,method='GET',body)=>{
@@ -27,10 +29,11 @@ test('checkout automatically marks room dirty; next arrival requires staff-confi
     assert.equal((await json('/api/bookings/'+a.data.id+'/status','PATCH',{status:'checked_in'})).status,200);
     assert.equal((await json('/api/bookings/'+b.data.id+'/status','PATCH',{status:'checked_in'})).status,400);
     const out=await json('/api/bookings/'+a.data.id+'/status','PATCH',{
-      status:'checked_out',acknowledge_balance:true
+      status:'checked_out',acknowledge_balance:true,date_override:true,reason:'Guest departed early with acknowledgement'
     });
     assert.equal(out.status,200);
     assert.equal((await json('/api/housekeeping')).data[0].status,'dirty');
+    day='2026-12-02';
     const blocked=await json('/api/bookings/'+b.data.id+'/status','PATCH',{status:'checked_in'});
     assert.equal(blocked.status,400);
     assert.match(blocked.data.error,/not ready/);

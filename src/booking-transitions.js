@@ -1,3 +1,4 @@
+import {hotelBusinessDate} from './hotel-clock.js';
 import {NET_PAYMENTS_SQL} from './payment-ledger.js';
 import {getGuestFolio} from './folio.js';
 import {recordAudit} from './financial-audit.js';
@@ -11,18 +12,31 @@ const NEXT={
   cancelled:[]
 };
 /** Never create a physical check-in from a category-only hold. */
-export function transitionBooking(db,id,status,{actor,acknowledge_balance=false,reason=''}={}){
+export function transitionBooking(db,id,status,{actor,acknowledge_balance=false,reason='',
+  override=false,businessDate=hotelBusinessDate()}={}){
   if(!Number.isSafeInteger(id)||id<1)throw new Error('Invalid booking ID');
   if(!Object.hasOwn(NEXT,status))throw new Error('Invalid booking status');
   if(!actor)throw new Error('Authenticated actor required');
   if(typeof reason!=='string'||reason.length>300)throw new Error('Invalid transition reason');
+  if(typeof override!=='boolean')throw new Error('Invalid date override');
+  if(typeof businessDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(businessDate)||
+     !Number.isFinite(Date.parse(businessDate+'T00:00:00Z'))||
+     new Date(businessDate+'T00:00:00Z').toISOString().slice(0,10)!==businessDate)
+    throw new Error('Invalid hotel business date');
   return db.transaction(()=>{
-    const current=db.prepare(`SELECT b.id,b.status,b.rooms_count,${NET_PAYMENTS_SQL} AS paid_paise
+    const current=db.prepare(`SELECT b.id,b.status,b.rooms_count,b.checkin,b.checkout,${NET_PAYMENTS_SQL} AS paid_paise
       FROM bookings b WHERE b.id=?`).get(id);
     if(!current)throw new Error('Booking not found');
     if(status===current.status)return {ok:true,unchanged:true,warnings:[]};
     if(!NEXT[current.status].includes(status))
       throw new Error('Invalid booking transition: '+current.status+' → '+status);
+    const outsideCheckin=businessDate<current.checkin||businessDate>=current.checkout;
+    const earlyCheckout=status==='checked_out'&&businessDate<current.checkout;
+    if((status==='checked_in'&&outsideCheckin)||earlyCheckout){
+      if(!override||!['owner','manager'].includes(actor.role)||reason.trim().length<10)
+        throw new Error((status==='checked_in'?'Check-in is outside booked stay dates':'Early checkout')+
+          '; owner/manager date override and reason (at least 10 characters) required');
+    }
     if(status==='checked_in'){
       const assigned=db.prepare('SELECT COUNT(*) AS n FROM booking_room_allocations WHERE booking_id=?').get(id).n;
       if(assigned!==current.rooms_count)
@@ -46,7 +60,9 @@ export function transitionBooking(db,id,status,{actor,acknowledge_balance=false,
     db.prepare('UPDATE bookings SET status=? WHERE id=?').run(status,id);
     if(status==='checked_out')dirtyRoomsAfterCheckout(db,id,actor);
     recordAudit(db,actor,'booking.status_changed','booking',id,
-      {from:current.status,to:status,reason:reason.trim(),acknowledged_balance:status==='checked_out'&&acknowledge_balance===true});
+      {from:current.status,to:status,reason:reason.trim(),hotel_business_date:businessDate,
+       stay_checkin:current.checkin,stay_checkout:current.checkout,date_override:override===true,
+       acknowledged_balance:status==='checked_out'&&acknowledge_balance===true});
     return {ok:true,from:current.status,to:status,warnings};
   })();
 }

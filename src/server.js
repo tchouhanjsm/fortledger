@@ -33,7 +33,7 @@ import {createBookingSafely} from './booking-create.js';
 import {deleteUnusedBooking,deleteUnusedGuest} from './entry-deletion.js';
 import {requireConfiguredHost,localListenerSettings,readLanTlsCredentials} from './network-policy.js';
 
-export function createApp(db,{authRecord=null,authFile=null,network=null}={}) {
+export function createApp(db,{authRecord=null,authFile=null,network=null,businessDate=null}={}) {
   if(network?.mode==='lan'&&!authRecord)throw new Error('LAN access requires configured authentication');
   const app = express();
   app.disable('x-powered-by');
@@ -422,7 +422,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null}={}) {
     try{
       const response=transitionBooking(db,Number(req.params.id),req.body?.status,{
         actor:req.actor,acknowledge_balance:req.body?.acknowledge_balance===true,
-        reason:req.body?.reason??''
+        reason:req.body?.reason??'',override:req.body?.date_override===true,
+        ...(businessDate?{businessDate:businessDate()}:{})
       });
       res.json(response);
     }catch(error){next(error);}
