@@ -64,3 +64,12 @@ test('local navigation icons have consistent geometry and accessible text',()=>{
   assert.match(read('app.js'),/\$\('#skip-to-main'\)\.onclick=/);
   assert.doesNotMatch(nav,/[◈▦▤♙▧⚙☕◉]/);
 });
+
+
+test('reservation header uses a defined layout instead of competing flex children',()=>{
+  const operations=read('heritage-sky-operations.css');
+  assert.match(operations,/#bookings > \.panel-head\{[\s\S]*?grid-template-areas:"intro queues" "intro filters"/);
+  assert.match(operations,/grid-template-areas:"intro" "queues" "filters"/);
+  assert.match(operations,/@media\(max-width:600px\)\{\.booking-filters\{grid-template-columns:minmax\(0,1fr\)\}\}/);
+  assert.doesNotMatch(operations,/\.booking-filters select\{max-width:min\(100%,290px\)/);
+});
