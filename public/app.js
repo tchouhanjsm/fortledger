@@ -140,6 +140,10 @@ function renderBookings(){
         }
         try{
           const folio=await api('/api/bookings/'+b.id+'/folio');
+          if(folio.invoice_discrepancy){
+            alert('The saved proforma does not match this booking amount. Owner/manager review is required before checkout; the issued document was not changed.');
+            status.value=b.status;return;
+          }
           if(folio.combined_due_paise>0){
             if(!confirm('Guest has an outstanding folio of '+money(folio.combined_due_paise)+
               '. Confirm checkout with outstanding balance for later follow-up?')){
