@@ -828,14 +828,24 @@ function renderShiftHandover(today){
       }
       if(entry.kind==='departure')return openFilteredBookingQueue('departures');
       if(entry.kind==='allocation')return openFilteredBookingQueue('unassigned');
+      if(entry.kind==='readiness'){
+        // Navigate to the exact existing physical room. A tomorrow maintenance
+        // block need not be marked "out of service today" in the room list.
+        roomReadinessFilter='all';
+        renderRooms();
+        const room=rooms.find(r=>r.id===entry.first_room_id);
+        return workspaceNavigator.navigate('rooms',room?
+          'room-record-'+room.id:'room-list');
+      }
       if(entry.kind==='room')return openRoomAttention();
       if(entry.kind==='maintenance')
         return workspaceNavigator.navigate('rooms','maintenance-workspace');
       if(entry.kind==='restaurant'){
         restaurantBillFilter='unmatched';
-        restaurantHistoryLimit=15;
+        $('#restaurant-history-search').value='';
+        restaurantHistoryLimit=Math.max(15,restaurantBills.length);
         renderRestaurantHistory();
-        return workspaceNavigator.navigate('restaurant','restaurant-history-section');
+        return workspaceNavigator.navigate('restaurant','restaurant-bill-'+entry.record_id);
       }
       if(entry.kind==='closing'){
         $('#home-closing').open=true;
@@ -843,7 +853,9 @@ function renderShiftHandover(today){
         void renderDailyClose();
         return workspaceNavigator.navigate('dashboard','home-closing');
       }
-      if(entry.kind==='backup')window.location.hash='business-settings';
+      if(entry.kind==='backup')return can('system.update')?
+        workspaceNavigator.navigate('profile','backup-center'):
+        workspaceNavigator.navigate('business-settings');
     };
     list.append(button);
   }
@@ -1955,6 +1967,7 @@ function renderRestaurantHistory(){
   for(const bill of matched.slice(0,restaurantHistoryLimit)){
     const status=restaurantBillStatus(bill);
     const article=label('article',undefined,'restaurant-history-card');
+    article.id='restaurant-bill-'+bill.id;
     const top=label('div',undefined,'restaurant-history-main');
     const identity=label('div',undefined,'restaurant-history-identity');
     identity.append(label('strong','Bill #'+bill.id),
