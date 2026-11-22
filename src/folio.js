@@ -13,6 +13,18 @@ function getBooking(db,id){
   if(!booking)throw new Error('Booking not found');
   return booking;
 }
+/** Existing issued snapshots are immutable. Detect historic mismatches explicitly
+ * rather than pretending the current booking receivable agrees with an old PDF. */
+function invoiceContractMismatch(db,bookingId,contractTotal){
+  const issued=db.prepare("SELECT id,number,snapshot FROM invoices WHERE booking_id=? AND kind='proforma'").get(bookingId);
+  if(!issued)return null;
+  let total;
+  try{total=JSON.parse(issued.snapshot).total_paise;}catch{total=null;}
+  if(total===contractTotal)return null;
+  return {invoice_id:issued.id,invoice_number:issued.number,
+    proforma_total_paise:Number.isSafeInteger(total)?total:null,
+    booking_total_paise:contractTotal};
+}
 function roomBills(db,bookingId){
   return db.prepare(`
     SELECT b.id,b.total_paise,b.tax_paise,b.created_at,s.id AS settlement_id,s.method AS settlement_method,
@@ -23,10 +35,11 @@ function roomBills(db,bookingId){
 export function getGuestFolio(db,bookingId){
   const booking=getBooking(db,bookingId);
   const accommodation=bookingTotals(booking);
+  const invoice_discrepancy=invoiceContractMismatch(db,bookingId,accommodation.total_paise);
   const bills=roomBills(db,bookingId);
   const restaurant_due_paise=bills.filter(x=>!x.settlement_id).reduce((sum,x)=>sum+x.total_paise,0);
   return {booking_id:bookingId,guest_name:booking.guest_name,status:booking.status,
-    accommodation,bills,restaurant_due_paise,
+    accommodation,bills,invoice_discrepancy,restaurant_due_paise,
     combined_due_paise:accommodation.due_paise+restaurant_due_paise};
 }
 export function settleRoomBill(db,bookingId,billId,method,actor=null){
@@ -50,6 +63,7 @@ export function settleCombined(db,bookingId,method,actor=null){
   return db.transaction(()=>{
     const folio=getGuestFolio(db,bookingId);
     if(folio.status==='cancelled')throw new Error('Cancelled booking cannot be settled');
+    if(folio.invoice_discrepancy)throw new Error('Proforma and booking totals disagree; manager review required before combined settlement');
     if(folio.combined_due_paise===0)throw new Error('No outstanding amount');
     const group=randomUUID();
     const amount=folio.accommodation.due_paise;
