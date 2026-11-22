@@ -9,7 +9,8 @@
 3. Header/main desktop/tablet/mobile padding had competing 12/18/20/24/32/44px rules, with narrow mobile panels at 13px. Establish 32/24/16px page padding and tokenized panel/form spacing; preserve intentional domain layouts.
 4. The mobile More menu used heritage-gold focus outlines, inconsistent with other controls' documented blue focus. Standardize visible blue focus.
 5. There was no keyboard skip-to-main shortcut. Add one that focuses the active main landmark without changing the hash route, booking or financial task.
-6. Browser smoke already exercises seven CSS viewport widths and the real authenticated roles, but had no retained screenshot artifacts or narrow reflow proxy for 200% zoom. Extend evidence. Browser automation is not an actual physical hotel Mac inspection.
+6. Initial synthetic Chromium screenshot at 1440px showed the Reservation ledger title wrap into two lines as the queue and status filters competed inside a single flex header. The booking header now uses explicit desktop grid areas, one-column task groups below 1250px and single-column filters below 600px, with a real layout/clipping browser assertion.
+7. Browser smoke already exercises seven CSS viewport widths and the real authenticated roles, but had no retained screenshot artifacts or narrow reflow proxy for 200% zoom. Extend evidence. Browser automation is not an actual physical hotel Mac inspection.
 
 ## Canonical design contract
 
@@ -44,3 +45,5 @@ Parallel **business safety** priorities remain: audited saved-bill correction/cr
 ## Evidence limits and delivery
 
 Source audit and Node tests are reproducible. CI can save **after-change** Chromium screenshots using synthetic hotel data, but no verified before-change screenshots exist yet. Record these gaps explicitly. Screenshot pixels alone are not WCAG certification. All PRs must pass Linux, Windows and Chromium before merging. FortLedger remains ACTIVE ALPHA — NOT RELEASED.
+
+Screenshot notes: screenshot collection crops to the configured CSS viewport width and scrolls to the top; an intentionally horizontally scrollable calendar remains usable inside its own region. Artifact capture is an inspection aid, not evidence that visual mismatches are all eliminated.
