@@ -1,159 +1,77 @@
 # FortLedger
 
-**Local-first hotel booking, invoicing and restaurant billing for Garh Jaisal.**
+**Local-first hotel and restaurant management for Garh Jaisal (seven physical rooms).**
 
-> **Status:** Active alpha with booking calendar, proformas, local business settings, restaurant billing and guest folios. NOT production-ready. Do not enter real guest, bank or payment details yet.
+**Release status: ACTIVE ALPHA — NOT RELEASED.** Designed to run on the hotel Mac with Node.js 22+, Express, SQLite, a built-in browser interface and no paid cloud dependency. Never put genuine guest/financial data into a new installation until device, security, financial and restore acceptance is signed off. This repository does **not** store your runtime database, hotel passwords, signed invoices or actual backups.
 
-## Windows install and update (initial alpha)
+## Start and update on the Mac
 
-For Windows 10/11, follow the complete [Windows installation and non-destructive update guide](docs/WINDOWS_SETUP.md). It covers Git clone, Node.js 22, `npm install`, local password setup, startup, verified pre-update backups and later `git pull`-based updates **without deleting reservations or invoices**. Use the Windows launch/update scripts; do not run bare `npm start` without the same persistent data environment. Current release is pre-production.
+On first use, from the existing project folder:
 
-## Start locally
-Requires Node.js 22+ and a local build toolchain for the SQLite native dependency.
-
-```bash
-npm install
+```sh
+npm install --no-audit --no-fund
 npm test
-npm run setup-auth  # first use; choose a strong local password
+npm run setup-auth
 npm start
 ```
 
-Open **http://127.0.0.1:3000**. Data is stored in `data/fortledger.sqlite` (ignored by Git).
+Open `http://127.0.0.1:3000` on the Mac. The default listener is loopback only, and starting the production server requires owner authentication. Use **the same** existing `FORTLEDGER_DATA_DIR`, database, authentication and backup settings whenever you update or restart. Never create a second blank SQLite database to resolve a missing table.
 
-## First-use setup
-The database creates **seven placeholder rooms** (Room 1–Room 7), all under category `Unassigned`. Rename them and set the real category in **Room Inventory** before adding genuine reservations. For safety in this initial release, set all seven room categories **before** booking: category changes are blocked after a booking exists, though names remain editable. The booking form accepts category-level holds or one specified room, agreed nightly GST-inclusive rate, dates, meal plan and advance. Search is available in the booking ledger.
+For an existing installation, **stop the old server, verify an independent encrypted backup and original data path, then update code** using `git pull --ff-only origin main` and `npm install --no-audit --no-fund`; restart with the unchanged environment. Database upgrades are transactional, but running a newer version can migrate the database and should not be attempted before backup verification. Do not delete WAL files or reset the repository to work around data errors. Follow [Mac preflight](docs/MAC_RELEASE_PREFLIGHT.md), [database v8 billing repair](docs/V8_RESTAURANT_BILL_SCHEMA_FIX.md) and [v9 audit identity migration](docs/V9_MONOTONIC_ENTITY_IDS.md).
 
-## Implementation status
-- ✅ Basic Node HTTP app and local SQLite storage.
-- ✅ Seven configurable room placeholders.
-- ✅ Simple booking entry, availability checks and searchable reservations.
-- ✅ GST-inclusive 5% *illustrative business-rule* breakdown in the backend, ledgered initial advances and balance due.
-- ✅ Seven-day room calendar including unassigned category reservations, booking edits, payment history/entry and SQLite backup download.
-- ✅ Initial immutable proforma snapshot and local PDF download from booking records (no tax invoice issuance).
-- ✅ Verified offline database restore, weekly/monthly calendar and multi-line proforma editor.
-- ✅ Restaurant CSV import, saved bills, cash/UPI/card records, checked-in guest room charges and combined/separate settlement.
-- ✅ Local password sessions, experimental Epson LAN transport, hotel logo upload, encrypted backup scheduling and read-only operational diagnostics.
-- ⏳ Legally issued signed GST tax invoices, physical printer QA, customer directory, packaging and complete production review.
+Windows is also supported for engineering/tests: [Windows installation and recovery guide](docs/WINDOWS_SETUP.md). It is not the hotel's primary workstation.
 
-**Tax disclaimer:** The stated 5% GST rule is an agreed business example, not a verified tax determination. Validate lawful tax treatment and invoice requirements before production billing.
+## What is actually available today
 
-Read the [project blueprint](docs/PROJECT_BLUEPRINT.md) and [development log](docs/DEVELOPMENT_LOG.md) before starting a new development session. The blueprint records all decisions, scope, acceptance cases and the next milestones.
+| Area | Available in alpha | Important limitation or review |
+| --- | --- | --- |
+| Bookings & inventory | Seven rooms, category reservations, physical allocations, booking edits, availability checks, calendar, search and status lifecycle | Physical room readiness/maintenance and [hotel-date exceptions](docs/V2_STAY_DATE_GUARDS.md) require actual staff confirmation; no automated channel manager |
+| Guest directory & staff | Returning-guest profiles, explicit stay links, owner/manager/front-desk/cashier roles and role-specific workspaces | No ID scan/document storage, CRM campaign automation, or independent device approval |
+| Accommodation documents | One immutable multi-line proforma per booking, downloadable single-page A4 PDF, saved branding and business settings | [Proforma must reconcile with booked value](docs/V2_INVOICE_FOLIO_CONTRACT.md); **final signed GST tax invoices are not enabled** |
+| Restaurant | CSV menu import, quantity/cart, cash/UPI/card food bills, manual and assigned guest room charges, saved receipts, printing and retry reconciliation | Bill-only workflow: **no kitchen tickets, kitchen order states, or KOT**. Direct Epson network sending needs actual paper verification |
+| Guest folio & money | Accommodation advances and payments, append-only refunds, food settlements, split bank accommodation + cash/UPI/card food settlement | All methods are operator-recorded, not bank-verified; stored transfer reference is not proof of settlement |
+| Cash closing & analytics | IST daily collections, recorded expenses, immutable cash-close snapshots, stale-close review and booked room-night analytics | Reviewed exceptions never silently rewrite original closing; ADR/RevPAR are booked and gross, not recognized profit |
+| Security | Password sessions, owner/staff RBAC, audit trails, retry-safe financial API on authenticated deployments, private LAN HTTPS foundation | Staff Wi-Fi isolation, certificate trust, device revocation and actual phone testing require on-site verification |
+| Backups & recovery | Optional scheduled encrypted SQLite backups, authentication checks, pre-update backup, offline recovery drills, diagnostics | Independent off-device storage and a real replacement-Mac restore must be proven before release |
+| Mobile | Responsive screens at seven tested widths and local install metadata | Requires a live server; **offline bookings and financial writes are not supported** |
 
-## Local backups and recovery (alpha)
-Click **Download database backup** in the booking ledger and securely store the downloaded SQLite file outside your computer. This contains guest/payment information; treat it as sensitive.
+**Financial invariants:** money uses integer paise; new financial API calls in authenticated deployments require a stable `request_id`; retries with an unchanged key replay the original record, not another charge. A proforma is a snapshot of the booking receivable, not an independent or unrecorded accommodation charge. Historical issued documents and audit events are not silently rewritten. See [financial request IDs](docs/V2_FINANCIAL_REQUEST_IDS.md), [restaurant staff audit](docs/V2_RESTAURANT_SALE_AUDIT.md) and [manual room charge matching](docs/V2_MANUAL_ROOM_CHARGE_REVIEW.md).
 
-To restore: stop the app, verify it is not running, and run:
-```bash
-npm run restore -- /path/to/fortledger-backup.sqlite ./data/fortledger.sqlite --confirm
+## Operational commands
+
+```sh
+npm test
+npm run test:browser
+npm run mac:preflight
+npm run doctor
+npm run recovery:drill
+npm run recovery:encrypted-drill
+npm run release:check
 ```
-The restore command validates SQLite integrity and expected schema, requires explicit confirmation, rejects active WAL files, and preserves the previous database as a timestamped `.before-restore-...` safety copy. **Do not restore while the app is running.** Test first with non-production data. An automated encrypted backup schedule is not yet implemented.
 
-## Proforma PDF preview (alpha)
-From a booking, choose **Proforma PDF** to create one immutable snapshot and download its PDF. Repeated clicks return the existing invoice without consuming a new number. The sequence begins at `GH-2026-001` and continues across calendar years. A PDF has the exact fixed T&C, booking figures, advance paid and separate illustrative 5% GST. **No tax invoices are issued yet.** Company addresses, bank details, uploaded hotel logo, custom accommodation lines and the legally compliant invoice workflow remain future milestones. Do not use these preview PDFs for statutory billing.
+The release checker is **intentionally** expected to report `NOT RELEASED` until human certification is recorded. `npm run test:browser` is a synthetic Chromium smoke check; passing it does not certify actual hardware, the Mac's live configuration, or GST law. [Operator handover](docs/PHASE8_OPERATOR_HANDOVER.md), [release readiness](docs/PHASE8_RELEASE_GATES.md) and [Epson physical acceptance](docs/EPSON_PHYSICAL_ACCEPTANCE.md) give the on-site steps.
 
-## Multiple accommodation lines (alpha)
-The **Proforma PDF** action opens a pre-issue editor: guest/group name, bill-to recipient and optional billing address plus 1–20 independently priced accommodation lines (description, rooms, nights, negotiated GST-inclusive rate). Totals are recalculated in integer paise on the backend. Once issued the document is immutable and repeated requests return the saved original. Rates remain an illustrative 5% rule until statutory compliance is verified. The existing booking and payment ledgers are not changed by invoice editing.
+### Private staff LAN (optional, disabled by default)
 
-## Business settings (alpha)
-The **Hotel & payment settings** section stores hotel name, optional address/GSTIN/contact details and bank/IFSC/UPI information locally. New proforma PDFs snapshot the current settings, keeping previously issued invoices unchanged. Do not enter real account details until the local app has authentication and access controls; the repository remains public, although runtime database files are gitignored. Uploaded logo support remains pending.
+Only enable after [private staff HTTPS preparation](docs/V2_PRIVATE_LAN_HTTPS.md): a dedicated RFC1918 IP actually assigned to the Mac, correctly trusted TLS certificate + private key, staff-only Wi-Fi segmentation, firewall rules, and **no public port forwarding**. Default localhost access remains unchanged. No cloud server or third-party subscription is required.
 
-## Restaurant MVP (alpha)
-Import a CSV with header `name,category,price,tax_rate` (GST-inclusive price, integer percent rate configured per menu item). Menu imports update matching name/category items without erasing historical bills. Search items, add quantities, settle by cash/UPI/card, or charge to a **checked-in booking**. Each bill preserves item, quantity, rate, tax and payment snapshots in SQLite. The restaurant module does not yet print to Epson, create statutory tax receipts or support manual unmatched room entries. Do not use for live trading until those and security safeguards are implemented.
+### Financial and legal scope
 
-## Guest folio and room-charge settlement (alpha)
-Open **Guest folio** from a booking. The folio shows accommodation due, unsettled restaurant room charges, and combined due without adding restaurant charges into accommodation proforma totals. Mark an individual restaurant bill paid separately (cash, UPI, card), or settle all remaining accommodation and room charges in a single transaction. Each room bill has at most one settlement record and combined payments only add outstanding accommodation to the hotel payment ledger. This records payments; it is **not** a final GST invoice or receipt generator, and refunds/partial payments are not implemented.
+Proformas and GST **review drafts** can be prepared; they do **not** constitute issued tax invoices. This app does not send refunds or verify bank funds. GST rates, exemptions, SAC classification, invoice signing/e-invoicing, bank reconciliation and final invoice numbering must be validated by the hotel's accountant before live use. See [compliance review](docs/COMPLIANCE_REVIEW.md).
 
-## Calendar views
-The booking calendar has two views: a seven-day room assignment grid and a monthly overview of occupied room counts out of seven physical rooms. Category-held unassigned bookings count as occupied capacity in the monthly overview. Click a date to jump to its week. Checkout date is excluded from occupied nights.
+## Human certification still required
 
-## Local administrator sign-in (alpha)
-First-time setup requires `npm run setup-auth` in an interactive terminal. A strong password is hashed using Node.js scrypt and stored under the gitignored `data/admin-auth.json` (mode 0600); it is never sent to a cloud service. `npm start` refuses to start until a password has been configured. The browser signs in using an HttpOnly SameSite=Strict session cookie; sessions expire after eight hours or logout, and repeated failed attempts trigger a local cooldown. API requests are protected, including backup downloads, and mutations require JSON with same-origin checks. Existing automated integration tests use a deliberately unauthenticated in-memory app fixture; production startup enforces authentication. **Do not reuse banking or other passwords.** Security and physical-device deployment still require review.
+| Pending proof | Who/what must verify |
+| --- | --- |
+| Hotel Mac data-path, restart, permissions and diagnostics | Hotel operator on the actual Mac |
+| Guest-Wi-Fi denial, staff-network HTTPS trust and revocation | Network technician + real authorized phones |
+| Printed and reprinted Epson slip, timeout and no duplicate settlement | Hotel operator observing physical paper |
+| Independent encrypted backup recovery on another Mac/drive | Operator restoring to an isolated replacement device |
+| Real booking, billing, checkout, 200% zoom and accessibility journey | Front desk, cashier and manager |
+| GST tax invoice treatment and lawful issuance | Qualified accountant |
 
-## Browser-based restaurant receipt printing (alpha)
-Every saved restaurant bill has a **Print receipt** button showing a compact 80-mm receipt with preserved item names, quantities, inclusive item totals, recorded tax, payment/room-charge status, and receipt number. Use the browser print dialog with a printer installed in the operating system, including an Epson network printer if correctly configured. **No direct Epson TM-T82 LAN/ESC-POS integration or physical hardware verification yet.** The slip is explicitly marked *Not a tax invoice*; statutory tax receipts require a separate compliant implementation.
+**No software-only test can satisfy any of these gates.** If one is incomplete, the release verdict stays `NOT RELEASED`.
 
-## Statutory invoicing gate
-The app **does not issue GST tax invoices**. Review [docs/COMPLIANCE_REVIEW.md](docs/COMPLIANCE_REVIEW.md) before enabling final invoices. Hotel accommodation 5% GST has a per-unit value condition under the official 2025 clarification; no blanket rate assumption is valid. The restaurant 80mm slip is a non-statutory payment receipt.
+## Product architecture and development history
 
-## Multi-room physical allocations
-Bookings may reserve rooms by category, assign any number of physical rooms up to the booked quantity, or remain partially unassigned. A two-room booking can allocate two individual rooms without duplication. Availability validates both category-held capacity and physical-room conflicts on every occupied night, and legacy single-room assignments migrate to the allocation table automatically.
-
-## Refund records (alpha)
-The payment ledger supports **append-only refund records** against a specific original booking payment. Each record includes method, reason, amount, and retry-safe unique request ID; refunded amounts reduce outstanding paid balance across bookings and guest folios. Already-issued proformas remain unchanged; future proformas use the current net-paid balance. FortLedger **does not send money or trigger an external refund**; an operator must complete the actual bank/UPI/card/cash refund separately.
-
-## Automated encrypted backups (alpha)
-Optional local scheduled backup runs at startup and every 24 hours **while the application runs**, provided both environment variables are configured:
-```bash
-export FORTLEDGER_BACKUP_DIR=/absolute/path/to/separate-drive/fortledger-backups
-export FORTLEDGER_BACKUP_PASSPHRASE='choose-a-unique-secret-of-16-or-more-characters'
-npm start
-```
-The application writes AES-256-GCM encrypted SQLite snapshots using scrypt-derived keys and keeps the latest 30 backup files. Choose a **different disk/drive** or an independently synced encrypted folder; merely storing copies on the same disk will not protect against hardware failure. Do not check the passphrase into Git or shell history; set it through secure OS environment configuration. Decrypt onto a new candidate path with `npm run backup:decrypt -- /path/to/file.flbk /path/to/candidate.sqlite`, then stop the application and use the existing `npm run restore` command. Each encrypted file is integrity-authenticated; tampered files and wrong passwords fail decryption. The admin password file is outside the SQLite backup and needs its own secure recovery plan.
-
-**Limitation:** Automated snapshots run only while the Node.js app is active; a stopped computer cannot run them. Full off-device recovery tests and a production scheduling/secret-management setup still need completion.
-
-## Experimental Epson TM-T82 network printing
-For a network-compatible ESC/POS TM-T82 printer, configure the real private IPv4 address and port in your local environment (the following address is an example only):
-```bash
-export FORTLEDGER_PRINTER_HOST=192.168.1.100
-export FORTLEDGER_PRINTER_PORT=9100
-npm start
-```
-The **LAN Print** button sends text-only ESC/POS to the configured printer. It never creates another bill. An audited row tracks attempts and statuses. **sent_unverified** means bytes reached the socket, not that paper printed; network errors are **uncertain**. Reprinting requires explicit confirmation to reduce duplicate slips. Browser-driver printing remains available. Hardware-specific cut commands and rupee glyphs remain deferred until the exact TM-T82 variant is physically tested. Epson ESC/POS command reference: https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/ .
-
-## Manual restaurant room-charge review
-If the guest is not yet on the checked-in list, choose **Charge to room → Manual room / guest entry**, supply the room identifier and guest name and save the restaurant bill. The bill is stored as **pending review** and is deliberately excluded from every guest folio until an operator verifies and links it to an active checked-in booking using **Link to guest**. Linking does not create another bill and cannot be repeated. The original manually entered details are preserved for audit. This is a safeguard against assigning food charges to the wrong guest.
-
-## Draft GST invoice preparation (no legal issuance)
-From an issued proforma, select **Tax draft** to prepare a watermarked, downloadable PDF that shows supplier/recipient details, per-line SAC classification, illustrative CGST/SGST split and compliance blockers. Room and campsite classifications must be reviewed explicitly (e.g. 996311 versus 996312). A separate `tax_invoice_drafts` table stores editable snapshots linked one-to-one to proformas; creating a draft **does not consume a GST tax-invoice serial number** and is **not** a statutory issuance. The preview checks the 5% hotel accommodation value condition and reports missing GSTIN, supplier address, recipient details or signature. Final legal issuance remains disabled until all compliance, signature, e-invoice and numbering obligations are implemented and validated.
-
-## Hotel logo upload (alpha)
-In **Hotel & payment settings**, select a PNG or JPEG logo (maximum 800 KB) and save it. The current logo is stored only in local SQLite as a validated image asset. Issued proformas store the specific logo asset ID used at issue time, so updating your logo will **not silently change old invoices**. New tax drafts use the currently active logo. The PDF header preserves image aspect ratio and falls back to the hotel name when there is no logo. Logo files never need to be committed to GitHub; they are included in encrypted SQLite backups. Actual hotel artwork is still needed for final visual QA.
-
-## Local readiness diagnostics
-Run `npm run doctor` from the project directory after setting up the administrator login and starting the app at least once. The tool uses read-only SQLite checks for integrity, foreign keys and expected schema, verifies the seven-room inventory, counts pending manual room charges and uncertain printer jobs, and checks whether encrypted backup files are recent. It reports configuration status without printing guest names, banking details or secrets. It **never** labels the app production-ready: signed final GST invoice issuance, physical Epson tests and a complete recovery drill are independent release gates.
-
-## Focused module navigation
-FortLedger now opens a single operational area at a time instead of stacking unrelated sections on one long page. The five navigation links show booking calendar/ledger, seven-room inventory, invoices, restaurant billing, or hotel settings. The current module is reflected in the URL fragment, so bookmarks work. On mobile, the navigation remains accessible via a horizontally scrollable menu. This improves first-screen clarity and reduces unnecessary scrolling without introducing client-side routing dependencies.
-
-## Persistent data directory override
-Set `FORTLEDGER_DATA_DIR` to keep both `fortledger.sqlite` and `admin-auth.json` outside the source checkout. Individual `FORTLEDGER_DB` and `FORTLEDGER_AUTH_FILE` overrides remain available for special cases. The Windows scripts use `%LOCALAPPDATA%\\FortLedger\\data` automatically. The code directory can be updated and dependencies reinstalled without overwriting that data location. The existing `.gitignore` also excludes the legacy `data/` folder.
-
-## Staff profiles and RBAC (alpha)
-The original single-administrator sign-in is now the **owner** account (username `owner`, existing password unchanged). The owner can create individual manager, front desk and restaurant cashier users under **My Profile**. Each staff member logs in with their own username and password. API-level RBAC restricts bank settings, backups, invoices, bookings and restaurant endpoints; merely knowing a URL cannot bypass roles. Disabling a staff user invalidates ongoing access on the next request. Staff records are stored in local SQLite and included in existing backups. Run `npm test` after updates. This remains alpha and must pass a separate on-device security review before live business use.
-
-## Role-aware operations dashboard
-The initial screen now shows **Dashboard**: personalized greeting, role-appropriate KPIs, quick actions and recent activity. Booking staff see arrivals, departures, occupied rooms and outstanding stays; restaurant cashiers see saved food sales, menu inventory and unmatched room charges. Everything is derived from existing local records; no analytics cloud subscription. Empty invoices link directly to bookings, and first-time restaurant users see the menu import panel expanded. My Profile continues to provide staff account management and permissions.
-
-## Automated isolated recovery rehearsal
-Run `npm run recovery:drill` with the same `FORTLEDGER_DATA_DIR` / `FORTLEDGER_DB` and `FORTLEDGER_AUTH_FILE` settings as your installation. The command creates a consistent SQLite snapshot using SQLite's backup API, restores it to a private **temporary folder**, compares the contents of every table, copies and verifies the administrator credential file and cleans up all temporary files. It never replaces the live database and outputs no guest names or account numbers. **This does not verify an external-drive backup or a real Windows-machine disaster recovery.** Those remain mandatory manual release checks.
-
-## Password rotation and session safety
-In **My Profile → Change my password**, every authenticated owner or staff member can rotate their password after entering the current password. Successful changes sign out all active sessions for that user. The owner's password is atomically updated in the existing local `admin-auth.json`; staff password hashes remain in SQLite. Owners can also reset a staff member's password through the staff API, which immediately invalidates that employee's existing sessions. No recovery email or external service is required. Protect the local password file and backup copies. Losing the owner password still requires a separately controlled recovery procedure.
-
-## Local expense ledger (Phase 3 alpha)
-Owner and manager can record expenses from the Dashboard, with business date, category, INR amount, cash/UPI/card/bank method and optional payee/note. Expenses are stored in a separate immutable, idempotent SQLite ledger with actor attribution. They appear in the read-only India-business-day financial summary as **cash outflows**, separate from hotel/restaurant collections. The dashboard's `net cash movement` is collections less recorded expenses, **not profit**, taxable income or GST input-credit accounting. Corrections/voids, signed closing reports and verified bank reconciliation remain future milestones.
-
-## Seven-room housekeeping
-The Room Inventory screen now shows each room's status: **Ready / Needs cleaning / Cleaning**. Owner, manager and front desk staff can record the physical state; restaurant cashiers cannot access housekeeping. When a checked-in guest checks out, their assigned room(s) are marked **Needs cleaning** in the same transaction. Staff must explicitly mark each room **Ready** before it can be used for another check-in. Existing and future category-held bookings remain valid; housekeeping is not a maintenance out-of-service scheduler. Room state transitions are audited. Actual cleaning is never inferred from time or checkout alone.
-
-## Manual end-of-day cash closing (Phase 3 alpha)
-Owner and manager can record a daily cash closing from the Dashboard: business date, starting cash float, physically counted closing cash, discrepancy acknowledgment and comments. The expected cash balance comes only from **recorded cash transactions**, including hotel/restaurant cash receipts, refunds and cash expenses. Unknown legacy payment methods must be acknowledged. Closings are immutable local snapshots; if ledger records for the date change after closing, the saved closing displays **stale / needs review** instead of silently updating. This is not an accountant-certified cash statement: physical cash must be counted, and electronic receipts independently checked. Corrections and officially signed closing reports still need a formal review procedure.
-
-## Maintenance issues and date-scoped room outages (Phase 3)
-The **Room Inventory → Maintenance & room outages** panel lets front-desk staff report issues without disrupting bookings. Owner/manager can mark a specific physical room out of service for a date range; FortLedger checks **all existing named-room reservations and unassigned category holds** before accepting the block. A block cannot silently displace a committed guest. During blocked dates, new bookings/room assignments are rejected if capacity or room selection conflicts; physical check-in is checked again. Only owner/manager can resolve an issue and release its block. Everything is local SQLite, actor-audited, and works offline. Outages use half-open hotel-day ranges: the end date is the first available date. An issue can also remain non-blocking for minor repair. Maintenance does **not** automatically move existing bookings, certify work or release a room: staff must verify the repair.
-
-## Guest directory and returning guests (Phase 4)
-The **Guests** page stores deliberately minimal local records (name, optional phone/email/company, optional short stay preference). Search by name/contact/company, review **explicitly linked** stay history, and start a new reservation with details prefilled. The booking form can link an existing profile without changing its separately agreed booking guest name, company or historic invoice snapshot. Profile edits never rewrite old bookings, payments or PDFs. **No automatic matching/merging by name**, because two people can share the same name. Old bookings remain unlinked until staff verifies identity. Front desk, manager and owner can access guest CRM; restaurant cashiers cannot. No IDs, passport scans, marketing consent flags or automated messaging are collected.
-
-## Room performance dashboard (Phase 4)
-Owner/manager dashboard has a filterable booked-room-night report: **booked occupancy**, **gross ADR**, **gross RevPAR** and **gross booked accommodation value**. Date range is hotel nights [start,end), with seven physical rooms minus overlapping active maintenance outages; cancelled bookings never count, and each overlapping stay night contributes the agreed GST-inclusive nightly room price. This is a reservation-booking report (including future bookings), NOT actual checked-in occupancy. Gross ADR and RevPAR are explicitly **tax-inclusive**, not the conventional net-of-tax hotel revenue metrics. The current database does not maintain approved tax-exclusive room revenue per occupied night; no GST, recognized revenue, profit or payment collection is inferred from these KPIs. Historical outages closed before the reporting period cannot always be reconstructed from the current maintenance state, so review historical availability figures before making official business statements.
-
-## FortLedger V2: Mac/mobile operations and secure staff Wi-Fi (alpha)
-
-- **Default remains one Mac/computer only:** `npm start` listens on `http://127.0.0.1:3000`. Do not open router ports or set a wildcard network listener.
-- **Optional staff-LAN foundation:** Explicit RFC1918 interface binding, direct HTTPS, valid matching certificate/key, strict Host/Origin checks, and Secure staff cookies are implemented. The hotel Wi-Fi/firewall, actual phone certificate trust, and device revocation require on-site acceptance **before enabling it**. See [Private staff HTTPS instructions](docs/V2_PRIVATE_LAN_HTTPS.md).
-- **Mobile installation foundation:** Manifest and local icon are provided without offline bookings/payments; read [mobile installation limits](docs/V2_MOBILE_INSTALL.md).
-- **Manager/owner Today alerts:** Missing/stale encrypted backup files appear as a read-only warning. See [backup freshness guidance](docs/V2_BACKUP_FRESHNESS.md). File recency does not prove successful restoration.
-- **Mac-safe diagnostics:** Run `npm run mac:preflight`, `npm run doctor` and verified backup drills from the original data configuration; see [Mac release preflight](docs/MAC_RELEASE_PREFLIGHT.md).
-- **Release status: NOT RELEASED.** Real Epson paper, separate-device encrypted recovery, GST accountant signoff, hotel-network isolation and actual staff-device testing remain explicit gates. Passing GitHub CI never certifies those physical checks.
+Favor simple, reversible, tested improvements rather than rebuilding a seven-room hotel app. The source of truth is local SQLite; history is append-only where money or identity is involved; staff UI prioritizes quick, accessible navigation. Review the [project blueprint](docs/PROJECT_BLUEPRINT.md), [chronological development log](docs/DEVELOPMENT_LOG.md), [private-LAN guide](docs/V2_PRIVATE_LAN_HTTPS.md), [mobile install limits](docs/V2_MOBILE_INSTALL.md) and [financial close review](docs/V2_DAILY_CLOSE_REVIEW.md). The source-level audit and its numbered findings are addressed by focused PRs and regression tests, not by declaring alpha production-ready.
