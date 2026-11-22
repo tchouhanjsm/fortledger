@@ -33,12 +33,12 @@ test('Windows first-run launchers are a one-double-click flow with a stable exte
   assert.match(setup,/Existing hotel database found without its original administrator credentials/);
   assert.match(setup,/npm\.cmd ci --no-audit --no-fund/);
   assert.match(setup,/npm\.cmd test/);
-  assert.match(backup,/ConvertFrom-SecureString/);
-  assert.match(backup,/ConvertTo-SecureString/);
+  assert.match(backup,/ProtectedData]::Protect/);
+  assert.match(backup,/ProtectedData]::Unprotect/);
   assert.match(backup,/GetPathRoot/);
   assert.match(backup,/different protected drive/);
-  assert.match(backup,/No -Key parameter/);
-  assert.doesNotMatch(backup,/ConvertFrom-SecureString\s+-Key|git\s+push|Invoke-WebRequest/);
+  assert.match(backup,/DataProtectionScope]::CurrentUser/);
+  assert.doesNotMatch(backup,/git\s+push|Invoke-WebRequest/);
 });
 
 test('PowerShell parses every Windows onboarding, backup and update entrypoint',()=>{
@@ -64,7 +64,9 @@ $dir=Join-Path $env:TEMP ('fortledger-dpapi-synthetic-'+[guid]::NewGuid().ToStri
 New-Item -ItemType Directory -Path $dir | Out-Null
 try {
   $pass='synthetic-ci-only-secret-123'
-  $secure=ConvertTo-SecureString $pass -AsPlainText -Force
+  $secure=New-Object System.Security.SecureString
+  foreach($char in $pass.ToCharArray()) { $secure.AppendChar($char) }
+  $secure.MakeReadOnly()
   $file=Join-Path $dir 'config.json'
   $data='Z:\FortLedgerSynthetic\data'
   try {
