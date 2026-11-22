@@ -962,6 +962,9 @@ async function load(){
   if(can('settings.read'))await refreshHotelLogo();
   $('#backup-button').hidden=!can('settings.admin');
   $('#save-restaurant-bill').hidden=!can('restaurant.write');
+  $('#restaurant-reconciliation-section').hidden=!can('finance.read');
+  if(!$('#restaurant-reconciliation-date').value)
+    $('#restaurant-reconciliation-date').value=hotelToday();
   $('#menu-import-section').hidden=!can('menu.manage');
   $('#restaurant-jump-menu').hidden=!can('menu.manage');
   $('#import-menu').hidden=!can('menu.manage');
@@ -1676,6 +1679,39 @@ $('#restaurant-jump-menu').onclick=()=>{
   $('#menu-import-section').scrollIntoView({behavior:'smooth',block:'start'});
 };
 $('#restaurant-history-more').onclick=()=>{restaurantHistoryLimit+=20;renderRestaurantHistory();};
+$('#restaurant-reconciliation-download').onclick=async()=>{
+  if(!can('finance.read'))return;
+  const day=$('#restaurant-reconciliation-date').value;
+  const status=$('#restaurant-reconciliation-message');
+  const button=$('#restaurant-reconciliation-download');
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(day)){
+    status.textContent='Choose a valid hotel business date first.';return;
+  }
+  status.textContent='Preparing read-only restaurant event export…';
+  button.disabled=true;
+  try{
+    const response=await fetch('/api/finance/restaurant/reconciliation.csv?date='+
+      encodeURIComponent(day),{cache:'no-store',headers:{Accept:'text/csv'}});
+    if(!response.ok){
+      let message='Export unavailable';
+      try{message=(await response.json()).error||message;}catch{}
+      throw new Error(message);
+    }
+    if(!response.headers.get('Content-Type')?.includes('text/csv'))
+      throw new Error('Server did not return a restaurant CSV');
+    const blob=await response.blob();
+    const url=URL.createObjectURL(blob);
+    try{
+      const link=document.createElement('a');
+      link.href=url;link.download='fortledger-restaurant-'+day+'.csv';
+      document.body.append(link);link.click();link.remove();
+    }finally{setTimeout(()=>URL.revokeObjectURL(url),2000);}
+    status.textContent='Restaurant CSV downloaded for '+day+
+      '. Verify operator-recorded receipts against actual cash and bank activity separately.';
+  }catch(error){
+    status.textContent='Restaurant export could not be confirmed: '+error.message;
+  }finally{button.disabled=false;}
+};
 function updateManualRoomFields(){
   $('#manual-room-fields').hidden=$('#restaurant-guest').value!=='manual';
 }
