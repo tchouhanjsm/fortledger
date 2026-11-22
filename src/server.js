@@ -44,6 +44,16 @@ import {normalizeOperationalNotes,updateOperationalNotes} from './booking-notes.
 import {deleteUnusedBooking,deleteUnusedGuest} from './entry-deletion.js';
 import {requireConfiguredHost,localListenerSettings,readLanTlsCredentials} from './network-policy.js';
 
+/** Avoid full SQLite/backup decrypt diagnostics in the live HTTP process.
+ * The complete doctor and isolated restore are separate maintenance operations. */
+function lightweightReleaseReadiness(){
+  return releaseReadiness({diagnostics:{
+    checks:[{name:'Full device diagnostics require a separate maintenance window',
+      status:'warn',detail:'Use Diagnose FortLedger.cmd and a verified off-device restore'}],
+    summary:{passed:0,failed:0,warnings:1}
+  }});
+}
+
 /** Financial POSTs require a caller-supplied stable request identity.
  * Generating a new key in the server would make lost-response retries unsafe. */
 function requireFinancialRequestId(body){
@@ -52,7 +62,7 @@ function requireFinancialRequestId(body){
     throw new Error('Unique request_id (16–80 safe characters) required for financial POST; reuse unchanged ID on retry');
 }
 export function createApp(db,{authRecord=null,authFile=null,network=null,businessDate=null,checkUpdates=updateStatus,updateService=null,checkBackupHealth=verifyLocalBackupHealth,
-  prepareUpgradeBackup=prepareVerifiedUpgradeBackup,getReleaseReadiness=releaseReadiness}={}) {
+  prepareUpgradeBackup=prepareVerifiedUpgradeBackup,getReleaseReadiness=lightweightReleaseReadiness}={}) {
   if(network?.mode==='lan'&&!authRecord)throw new Error('LAN access requires configured authentication');
   const app = express();
   const menuPreviewKey=randomBytes(32); // invalidated safely on every server restart
