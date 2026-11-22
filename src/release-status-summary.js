@@ -14,6 +14,7 @@ export function summarizeReleaseReadiness(report){
   const cleanCount=(value)=>Number.isSafeInteger(value)&&value>=0?value:0;
   return {
     verdict:'NOT RELEASED',production_ready:false,
+    full_machine_diagnostics_performed:report.automated.full_diagnostics===true,
     machine_checks:{
       passed:cleanCount(report.automated.passed),
       failed:cleanCount(report.automated.failed),
