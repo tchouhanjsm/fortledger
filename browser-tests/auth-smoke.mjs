@@ -18,7 +18,11 @@ export async function runAuthenticatedBrowserSmoke(browser){
   ];
   const server=createApp(db,{authRecord:createPasswordRecord(ownerPassword),
     checkUpdates:async()=>({platform:'windows',state:'new_revision',available:true,
-      current:'aaaaaaaaaaaa',remote:'bbbbbbbbbbbb',message:'Synthetic GitHub update detected.'})
+      current:'aaaaaaaaaaaa',remote:'bbbbbbbbbbbb',message:'Synthetic GitHub update detected.'}),
+    updateService:{inspect:async()=>({platform:'windows',ready:true,state:'new_revision',
+      target_sha:'b'.repeat(40),blockers:[],
+      ci_run_url:'https://github.com/tchouhanjsm/fortledger/actions/runs/123'}),
+      request:async()=>{throw Error('Browser cancel should never start an update');}}
   }).listen(0,'127.0.0.1');
   await new Promise(resolve=>server.once('listening',resolve));
   const base='http://127.0.0.1:'+server.address().port;
@@ -65,6 +69,17 @@ export async function runAuthenticatedBrowserSmoke(browser){
           assert.match(await page.locator('#update-center-versions').textContent(),
             /Installed: aaaaaaaaaaaa.*GitHub main: bbbbbbbbbbbb/);
           assert.equal(await page.locator('#update-center-windows').isVisible(),true);
+          await page.locator('#update-center-install').waitFor({state:'visible'});
+          assert.equal(await page.locator('#update-center-install').isEnabled(),true);
+          await page.locator('#update-center-install').click();
+          await page.locator('#shizuka-confirm-dialog').waitFor({state:'visible'});
+          assert.match(await page.locator('#shizuka-confirm-detail').textContent(),
+            /finish their booking or bill forms/);
+          await page.keyboard.press('Escape');
+          await page.locator('#shizuka-confirm-dialog').waitFor({state:'hidden'});
+          assert.equal(db.prepare('SELECT COUNT(*) n FROM bookings').get().n,0);
+          assert.equal(await page.locator('#update-center-install').isEnabled(),true,
+            'Cancelling update keeps owner controls usable');
         }else{
           assert.equal((await context.request.get(base+'/api/system/updates')).status(),403);
         }
