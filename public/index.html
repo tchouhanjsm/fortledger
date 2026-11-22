@@ -278,6 +278,21 @@
       </form>
       <p id="profile-password-message" role="alert"></p>
     </details>
+    <section id="update-center" class="update-center" aria-labelledby="update-center-title" hidden>
+      <h3 id="update-center-title">Application updates</h3>
+      <p class="muted">Check whether GitHub has a newer FortLedger revision. Checking never updates code or hotel data.</p>
+      <div class="update-center-actions">
+        <button id="update-center-check" type="button" class="secondary">Check for updates</button>
+        <p id="update-center-state" role="status" aria-live="polite">Version not checked.</p>
+      </div>
+      <p id="update-center-versions" class="muted"></p>
+      <div id="update-center-windows" hidden>
+        <p class="muted">Windows: after finishing bills and stopping the app, double-click <strong>Update FortLedger.cmd</strong> in your existing FortLedger folder. It makes a verified backup, fast-forwards the approved repository, runs tests and starts the app again. It refuses active servers and unsafe changes.</p>
+      </div>
+      <div id="update-center-mac" hidden>
+        <p class="muted">Mac: finish active work, verify an independent protected backup, stop the server, then follow <a href="https://github.com/tchouhanjsm/fortledger/blob/main/docs/MAC_RELEASE_PREFLIGHT.md" target="_blank" rel="noopener noreferrer">the Mac safe-update guide</a>. Browser checks do not install updates.</p>
+      </div>
+    </section>
     <div id="staff-admin" hidden>
       <h3>Staff accounts</h3><p class="muted">Owner-only account management. Deactivated staff lose access immediately.</p>
       <div id="staff-list"></div>
