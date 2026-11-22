@@ -1,3 +1,5 @@
+import {getBusinessSettings} from './business-settings.js';
+import {receiptLocalTime} from './printer.js';
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=p=>(p/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
 
@@ -9,6 +11,7 @@ export function renderRestaurantReceipt(db,billId){
     LEFT JOIN restaurant_settlements s ON s.restaurant_bill_id=b.id WHERE b.id=?`).get(billId);
   if(!bill)return null;
   const items=JSON.parse(bill.items_snapshot);
+  const business=getBusinessSettings(db);
   const lines=items.map(item=>`<tr><td>${esc(item.name)}<small>${esc(item.quantity)} × ₹${money(item.unit_price_paise)}</small></td><td class="amount">₹${money(item.total_paise)}</td></tr>`).join('');
   const status=bill.payment_method==='room'?
     (bill.booking_id===null?'Manual room charge · pending review':
@@ -27,10 +30,10 @@ export function renderRestaurantReceipt(db,billId){
       .total{font-size:16px;font-weight:bold}.print{display:block;width:100%;padding:12px;margin:15px 0;background:#202c2a;color:white;border:0}
       @media print{.print{display:none}body{max-width:none}}
     </style></head><body>
-      <h1>GARH JAISAL</h1>
+      <h1>${esc(business.hotel_name)}</h1>
       <div class="center muted">Restaurant receipt · Not a tax invoice</div>
       <div class="rule"></div>
-      <div>Receipt #${bill.id}</div><div>${esc(bill.created_at)} UTC</div>
+      <div>Receipt #${bill.id}</div><div>${esc(receiptLocalTime(bill.created_at))}</div>
       <div class="muted">${esc(status)}</div>
       <div class="rule"></div>
       <table><tbody>${lines}</tbody></table>
