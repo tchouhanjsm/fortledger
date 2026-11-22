@@ -15,9 +15,13 @@ export function backupFreshness({env=process.env,now=new Date()}={}){
       .map(item=>fs.statSync(path.join(directory,item.name)).mtimeMs);
     if(!candidates.length)return {state:'missing',needs_attention:true,
       detail:'No encrypted backup file found on the hotel server'};
-    const newest=Math.max(...candidates),ageHours=(now.getTime()-newest)/3600000;
-    if(!Number.isFinite(ageHours)||ageHours<0)return {state:'invalid',needs_attention:true,
+    const newest=Math.max(...candidates),ageMs=now.getTime()-newest;
+    // NTFS timestamp precision and write/read scheduling may put a newly
+    // written file milliseconds ahead of JS Date.now(). Tolerate <=5 seconds
+    // of clock jitter, but never accept meaningfully future-dated backups.
+    if(!Number.isFinite(ageMs)||ageMs< -5000)return {state:'invalid',needs_attention:true,
       detail:'Backup timestamps need review'};
+    const ageHours=Math.max(0,ageMs)/3600000;
     if(ageHours>36)return {state:'stale',needs_attention:true,
       detail:'Latest backup file is older than 36 hours'};
     const localOnly=env.FORTLEDGER_BACKUP_LOCAL_ONLY==='1';
