@@ -57,7 +57,7 @@ test('restaurant overview and filtered history are read-only, accessible and ali
   assert.match(app,/restaurantBillFilter=/);
   assert.match(app,/restaurantBillTime\(/);
   assert.match(app,/hotelDateAt\(/);
-  assert.doesNotMatch(app.slice(app.indexOf('function renderRestaurantHistory'),app.indexOf("$('#restaurant-history-search').oninput")),/api\\('\\/api\\/restaurant\\/bills'/);
+  assert.equal(app.slice(app.indexOf('function renderRestaurantHistory'),app.indexOf("$('#restaurant-history-search').oninput")).includes("api('/api/restaurant/bills'"),false);
   assert.ok(html.indexOf('id="restaurant-history-section"')<html.indexOf('id="menu-import-section"'),
     'Saved bills should be more prominent than seldom-used menu administration');
 });
