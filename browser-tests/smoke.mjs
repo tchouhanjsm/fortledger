@@ -13,8 +13,15 @@ async function captureViewportWidth(page,width,name){
   // Retain the entire working page vertically but never expand PNG width
   // to include an intentionally scrollable calendar's offscreen columns.
   await page.evaluate(()=>window.scrollTo(0,0));
-  const height=await page.evaluate(()=>
-    Math.max(document.body.scrollHeight,document.documentElement.scrollHeight));
+  const height=await page.evaluate(()=>{
+    // overflow-x:clip can report viewport height as document scrollHeight;
+    // use the last visible workspace section instead so full vertical content
+    // is retained without including offscreen calendar columns.
+    const last=[...document.querySelectorAll('main > section')]
+      .filter(el=>getComputedStyle(el).display!=='none')
+      .reduce((bottom,el)=>Math.max(bottom,el.getBoundingClientRect().bottom+scrollY),0);
+    return Math.ceil(Math.max(document.documentElement.clientHeight,last+32));
+  });
   await page.screenshot({path:'browser-artifacts/'+name+'.png',
     clip:{x:0,y:0,width,height}});
 }
