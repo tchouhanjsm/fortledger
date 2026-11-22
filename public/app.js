@@ -6,6 +6,7 @@ import {matchesWorkQueue,bookingNextActionCue} from './booking-work-queue.js';
 import {bookingDraftError} from './booking-editor-guards.js';
 import {todayAttention} from './today-attention.js';
 import {prepareDailyClosing} from './daily-close-preparation.js';
+import {shiftHandover} from './shift-handover.js';
 import {stayMetrics} from './stay-metrics.js';
 import {createOwnerUpdateNotice} from './update-notice.js';
 const $ = selector => document.querySelector(selector);
@@ -734,6 +735,7 @@ function renderDashboard(){
   }
   renderTodayRoomBoard(today);
   renderTodayAttention(today);
+  renderShiftHandover(today);
   const actions=$('#home-actions');actions.replaceChildren();
   const options=[
     ['#bookings','Booking calendar','Manage stays and room allocations','bookings.read'],
@@ -767,6 +769,67 @@ function renderDashboard(){
     row.append(label('strong',item.title),label('span',item.detail));
     activity.append(row);
   }
+}
+function renderShiftHandover(today){
+  const panel=$('#shift-handover'),list=$('#shift-handover-items');
+  const access={bookings:can('bookings.read'),rooms:can('rooms.read'),
+    restaurant:can('restaurant.read'),maintenance:can('maintenance.read'),
+    finance:can('finance.read'),health:can('system.health.read')};
+  panel.hidden=!Object.values(access).some(Boolean);
+  if(panel.hidden)return;
+  const alerts=shiftHandover({
+    today,
+    bookings:access.bookings?bookings:[],
+    rooms:access.rooms?rooms:[],
+    restaurantBills:access.restaurant?restaurantBills:[],
+    maintenanceIssues:access.maintenance?maintenanceIssues:[],
+    backupStatus:access.health?backupStatus:null,
+    closeAttention:access.finance?closeAttention:[],
+    access
+  });
+  $('#shift-handover-summary').textContent='Shift handover · '+alerts.length+
+    (alerts.length===1?' item to review':' items to review');
+  list.replaceChildren();
+  if(!alerts.length){
+    list.append(label('p','No pending work found in the current loaded records.','muted'));
+    return;
+  }
+  for(const entry of alerts.slice(0,18)){
+    const button=label('button',undefined,'shift-handover-row secondary'+
+      (entry.severity==='urgent'?' shift-handover-urgent':''));
+    button.type='button';
+    button.append(label('strong',entry.title),label('span',entry.reason));
+    button.setAttribute('aria-label',entry.title+'. '+entry.reason+'. Open source records.');
+    button.onclick=()=>{
+      const booking=bookings.find(b=>b.id===entry.record_id);
+      if(entry.kind==='notes'&&booking)return openBookingNotes(booking);
+      if(entry.kind==='arrival'&&booking){
+        if(booking.checkin<today)return openEdit(booking);
+        return openFilteredBookingQueue('arrivals');
+      }
+      if(entry.kind==='departure')return openFilteredBookingQueue('departures');
+      if(entry.kind==='allocation')return openFilteredBookingQueue('unassigned');
+      if(entry.kind==='room')return openRoomAttention();
+      if(entry.kind==='maintenance')
+        return workspaceNavigator.navigate('rooms','maintenance-workspace');
+      if(entry.kind==='restaurant'){
+        restaurantBillFilter='unmatched';
+        restaurantHistoryLimit=15;
+        renderRestaurantHistory();
+        return workspaceNavigator.navigate('restaurant','restaurant-history-section');
+      }
+      if(entry.kind==='closing'){
+        $('#home-closing').open=true;
+        $('#daily-close-form').elements.namedItem('business_date').value=entry.record_id;
+        void renderDailyClose();
+        return workspaceNavigator.navigate('dashboard','home-closing');
+      }
+      if(entry.kind==='backup')window.location.hash='business-settings';
+    };
+    list.append(button);
+  }
+  if(alerts.length>18)
+    list.append(label('p',(alerts.length-18)+' more items. Use the existing work queues to review all records.','muted'));
 }
 function currentHotelMonth(){
   const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{

@@ -175,3 +175,24 @@ main,.sidebar{max-width:100%;overflow-x:clip}
 #booking-notes-form .form-grid{margin:var(--sh-space-4) 0}
 #booking-notes-form textarea:read-only{background:var(--sh-washi)}
 #booking-notes-message:not(:empty){font-size:13px;line-height:1.5;padding:var(--sh-space-3);border:1px solid var(--hs-border);border-radius:var(--hs-control-radius)}
+
+/* V3 Kaizen: secondary handover details reuse SHIZUKA quiet surfaces. */
+.shift-handover{margin:0 0 22px;padding:14px 18px}
+.shift-handover summary{cursor:pointer;min-height:40px;padding:8px 0;font-weight:700}
+.shift-handover summary:focus-visible,.shift-handover-row:focus-visible{
+  outline:3px solid var(--hs-focus);outline-offset:2px
+}
+.shift-handover>p{margin:2px 0 12px;font-size:12px;line-height:1.5}
+.shift-handover-items{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:8px}
+.shift-handover-row{display:flex;align-items:flex-start;flex-direction:column;gap:5px;
+  text-align:left;min-height:65px;padding:11px 13px;border:1px solid var(--hs-border);
+  border-radius:9px;background:var(--hs-surface);color:var(--hs-ink);
+  white-space:normal;cursor:pointer}
+.shift-handover-row strong{font-size:13px;line-height:1.4}
+.shift-handover-row span{font-size:12px;line-height:1.45;color:var(--hs-muted)}
+.shift-handover-urgent{border-left:3px solid #9b5d20}
+@media(max-width:700px){
+  .shift-handover{padding:12px 14px}
+  .shift-handover-items{grid-template-columns:1fr}
+  .shift-handover-row{min-height:48px}
+}
