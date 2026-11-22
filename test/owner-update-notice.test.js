@@ -55,3 +55,18 @@ test('same-session concurrent notice checks share one request; offline errors fa
   assert.equal(await broken.refresh({owner:true,local:true}),false);
   assert.equal(visible,false);
 });
+
+test('old asynchronous owner check never reveals update after staff role changes',async()=>{
+  let release,shown=0,hidden=0;
+  const gate=new Promise(resolve=>release=resolve);
+  const notifier=createOwnerUpdateNotice({
+    check:async()=>{await gate;return installer;},
+    show:()=>shown++,hide:()=>hidden++
+  });
+  const ownerRequest=notifier.refresh({owner:true,local:true});
+  await notifier.refresh({owner:false,local:true});
+  release();
+  assert.equal(await ownerRequest,false);
+  assert.equal(shown,0);
+  assert.ok(hidden>0);
+});
