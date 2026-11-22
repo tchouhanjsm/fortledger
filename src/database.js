@@ -18,6 +18,7 @@ import {ensureMaintenanceSchema,blockedRoomIds} from './maintenance.js';
 import {ensureGuestSchema} from './guests.js';
 import {ensureBookingCreateSchema} from './booking-create.js';
 import {ensureFolioSettlementRequestSchema} from './folio.js';
+import {ensureAccommodationAdjustmentSchema} from './accommodation-adjustments.js';
 
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -25,7 +26,7 @@ export function openDatabase(filename = databasePath()) {
   try {
     db.pragma('foreign_keys = ON');
     const current = db.pragma('user_version', {simple:true});
-    if(current > 10)throw new Error('Database schema '+current+' is newer than this FortLedger version (10); update the app before opening it');
+    if(current > 11)throw new Error('Database schema '+current+' is newer than this FortLedger version (11); update the app before opening it');
     if(current < 0)throw new Error('Invalid database schema version');
     // Version 0 includes all legacy pre-versioned FortLedger installations.
     // A single SQLite transaction makes the baseline upgrade all-or-nothing.
@@ -154,6 +155,19 @@ export function openDatabase(filename = databasePath()) {
       db.prepare('SELECT request_id,kind,booking_id,fingerprint,response_json,created_at FROM folio_settlement_requests LIMIT 0').all();
     }catch{
       throw new Error('Folio settlement request ledger is missing or incompatible; stop the app and restore a verified backup');
+    }
+    // Version 11: append-only owner/manager accommodation adjustments
+    // supplement immutable issued proformas without editing original contract.
+    if(current<11)db.transaction(()=>{
+      ensureAccommodationAdjustmentSchema(db);
+      const violations=db.pragma('foreign_key_check');
+      if(violations.length)throw new Error('Accommodation adjustment schema upgrade rejected: foreign key violations');
+      db.pragma('user_version = 11');
+    })();
+    try{
+      db.prepare('SELECT id,booking_id,amount_paise,kind,reason,reference,request_id,actor_username,created_at FROM accommodation_adjustments LIMIT 0').all();
+    }catch{
+      throw new Error('Accommodation adjustment ledger is missing or incompatible; restore a verified backup');
     }
     // Fail closed if a v9 database's identity allocation table was removed.
     for(const type of ['booking','guest']){

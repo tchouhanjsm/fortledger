@@ -19,7 +19,7 @@ const create=db=>createBookingSafely(db,{booking:booking(),initialPaise:0,
 test('delete the last booking: new booking gets a different ID and cannot inherit deletion audit',()=>{
   const db=openDatabase(':memory:');
   try{
-    assert.equal(db.pragma('user_version',{simple:true}),10);
+    assert.equal(db.pragma('user_version',{simple:true}),11);
     const first=create(db);
     deleteUnusedBooking(db,first.id,owner);
     const second=create(db);
@@ -60,7 +60,7 @@ test('upgrade v8 ledger with deleted last booking and guest allocates above hist
     db.pragma('user_version = 8');
     db.close();db=null;
     db=openDatabase(filename);
-    assert.equal(db.pragma('user_version',{simple:true}),10);
+    assert.equal(db.pragma('user_version',{simple:true}),11);
     assert.ok(create(db).id>oldBooking.id);
     assert.ok(saveGuest(db,{name:'Later Guest'},owner).id>oldGuest.id);
     assert.equal(db.pragma('foreign_key_check').length,0);

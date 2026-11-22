@@ -1,7 +1,7 @@
 export const ROLE_PERMISSIONS={
   owner:['*'],
   manager:['bookings.read','bookings.write','payments.write','refunds.write','rooms.read','rooms.write',
-    'invoices.read','invoices.write','restaurant.read','restaurant.write','folio.read','folio.write',
+    'invoices.read','invoices.write','restaurant.read','restaurant.write','folio.read','folio.write','folio.adjust',
     'settings.read','audit.read','finance.read','finance.write','analytics.read','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','maintenance.manage','guests.read','guests.write','profile.read','profile.write','system.health.read'],
   frontdesk:['bookings.read','bookings.write','payments.write','rooms.read',
     'invoices.read','invoices.write','restaurant.read','folio.read','folio.write','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','guests.read','guests.write',
@@ -55,6 +55,8 @@ export function requiredPermission(method,path){
     if(/\/payments\/\d+\/refunds$/.test(path)||/\/refunds$/.test(path))
       return method==='GET'?'bookings.read':'refunds.write';
     if(/\/payments$/.test(path))return method==='GET'?'bookings.read':'payments.write';
+    if(/^\/bookings\/\d+\/folio\/adjustments$/.test(path))
+      return method==='POST'?'folio.adjust':null;
     if(/\/folio/.test(path))return method==='GET'?'folio.read':'folio.write';
     if(/\/proforma$/.test(path))return 'invoices.write';
   }

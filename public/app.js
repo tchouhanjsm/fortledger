@@ -1696,6 +1696,19 @@ async function refreshFolio(){
   $('#folio-summary').textContent='Accommodation due '+money(data.accommodation.due_paise)+
     ' · Restaurant room charges due '+money(data.restaurant_due_paise)+
     ' · Combined due '+money(data.combined_due_paise);
+  const changes=$('#folio-adjustments');changes.replaceChildren();
+  for(const adjustment of data.adjustments||[]){
+    const item=label('div',undefined,'menu-item');
+    item.append(label('strong',(adjustment.kind==='credit'?'Credit':'Charge')+
+      ' '+money(Math.abs(adjustment.amount_paise))),
+      label('small',adjustment.reason+' · '+adjustment.actor_username+
+        (adjustment.reference?' · Ref '+adjustment.reference:'')));
+    changes.append(item);
+  }
+  if(!(data.adjustments||[]).length)
+    changes.append(label('p','No accommodation adjustments recorded.','muted'));
+  $('#folio-adjustment-form').hidden=!can('folio.adjust')||
+    !['reserved','checked_in'].includes(data.status);
   const list=$('#folio-room-bills');list.replaceChildren();
   for(const bill of data.bills){
     const row=label('div',undefined,'menu-item');
@@ -1722,6 +1735,32 @@ async function refreshFolio(){
   $('#folio-combined').disabled=data.combined_due_paise===0||data.status==='cancelled';
   $('#folio-combined').textContent='Settle all outstanding · '+money(data.combined_due_paise);
 }
+$('#folio-adjustment-form').onsubmit=async event=>{
+  event.preventDefault();
+  const form=event.currentTarget,fields=new FormData(form),bookingId=activeFolioBooking;
+  const details={
+    kind:String(fields.get('kind')),amount:String(fields.get('amount')),
+    reason:String(fields.get('reason')).trim(),reference:String(fields.get('reference')).trim()
+  };
+  if(!confirm('Record '+details.kind+' of INR '+details.amount+
+    ' as an immutable commercial adjustment? The original proforma will remain unchanged.'))return;
+  const button=form.querySelector('[type=submit]');button.disabled=true;
+  try{
+    const key='adjustment:'+bookingId,body=folioSettlementIntent(key,details);
+    const result=await api('/api/bookings/'+bookingId+'/folio/adjustments',{
+      method:'POST',body:JSON.stringify(body)
+    });
+    pendingFolioSettlements.delete(key);
+    $('#folio-message').textContent=result.already_recorded?
+      'Original accommodation adjustment recovered; no duplicate charge recorded.':
+      'Reviewed accommodation adjustment recorded.';
+    form.reset();
+    await load();await refreshFolio();
+  }catch(error){
+    $('#folio-message').textContent='Adjustment outcome not confirmed: '+error.message+
+      '. Retry unchanged details or review the folio before another adjustment.';
+  }finally{button.disabled=false;}
+};
 $('#folio-accommodation-method').onchange=()=>{
   $('#folio-bank-reference-field').hidden=$('#folio-accommodation-method').value!=='bank';
 };
