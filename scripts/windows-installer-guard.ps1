@@ -40,7 +40,9 @@ try {
       throw 'A recent separate-drive encrypted backup (36 hours or less) is required before updating.'
     }
     $env:FORTLEDGER_DATA_DIR=$live
-    & $node $drill $latest.FullName
+    # Legacy SQLite-only snapshots are not sufficient to recover owner login
+    # on a replacement PC, even if SQLite itself decrypts successfully.
+    & $node $drill $latest.FullName --require-owner-companion
     if ($LASTEXITCODE -ne 0) {
       throw 'Encrypted backup restore verification failed; application files were not updated.'
     }
