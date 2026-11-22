@@ -66,6 +66,12 @@
   <details id="home-closing" class="panel" hidden>
     <summary>End-of-day cash closing</summary>
     <p class="muted">Count physical cash, compare it with recorded cash activity and sign off discrepancies. UPI/card/bank must still be verified externally.</p>
+    <section id="daily-close-preparation" class="daily-close-preparation" aria-label="Read-only daily closing preparation">
+      <h4>Before signing off · recorded money</h4>
+      <p class="muted">Split by method and original hotel/restaurant receipts. Pending room charges are receivables, never collected funds. Nothing is bank-verified.</p>
+      <p id="daily-close-preparation-status" role="status" class="muted"></p>
+      <div id="daily-close-preparation-items"></div>
+    </section>
     <form id="daily-close-form" class="staff-create">
       <label>Business date<input name="business_date" type="date" required></label>
       <label>Opening cash float (₹)<input name="opening_cash" type="number" min="0" step="0.01" value="0" required></label>
