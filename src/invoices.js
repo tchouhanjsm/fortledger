@@ -1,4 +1,5 @@
 import { bookingTotals } from './finance.js';
+import {hotelBusinessDate} from './hotel-clock.js';
 import { FIXED_TERMS } from './terms.js';
 import { normalizeInvoiceInput } from './invoice-lines.js';
 import { NET_PAYMENTS_SQL } from './payment-ledger.js';
@@ -27,10 +28,11 @@ export function createProforma(db,bookingId,input={}){
         (totals.total_paise/100).toFixed(2)+' INR). Edit the booking before issuing a proforma; do not create an unrecorded charge adjustment.');
     const paid_paise=totals.paid_paise;
     const next=db.prepare('UPDATE invoice_sequence SET last_number=last_number+1 WHERE id=1 RETURNING last_number').get().last_number;
-    const year=new Date().getFullYear();
+    const issueDate=hotelBusinessDate();
+    const year=Number(issueDate.slice(0,4));
     const number='GH-'+year+'-'+String(next).padStart(3,'0');
     const snapshot={
-      number,kind:'proforma',issued_on:new Date().toISOString().slice(0,10),
+      number,kind:'proforma',issued_on:issueDate,
       ...details,business:getBusinessSettings(db),logo_asset_id:getActiveLogoId(db),company_name:booking.company_name,
       category:booking.category,room_name:booking.room_name,
       rooms_count:booking.rooms_count,meal_plan:booking.meal_plan,
