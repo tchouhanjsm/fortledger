@@ -6,6 +6,7 @@ import {matchesWorkQueue,bookingNextActionCue} from './booking-work-queue.js';
 import {bookingDraftError} from './booking-editor-guards.js';
 import {todayAttention} from './today-attention.js';
 import {stayMetrics} from './stay-metrics.js';
+import {createOwnerUpdateNotice} from './update-notice.js';
 const $ = selector => document.querySelector(selector);
 const confirmAction=createConfirmAction($('#shizuka-confirm-dialog'));
 $('#skip-to-main').onclick=()=>{
@@ -14,6 +15,27 @@ $('#skip-to-main').onclick=()=>{
   main.scrollIntoView({block:'start'});
 };
 let currentUser=null;
+const updateNotice=createOwnerUpdateNotice({
+  check:()=>api('/api/system/updates'),
+  show:()=>{
+    $('#owner-update-notice').hidden=false;
+    $('#owner-update-notice').title='A newer FortLedger build is available; review before installing';
+  },
+  hide:()=>{$('#owner-update-notice').hidden=true;}
+});
+function refreshOwnerUpdateNotice(){
+  // Never let network checks slow or interrupt a booking, invoice or payment.
+  // Installer download is still a separate, explicit owner action.
+  void updateNotice.refresh({
+    owner:currentUser?.role==='owner'&&can('system.update'),
+    local:['127.0.0.1','localhost'].includes(window.location.hostname)
+  });
+}
+$('#owner-update-notice').onclick=()=>{
+  if(currentUser?.role!=='owner'||!can('system.update'))return;
+  window.location.hash='profile';
+  $('#update-center-check').click();
+};
 const can=permission=>Boolean(currentUser&&(currentUser.permissions.includes('*')||currentUser.permissions.includes(permission)));
 const VIEW_ACCESS={dashboard:'profile.read',bookings:'bookings.read',rooms:'rooms.read',guests:'guests.read',invoices:'invoices.read',restaurant:'restaurant.read','business-settings':'settings.read',profile:'profile.read'};
 const workspaceNavigator=createWorkspaceNavigator({win:window,doc:document,
@@ -981,6 +1003,7 @@ async function load(){
   $('#staff-admin').hidden=currentUser.role!=='owner';
   $('#update-center').hidden=!can('system.update');
   $('#backup-center').hidden=!can('system.update');
+  refreshOwnerUpdateNotice();
   $('#guest-create').hidden=!can('guests.write');
   const settingsSave=$('#business-form').querySelector('[type=submit]');
   if(settingsSave)settingsSave.disabled=!can('settings.admin');
@@ -1136,6 +1159,11 @@ $('#update-center-check').onclick=async()=>{
     const state=await api('/api/system/updates');
     message.textContent=state.message;
     message.dataset.state=state.state;
+    if(state.platform==='windows'&&
+      ['installer_update_available','new_revision'].includes(state.state)&&
+      state.available===true&&currentUser?.role==='owner')
+      $('#owner-update-notice').hidden=false;
+    else $('#owner-update-notice').hidden=true;
     const short=sha=>/^[a-f0-9]{12}$/i.test(sha||'')?sha:'Unavailable';
     const installerManaged=state.state==='installer_managed';
     versions.textContent=installerManaged?'Windows desktop installer distribution':(
@@ -2557,9 +2585,12 @@ $('#refresh-workspace').onclick=async()=>{
 };
 window.addEventListener('online',()=>{void probeServerConnection();});
 window.addEventListener('offline',()=>setConnectionStatus('lost'));
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)void probeServerConnection();});
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden){void probeServerConnection();refreshOwnerUpdateNotice();}
+});
 // Lightweight read-only connectivity check; never queues or replays financial writes.
 setInterval(()=>{if(!document.hidden)void probeServerConnection();},45000);
+setInterval(()=>{if(!document.hidden)refreshOwnerUpdateNotice();},6*60*60*1000);
 applyWorkspaceView();
 void probeServerConnection();
 load().catch(e=>{$('#booking-list').textContent='Unable to load: '+e.message;});
