@@ -33,6 +33,8 @@ export function transitionBooking(db,id,status,{actor,acknowledge_balance=false,
     let warnings=[];
     if(status==='checked_out'){
       const folio=getGuestFolio(db,id);
+      if(folio.invoice_discrepancy)
+        throw new Error('Proforma and booking totals disagree; manager review required before checkout');
       if(folio.combined_due_paise>0){
         if(acknowledge_balance!==true)
           throw new Error('Outstanding guest folio balance must be acknowledged before checkout');

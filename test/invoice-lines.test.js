@@ -7,7 +7,7 @@ import {normalizeInvoiceInput} from '../src/invoice-lines.js';
 const booking={guest_name:'Synthetic group',company_name:'Example Agency',checkin:'2026-12-01',checkout:'2026-12-02',
   rooms_count:2,category:'Unassigned',meal_plan:'CP',nightly_rate:4500,amount_paid:4500};
 
-test('multi-line proforma preserves negotiated totals, payment and original snapshot',async()=>{
+test('multi-line proforma preserves contractual totals, payment and original snapshot',async()=>{
   const db=openDatabase(':memory:'),server=createApp(db).listen(0,'127.0.0.1');
   await new Promise(resolve=>server.once('listening',resolve));
   const base='http://127.0.0.1:'+server.address().port;
@@ -21,22 +21,22 @@ test('multi-line proforma preserves negotiated totals, payment and original snap
     const custom={guest_name:'Synthetic group',bill_to:'Example Agency',bill_to_address:'Fictional street, India',
       lines:[
         {description:'Heritage room with city view - CPAI',rooms:1,nights:1,rate:4500},
-        {description:'Swiss Deluxe Tent - MAPI',rooms:1,nights:2,rate:3500}
+        {description:'Swiss Deluxe Tent - MAPI',rooms:1,nights:1,rate:4500}
       ]};
     const issue=await req('/api/bookings/'+b.data.id+'/proforma','POST',custom);
     assert.equal(issue.status,201);
-    assert.equal(issue.data.snapshot.total_paise,1150000);
-    assert.equal(issue.data.snapshot.taxable_paise,1095238);
-    assert.equal(issue.data.snapshot.gst_paise,54762);
-    assert.equal(issue.data.snapshot.due_paise,700000);
+    assert.equal(issue.data.snapshot.total_paise,900000);
+    assert.equal(issue.data.snapshot.taxable_paise,857143);
+    assert.equal(issue.data.snapshot.gst_paise,42857);
+    assert.equal(issue.data.snapshot.due_paise,450000);
     assert.equal(issue.data.snapshot.lines.length,2);
-    assert.equal(issue.data.snapshot.lines[1].total_paise,700000);
+    assert.equal(issue.data.snapshot.lines[1].total_paise,450000);
     assert.equal(issue.data.snapshot.bill_to,'Example Agency');
     const again=await req('/api/bookings/'+b.data.id+'/proforma','POST',{
       ...custom,lines:[{description:'Changed',rooms:1,nights:1,rate:1}]});
     assert.equal(again.status,200);
     assert.equal(again.data.id,issue.data.id);
-    assert.equal(again.data.snapshot.total_paise,1150000);
+    assert.equal(again.data.snapshot.total_paise,900000);
     assert.equal(db.prepare('SELECT last_number FROM invoice_sequence WHERE id=1').get().last_number,1);
     const pdf=await fetch(base+'/api/invoices/'+issue.data.id+'/pdf');
     assert.equal(pdf.status,200);

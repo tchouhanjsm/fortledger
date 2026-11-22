@@ -140,6 +140,10 @@ function renderBookings(){
         }
         try{
           const folio=await api('/api/bookings/'+b.id+'/folio');
+          if(folio.invoice_discrepancy){
+            alert('The saved proforma does not match this booking amount. Owner/manager review is required before checkout; the issued document was not changed.');
+            status.value=b.status;return;
+          }
           if(folio.combined_due_paise>0){
             if(!confirm('Guest has an outstanding folio of '+money(folio.combined_due_paise)+
               '. Confirm checkout with outstanding balance for later follow-up?')){
@@ -1083,9 +1087,16 @@ function previewInvoice(){
   const lines=readInvoiceLines();
   const total=lines.reduce((sum,l)=>sum+(Number(l.rooms)||0)*(Number(l.nights)||0)*(Number(l.rate)||0),0);
   const invoice=$('#invoice-totals');
-  const paid=bookings.find(b=>b.id===invoiceBookingId)?.paid_paise||0;
-  invoice.textContent=lines.length+' line(s) · Total '+money(Math.round(total*100))+
-    ' · Advance '+money(paid)+' · Due '+money(Math.max(0,Math.round(total*100)-paid));
+  const booking=bookings.find(b=>b.id===invoiceBookingId);
+  const paid=booking?.paid_paise||0;
+  const contracted=booking?.total_paise;
+  const proposed=Math.round(total*100);
+  const mismatch=Number.isSafeInteger(contracted)&&proposed!==contracted;
+  invoice.textContent=lines.length+' line(s) · Total '+money(proposed)+
+    ' · Advance '+money(paid)+' · Due '+money(Math.max(0,proposed-paid))+
+    (mismatch?' · Must equal booked stay '+money(contracted):' · Matches booking');
+  const issue=$('#invoice-form').querySelector('[type=submit]');
+  if(issue)issue.disabled=mismatch||!lines.length;
 }
 function createInvoice(booking){
   const existing=invoices.find(x=>x.booking_id===booking.id);
