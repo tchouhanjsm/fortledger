@@ -208,13 +208,6 @@
       </div>
     </div>
   </div>
-  <details class="menu-import" id="menu-import-section"><summary>3. Menu management — import or update prices (CSV)</summary>
-    <p class="muted">Choose a CSV exported from Excel or Numbers. We recognise Item Name, Category, Price and GST/Tax Rate columns in any order. Prices must include tax.</p>
-    <p><a href="/menu-template.csv" download>Download a sample CSV template</a></p>
-    <div class="menu-import-actions"><input type="file" id="menu-csv" accept=".csv,text/csv"><button type="button" id="preview-menu" class="secondary">Check file</button><button type="button" id="import-menu" class="primary" disabled>Import verified menu</button></div>
-    <p id="menu-import-message" role="status" aria-live="polite"></p>
-    <div id="menu-import-preview"></div>
-  </details>
   <div id="restaurant-history-section" class="restaurant-history-section">
   <div class="pos-history-head"><div><h3>2. Saved bills & receipts</h3><p class="muted">Search and inspect original items, paid status and room charges. Saved receipts are immutable.</p></div>
     <div class="pos-history-tools"><label class="sr-only" for="restaurant-history-search">Search saved bills</label><input id="restaurant-history-search" type="search" placeholder="Bill #, item, guest or room" aria-label="Search saved restaurant bills"></div></div>
@@ -225,6 +218,13 @@
     <button type="button" class="secondary" data-bill-filter="unmatched" aria-pressed="false">Needs linking</button>
   </div>
   <p id="restaurant-history-count" class="muted" role="status"></p><div id="restaurant-history"></div><button id="restaurant-history-more" class="secondary" type="button" hidden>Show more bills</button></div>
+  <details class="menu-import" id="menu-import-section"><summary>3. Menu management — import or update prices (CSV)</summary>
+    <p class="muted">Choose a CSV exported from Excel or Numbers. We recognise Item Name, Category, Price and GST/Tax Rate columns in any order. Prices must include tax.</p>
+    <p><a href="/menu-template.csv" download>Download a sample CSV template</a></p>
+    <div class="menu-import-actions"><input type="file" id="menu-csv" accept=".csv,text/csv"><button type="button" id="preview-menu" class="secondary">Check file</button><button type="button" id="import-menu" class="primary" disabled>Import verified menu</button></div>
+    <p id="menu-import-message" role="status" aria-live="polite"></p>
+    <div id="menu-import-preview"></div>
+  </details>
 </section>
 <section id="profile" class="panel" hidden>
     <div class="panel-head"><div><h2>My profile</h2><p>Your local account and access permissions.</p></div></div>
