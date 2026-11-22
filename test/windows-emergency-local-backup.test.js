@@ -12,7 +12,12 @@ test('automatic local encrypted backup is a same-PC emergency copy, never disgui
     const env={FORTLEDGER_BACKUP_DIR:dir,FORTLEDGER_BACKUP_PASSPHRASE:passphrase,
       FORTLEDGER_BACKUP_LOCAL_ONLY:'1'};
     assert.equal(backupFreshness({env}).state,'missing');
-    fs.writeFileSync(path.join(dir,'fortledger-synthetic.flbk'),'synthetic-not-real');
+    const marker=path.join(dir,'fortledger-synthetic.flbk');
+    fs.writeFileSync(marker,'synthetic-not-real');
+    // Windows filesystem timestamps can be a fraction ahead of Date.now().
+    // Use an explicit past timestamp so real backup freshness is tested fairly.
+    const prior=new Date(Date.now()-60*1000);
+    fs.utimesSync(marker,prior,prior);
     const local=backupFreshness({env});
     assert.equal(local.state,'recent');
     assert.equal(local.needs_attention,true);
