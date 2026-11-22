@@ -209,7 +209,7 @@ export function createApp(db,{authRecord=null,authFile=null,network=null}={}) {
   app.get('/api/restaurant/bills',(_req,res)=>res.json(listRestaurantBills(db)));
   app.post('/api/restaurant/bills',(req,res,next)=>{
     try{
-      const bill=createRestaurantBill(db,req.body);
+      const bill=createRestaurantBill(db,req.body,req.actor);
       res.status(bill.already_recorded?200:201).json(bill);
     }catch(error){next(error);}
   });
