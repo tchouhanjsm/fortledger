@@ -185,6 +185,10 @@ export function createRestaurantBill(db,input,actor=null){
     const response={id:Number(result.lastInsertRowid),payment_method,booking_id,manual_room,manual_guest,items,total_paise,tax_paise};
     if(requestId)db.prepare('INSERT INTO restaurant_bill_requests(request_id,bill_id,fingerprint,response_json) VALUES(?,?,?,?)')
       .run(requestId,response.id,fingerprint,JSON.stringify(response));
+    if(actor&&(!Number.isSafeInteger(actor.id)||actor.id<0||
+      typeof actor.username!=='string'||!actor.username||
+      typeof actor.role!=='string'||!actor.role))
+      throw new Error('Invalid restaurant bill actor');
     if(actor)recordAudit(db,actor,'restaurant_bill.created','restaurant_bill',response.id,{
       payment_method,booking_id,manual_room,amount_paise:total_paise,
       request_id:requestId||null
