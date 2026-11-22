@@ -287,3 +287,10 @@ All five increments completed in this development session were reviewed and merg
 - Version 12 adds columns transactionally with empty defaults; old booking request fingerprints for empty notes remain unchanged, while different nonempty notes are fingerprinted for safe retries.
 - Note-only updates are actor-audited without duplicating guest text in the event log. No automatic pickup reservation, driver dispatch, transfer cost, or guest communications are implied.
 - Mac/Windows physical acceptance and protected backup remain mandatory; see docs/BOOKING_OPERATIONAL_NOTES.md.
+
+## 2026-11-22 — Windows supervised owner updates V2 (alpha)
+- Added independent Windows parent supervisor `scripts/windows-supervisor.mjs` and changed the persistent Windows launcher to use it. Backend process and external updater communicate only over child-process IPC, never direct Git/PowerShell from a web request.
+- Owner-only localhost Update Center now verifies an exact GitHub `main` commit's successful Ubuntu/Windows/Chromium push CI, backup freshness on a separate drive and supervisor readiness before enabling explicitly confirmed installation.
+- The child server rejects new financial requests while draining and closes the HTTP listener gracefully. The parent waits for the clean drain message and child exit, revalidates CI and passes an exact 40-character commit to the Windows updater, which performs encrypted-backup restore drill, SQLite snapshot, verified fast-forward, `npm ci` and full Node tests. Restart is supervised.
+- Failed/uncertain installs leave an update journal outside Git; the prior version is only restarted when the Git revision did not change. Migrations are not blindly rolled back.
+- No signed releases, live Windows process/service integration test, off-device backup certification, Mac auto-updater or statutory invoice approval yet. These remain explicit production gates.
