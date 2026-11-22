@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import {ensureEntityIdSchema} from './entity-identity.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import {databasePath} from './data-paths.js';
@@ -23,7 +24,7 @@ export function openDatabase(filename = databasePath()) {
   try {
     db.pragma('foreign_keys = ON');
     const current = db.pragma('user_version', {simple:true});
-    if(current > 8)throw new Error('Database schema '+current+' is newer than this FortLedger version (8); update the app before opening it');
+    if(current > 9)throw new Error('Database schema '+current+' is newer than this FortLedger version (9); update the app before opening it');
     if(current < 0)throw new Error('Invalid database schema version');
     // Version 0 includes all legacy pre-versioned FortLedger installations.
     // A single SQLite transaction makes the baseline upgrade all-or-nothing.
@@ -131,6 +132,20 @@ export function openDatabase(filename = databasePath()) {
       if(violations.length)throw new Error('Database has foreign key violations; restaurant schema upgrade was not applied');
       db.pragma('user_version = 8');
     })();
+    // Version 9: additive allocation counters and guards prevent rowid reuse
+    // from mixing deleted guest/booking audit identities with new entities.
+    // Existing booking/guest IDs and all foreign keys remain unchanged.
+    if(current<9)db.transaction(()=>{
+      ensureEntityIdSchema(db);
+      const violations=db.pragma('foreign_key_check');
+      if(violations.length)throw new Error('Entity ID upgrade rejected: foreign key violations');
+      db.pragma('user_version = 9');
+    })();
+    // Fail closed if a v9 database's identity allocation table was removed.
+    for(const type of ['booking','guest']){
+      if(!db.prepare('SELECT 1 FROM entity_id_counters WHERE entity_type=?').get(type))
+        throw new Error('Audited entity ID sequence is missing; repair from verified backup before accepting entries');
+    }
     // Additive v7 support table: existing v7 installations also need tombstones
     // without modifying historical booking or payment records.
     ensureBookingCreateSchema(db);
