@@ -280,7 +280,7 @@
     </details>
     <section id="update-center" class="update-center" aria-labelledby="update-center-title" hidden>
       <h3 id="update-center-title">Application updates</h3>
-      <p class="muted">Check whether GitHub has a newer FortLedger revision. Checking never updates code or hotel data.</p>
+      <p class="muted">Check the installed FortLedger update method. This page never changes hotel data.</p>
       <div class="update-center-actions">
         <button id="update-center-check" type="button" class="secondary">Check for updates</button>
         <p id="update-center-state" role="status" aria-live="polite">Version not checked.</p>
@@ -291,6 +291,9 @@
         <ul id="update-center-blockers"></ul>
         <p id="update-center-ci" class="muted"></p>
         <button type="button" id="update-center-install" class="primary" hidden disabled>Install verified update & restart</button>
+      </div>
+      <div id="update-center-desktop" hidden>
+        <p class="muted">This is an installer-managed Windows computer. The owner can download a newer tested Windows setup from the <a href="https://github.com/tchouhanjsm/fortledger/actions/workflows/windows-installer.yml" target="_blank" rel="noopener noreferrer">official FortLedger installer builds</a>. First finish all bills and bookings, close FortLedger from the Windows tray, and verify the protected encrypted backup before running the new installer. No Git commands or technical steps are needed for staff.</p>
       </div>
       <div id="update-center-windows" hidden>
         <p class="muted">On Windows, a supervised installation can safely finish active requests and restart the local app when every check passes. If unavailable, first finish work and stop the app, then double-click <strong>Update FortLedger.cmd</strong> in the trusted existing folder. The manual launcher also verifies a protected backup before installing.</p>
