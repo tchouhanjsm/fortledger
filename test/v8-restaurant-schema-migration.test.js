@@ -84,7 +84,7 @@ test('real HTTP bill creation succeeds on upgraded v7 hotel and preserves exactl
   let db,server;
   try{
     db=openDatabase(file);
-    importMenuCsv(db,'name,category,price,tax_rate\\nTea,Drinks,95,5');
+    importMenuCsv(db,'name,category,price,tax_rate\nTea,Drinks,95,5');
     db.exec('DROP TABLE restaurant_bill_requests');
     db.pragma('user_version = 7');
     db.close();db=null;
