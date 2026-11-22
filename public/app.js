@@ -1807,6 +1807,89 @@ $('#save-restaurant-bill').onclick=async()=>{
   finally{restaurantBillSubmitting=false;button.disabled=false;}
 };
 let validatedMenuCsv=null,menuImportGeneration=0,menuImportRows=[],menuImportInFlight=false;
+// Menu availability is separate from CSV price changes. It never edits a bill
+// or menu identity; the server checks the expected state and audits the actor.
+let menuAvailabilityItems=[],menuAvailabilityBusy=false,menuAvailabilityRevision=0;
+function renderMenuAvailability(focusId=null){
+  const container=$('#menu-availability-items');container.replaceChildren();
+  const query=$('#menu-availability-search').value.trim().toLocaleLowerCase();
+  const visible=menuAvailabilityItems.filter(item=>
+    (item.name+' '+item.category).toLocaleLowerCase().includes(query));
+  $('#menu-availability-count').textContent=visible.length+' of '+menuAvailabilityItems.length+' dishes';
+  for(const item of visible){
+    const row=label('div',undefined,'menu-availability-row');
+    row.dataset.menuId=String(item.id);
+    const details=label('div',undefined,'menu-availability-detail');
+    details.append(label('strong',item.name));
+    details.append(label('small',item.category+' · '+money(item.price_paise)+
+      ' · GST '+item.tax_rate+'% · '+(item.active?'Available':'Unavailable')));
+    const button=label('button',item.active?'Mark unavailable':'Make available','secondary');
+    button.type='button';button.disabled=menuAvailabilityBusy;
+    button.setAttribute('aria-label',(item.active?'Mark unavailable: ':'Make available: ')+item.name);
+    button.onclick=()=>changeMenuAvailability(item);
+    row.append(details,button);container.append(row);
+  }
+  if(!visible.length)container.append(label('p',menuAvailabilityItems.length?
+    'No dishes match the search.':'No menu items configured. Import a CSV first.','muted'));
+  if(focusId!==null)container.querySelector('[data-menu-id="'+focusId+'"] button')?.focus({preventScroll:true});
+}
+async function refreshMenuAvailability(){
+  if(!can('menu.manage'))return;
+  const revision=++menuAvailabilityRevision;
+  $('#menu-availability-message').textContent='Reading current menu availability…';
+  const latest=await api('/api/restaurant/menu/all');
+  if(revision!==menuAvailabilityRevision)return;
+  menuAvailabilityItems=latest;
+  renderMenuAvailability();
+  $('#menu-availability-message').textContent='Current menu availability loaded. Review each dish before changing it.';
+}
+async function changeMenuAvailability(item){
+  if(!can('menu.manage')||menuAvailabilityBusy)return;
+  const wasActive=Boolean(item.active),makeActive=!wasActive;
+  const verb=makeActive?'Make available':'Mark unavailable';
+  if(!confirm(verb+' '+item.name+'? '+(makeActive?
+    'It will become selectable for new bills.':
+    'It will disappear from new bills; saved receipts stay unchanged.')))return;
+  menuAvailabilityBusy=true;
+  menuAvailabilityRevision++; // invalidate a read already in flight
+  renderMenuAvailability();
+  const message=$('#menu-availability-message');
+  try{
+    await api('/api/restaurant/menu/'+item.id+'/availability',{
+      method:'PATCH',body:JSON.stringify({active:makeActive,expected_active:wasActive})
+    });
+    message.textContent=item.name+(makeActive?' is now available.':' is now unavailable.')+
+      ' Existing saved receipts are unchanged.';
+    try{
+      await load();
+      await refreshMenuAvailability();
+      message.textContent=item.name+(makeActive?' is now available.':' is now unavailable.')+
+        ' Both the menu and staff bill view were refreshed.';
+    }catch(error){
+      message.textContent='Availability was saved, but the screen could not refresh: '+
+        error.message+'. Refresh to verify the current menu.';
+    }
+  }catch(error){
+    message.textContent='Change not confirmed: '+error.message+
+      '. Refresh current availability before trying another change.';
+    try{await refreshMenuAvailability();}
+    catch(refreshError){message.textContent+=' Refresh failed: '+refreshError.message;}
+  }finally{
+    menuAvailabilityBusy=false;
+    renderMenuAvailability(item.id);
+  }
+}
+$('#menu-availability-search').oninput=()=>renderMenuAvailability();
+$('#menu-availability-refresh').onclick=()=>refreshMenuAvailability().catch(error=>{
+  $('#menu-availability-message').textContent='Could not load current menu: '+error.message;
+});
+$('#menu-availability-section').addEventListener('toggle',()=>{
+  if($('#menu-availability-section').open&&can('menu.manage'))
+    refreshMenuAvailability().catch(error=>{
+      $('#menu-availability-message').textContent='Could not load current menu: '+error.message;
+    });
+});
+
 function clearMenuImportReview(){
   validatedMenuCsv=null;menuImportRows=[];
   $('#import-menu').disabled=true;

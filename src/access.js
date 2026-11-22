@@ -33,6 +33,9 @@ export function requiredPermission(method,path){
     return 'settings.admin';
   }
   if(path.startsWith('/restaurant/')){
+    if(path==='/restaurant/menu/all')return method==='GET'?'menu.manage':null;
+    if(/^\/restaurant\/menu\/\d+\/availability$/.test(path))
+      return method==='PATCH'?'menu.manage':null;
     if(path==='/restaurant/menu/preview'||path==='/restaurant/menu/import')
       return method==='POST'?'menu.manage':null;
     if(path==='/restaurant/checked-in')return 'restaurant.read';
