@@ -41,3 +41,13 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+        env:
+          FORTLEDGER_CAPTURE_SCREENSHOTS: "1"
+      - name: Retain synthetic SHIZUKA browser screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: shizuka-browser-screenshots
+          path: browser-artifacts/*.png
+          if-no-files-found: ignore
+          retention-days: 7
