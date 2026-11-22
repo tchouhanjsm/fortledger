@@ -35,7 +35,11 @@ export async function runArrivalReadinessSmoke(browser){
         await page.locator('input[name="password"]').fill(user.password);
         await page.getByRole('button',{name:'Sign in'}).click();
         await page.waitForURL(base+'/');
-        await page.waitForFunction(()=>document.querySelector('#shift-handover-summary')?.textContent.includes('Shift handover'));
+        // The original HTML placeholder also says "Shift handover"; wait for
+        // the data-derived count, otherwise a fast CI runner races the login load.
+        await page.waitForFunction(()=>
+          /^Shift handover · \d+ items? to review$/.test(
+            document.querySelector('#shift-handover-summary')?.textContent||''));
         if(user.owner){
           const summary=await page.locator('#shift-handover-summary').textContent();
           assert.match(summary,/items? to review/);
