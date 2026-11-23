@@ -113,6 +113,9 @@ export function requiredPermission(method,path){
       method==='POST'?'external.documents.import':null;
   if(/^\/external-invoice-originals\/identifications\/request\/[A-Za-z0-9_-]+$/.test(path))
     return method==='GET'?'external.documents.read':null;
+  if(path==='/external-invoice-originals/inventory'||
+     path==='/external-invoice-originals/inventory.csv')
+    return method==='GET'?'external.documents.read':null;
   if(path==='/external-invoice-originals')
     return method==='GET'?'external.documents.read':null;
   if(path==='/external-invoice-originals/import')
