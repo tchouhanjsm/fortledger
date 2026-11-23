@@ -79,9 +79,26 @@ export function gitBlobSha(data){
 }
 function destination(root,filename){
   if(!allowedFile(filename))throw new Error('Unsafe patch path');
-  const absolute=path.resolve(root,...filename.split('/'));
-  if(!absolute.startsWith(path.resolve(root)+path.sep))
+  const base=path.resolve(root);
+  const absolute=path.resolve(base,...filename.split('/'));
+  if(!absolute.startsWith(base+path.sep))
     throw new Error('Patch path escaped the installed application');
+  // Reject symlinked ancestors: a malicious/replaced local subdirectory
+  // must never redirect an update into the hotel profile or elsewhere.
+  let cursor=base;
+  for(const piece of filename.split('/').slice(0,-1)){
+    if(fs.existsSync(cursor)){
+      const stat=fs.lstatSync(cursor);
+      if(!stat.isDirectory()||stat.isSymbolicLink())
+        throw new Error('Application update path is not a trusted directory');
+    }
+    cursor=path.join(cursor,piece);
+  }
+  if(fs.existsSync(cursor)){
+    const stat=fs.lstatSync(cursor);
+    if(!stat.isDirectory()||stat.isSymbolicLink())
+      throw new Error('Application update path is not a trusted directory');
+  }
   return absolute;
 }
 function checkBackup({env,platform,freshness=backupFreshness,
