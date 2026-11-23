@@ -742,7 +742,7 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
           }
           // Exactly one control line on stdout; the tray checks child exit 0
           // before allowing the separate, pinned update helper to run.
-          process.stdout.write('FORTLEDGER_DESKTOP_PATCH:'+sha+'\\n',()=>process.exit(0));
+          process.stdout.write('FORTLEDGER_DESKTOP_PATCH:'+sha+'\n',()=>process.exit(0));
         });
       };
     }
