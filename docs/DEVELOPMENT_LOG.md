@@ -1,5 +1,10 @@
 # FortLedger — Development log
 
+## 2026-11-23 — GST readiness phase B1: registered supplier identity
+- Added optional registered legal supplier name, kept distinct from hotel trade name. Existing settings storage is JSON so this requires no SQLite schema migration and preserves historic issued proforma snapshots.
+- Added manager/owner-only GST readiness API and invoice-page checklist for legal name, Rajasthan GSTIN format and registered address. These are presence checks, not portal or accountant verification. Final tax issuance remains disabled.
+- Review-only tax draft now warns if registered legal supplier name is unset; tax draft PDF uses it as supplier when supplied. Regression tests cover local preservation, draft blockers and staff authorization.
+
 ## 2026-11-23 — GST and saved restaurant correction phase A1 (read-only)
 - Added manager/owner permission-gated correction preview based solely on immutable saved restaurant item/tax snapshots. Partial quantity reviews, explicit reason, settled and room-charge warnings; no monetary writes or new schema.
 - Added tests for old menu-rate preservation, malformed/duplicate quantities, snapshot/ledger integrity, finance immutability and authenticated cashier/frontdesk denial.
