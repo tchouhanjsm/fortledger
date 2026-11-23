@@ -313,3 +313,11 @@
 #historical-invoice-originals .external-original-identification-history{max-height:220px;overflow-y:auto;font-size:12px;overflow-wrap:anywhere}
 @media(max-width:700px){#historical-invoice-originals .external-original-actions{min-width:0;width:100%;flex:1 1 auto}}
 @media(max-width:440px){#historical-invoice-originals .external-original-identification-form{grid-template-columns:1fr}}
+
+/* Owner-only accountant worksheet, kept below the historical original archive. */
+#historical-invoice-originals .external-invoice-inventory-toolbar{display:flex;gap:16px;align-items:center;justify-content:space-between;border:1px solid var(--border,#e5e0d7);border-radius:10px;padding:14px;margin:14px 0}
+#historical-invoice-originals .external-invoice-inventory-toolbar>div{flex:1 1 220px;min-width:0}
+#historical-invoice-originals .external-invoice-inventory-toolbar strong{display:block;font-size:14px}
+#historical-invoice-originals .external-invoice-inventory-toolbar p{margin:6px 0 0;font-size:13px}
+#historical-invoice-originals .external-invoice-inventory-toolbar a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;max-width:100%;text-align:center}
+@media(max-width:650px){#historical-invoice-originals .external-invoice-inventory-toolbar{align-items:stretch;flex-direction:column}}
