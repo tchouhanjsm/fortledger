@@ -3379,6 +3379,15 @@ async function refreshRestaurantCorrectionInbox(reset=true){
       };
       card.append(title,amount,reason,
         label('small','Requested by '+entry.actor_username+' · '+entry.created_at+' UTC'),source);
+      for(const risk of entry.review_alerts||[]){
+        const related=risk.related_case_ids.map(id=>'#'+id).join(', ');
+        const quantityWarning=risk.code==='proposed_quantities_exceed_saved_line'?
+          ' Total proposed quantity '+risk.active_proposed_quantity+
+          ' exceeds original '+risk.original_quantity+'.':'';
+        card.append(label('p','Review caution: original line '+(risk.line_index+1)+
+          ' also appears in active case(s) '+related+'.'+quantityWarning+
+          ' These are unapproved proposals, not credits or refunds.','error'));
+      }
       list.append(card);
     }
     restaurantCorrectionInboxOffset+=data.items.length;
