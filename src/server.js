@@ -373,6 +373,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
     res.json({status:getPrintStatus(db,Number(req.params.id))});
   });
   app.post('/api/restaurant/bills/:id/print',async(req,res,next)=>{
+    if(authRecord&&req.actor?.role!=='cashier')
+      return res.status(403).json({error:'Only restaurant staff can send POS print jobs'});
     try{
       const host=process.env.FORTLEDGER_PRINTER_HOST;
       if(!host)throw new Error('Set FORTLEDGER_PRINTER_HOST before LAN printing');
@@ -401,6 +403,10 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   });
   app.get('/api/restaurant/bills',(_req,res)=>res.json(listRestaurantBills(db)));
   app.post('/api/restaurant/bills',(req,res,next)=>{
+    // Owner/manager oversight is not an implicit emergency cashier login.
+    // Legacy unauthenticated test fixtures retain their existing behaviour.
+    if(authRecord&&req.actor?.role!=='cashier')
+      return res.status(403).json({error:'Only restaurant staff can create POS bills'});
     try{
       // Legacy unauthenticated in-memory fixtures are not a supported hotel deployment.
       if(authRecord)requireFinancialRequestId(req.body);
