@@ -4,6 +4,7 @@ import {randomUUID} from 'node:crypto';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import {readFileSync} from 'node:fs';
 import {openDatabase} from '../src/database.js';
 import {transitionBooking} from '../src/booking-transitions.js';
 import {getCheckoutDocumentCase} from '../src/checkout-document-case.js';
@@ -91,4 +92,10 @@ test('authenticated checkout review writes restricted to owner and manager',asyn
   assert.equal((await req(route,{cookie:cookies.owner,method:'POST',body:input('reviewed_for_accountant',true)})).status,201);
   assert.equal(db.prepare('SELECT COUNT(*) n FROM checkout_case_review_events').get().n,2);
  }finally{await new Promise(resolve=>server.close(resolve));db.close();}
+});
+
+test('checkout review browser submission uses JSON body for the existing fetch wrapper',()=>{
+  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+  assert.match(app,/body:JSON\.stringify\(\{request_id:requestId,status:choice\.value/);
+  assert.ok(!app.includes('body:{request_id:requestId,status:choice.value'));
 });

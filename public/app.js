@@ -1337,8 +1337,8 @@ async function loadCheckoutCases(reset=true){
           save.disabled=true;
           try{
             await api('/api/checkout-document-cases/'+entry.id+'/reviews',{method:'POST',
-              body:{request_id:requestId,status:choice.value,note:note.value.trim(),
-                source_evidence_checked:checked.checked}});
+              body:JSON.stringify({request_id:requestId,status:choice.value,note:note.value.trim(),
+                source_evidence_checked:checked.checked})});
             status.textContent='Review recorded; legal GST invoice remains blocked.';
             save.dataset.requestId='';
             await loadCheckoutCases();
