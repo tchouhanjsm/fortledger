@@ -104,6 +104,8 @@ export function requiredPermission(method,path){
   if(path.startsWith('/rooms'))return method==='GET'?'rooms.read':'rooms.write';
   // Historic originals may contain third-party GSTIN/address data:
   // keep listing, importing and downloading owner-only.
+  if(path==='/accountant/readiness')
+    return method==='GET'?'external.documents.read':null;
   if(path==='/documents/register')return method==='GET'?'invoices.read':null;
   if(path==='/checkout-document-cases')return method==='GET'?'invoices.read':null;
   if(/^\/bookings\/\d+\/checkout-document-case$/.test(path))

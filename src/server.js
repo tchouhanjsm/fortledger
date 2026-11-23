@@ -24,6 +24,7 @@ import {searchBillingDocuments} from './billing-documents-register.js';
 import {importExternalInvoiceOriginal,listExternalInvoiceOriginals,lookupExternalInvoiceOriginal,getExternalInvoiceOriginal} from './external-invoice-originals.js';
 import {historicalPdfIdentificationHistory,historicalPdfIdentificationRequest,latestHistoricalPdfIdentification,recordHistoricalPdfIdentification} from './historical-pdf-identifications.js';
 import {historicalPdfInventory,historicalPdfInventoryCsv} from './historical-pdf-inventory.js';
+import {accountantReadiness} from './accountant-readiness.js';
 import {streamTaxDraftPdf} from './tax-draft-pdf.js';
 import {setHotelLogo,getCurrentLogo,getActiveLogoId,getLogoAsset} from './hotel-logo.js';
 import {scheduleEncryptedBackups} from './encrypted-backups.js';
@@ -546,6 +547,10 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.get('/api/bookings/:id/checkout-document-case',(req,res,next)=>{
     try{res.json({case:getCheckoutDocumentCase(db,Number(req.params.id))});}
     catch(error){next(error);}
+  });
+  app.get('/api/accountant/readiness',(req,res,next)=>{
+    if(req.actor?.role!=='owner')return res.status(403).json({error:'Owner required'});
+    try{res.json(accountantReadiness(db));}catch(error){next(error);}
   });
   // Export is a read-only, owner-only accountant worksheet. Not a GST return.
   app.get('/api/external-invoice-originals/inventory',(req,res,next)=>{
