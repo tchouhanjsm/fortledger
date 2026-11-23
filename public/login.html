@@ -1,13 +1,37 @@
 <!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#22324b"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" type="image/svg+xml" href="/fortledger-icon.svg"><title>Sign in · FortLedger</title><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/heritage-sky.css"></head>
-<body class="login-page"><main class="login-main"><div class="login-card"><span class="eyebrow">GARH JAISAL / OPERATIONS</span><h1>FortLedger</h1><p>Sign in to your local business workspace. Owners and staff use separate accounts.</p><form id="login-form"><label>Username<input name="username" autocomplete="username" value="owner" required autofocus></label><label>Password<input type="password" name="password" autocomplete="current-password" required></label><button class="primary" type="submit">Sign in</button><p id="login-error" role="alert"></p></form><small>Stored locally. No cloud account required.</small></div></main>
+<body class="login-page"><main class="login-main"><div class="login-card"><span class="eyebrow">GARH JAISAL / OPERATIONS</span><h1>FortLedger</h1><p>Sign in to your local business workspace. Owners and staff use separate accounts.</p><form id="login-form"><label>Username<input name="username" autocomplete="username" value="owner" required autofocus></label><label id="login-password-field">Password<input type="password" name="password" autocomplete="current-password" required></label>
+<label id="login-pin-field" hidden>6-digit staff PIN<input type="password" name="pin" inputmode="numeric" autocomplete="off" maxlength="6" minlength="6" pattern="[0-9]{6}" aria-describedby="login-pin-hint"></label>
+<p id="login-pin-hint" class="muted" hidden>Use your PIN only on this registered local computer. Owner and managers continue to use passwords.</p>
+<button class="primary" type="submit">Sign in</button>
+<button id="login-pin-toggle" class="secondary" type="button" hidden>Use staff PIN instead</button><p id="login-error" role="alert"></p></form><small>Stored locally. No cloud account required.</small></div></main>
 <script type="module">
 const form=document.querySelector('#login-form'),error=document.querySelector('#login-error');
+let usePin=false;
+const toggle=document.querySelector('#login-pin-toggle');
+const passwordField=document.querySelector('#login-password-field'),pinField=document.querySelector('#login-pin-field'),
+  pinHint=document.querySelector('#login-pin-hint');
+function showPin(enabled){
+  usePin=enabled;passwordField.hidden=enabled;pinField.hidden=!enabled;pinHint.hidden=!enabled;
+  form.elements.namedItem('password').required=!enabled;
+  form.elements.namedItem('pin').required=enabled;
+  toggle.textContent=enabled?'Use full password instead':'Use staff PIN instead';
+  error.textContent='';
+  form.elements.namedItem(enabled?'pin':'password').focus({preventScroll:true});
+}
+toggle.onclick=()=>showPin(!usePin);
+fetch('/api/auth/pin/status',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{
+  if(data?.available)toggle.hidden=false;
+}).catch(()=>{});
+
 form.onsubmit=async e=>{
   e.preventDefault();error.textContent='';
   const button=form.querySelector('button');button.disabled=true;
   try{
-    const res=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({username:form.elements.namedItem('username').value,password:form.elements.namedItem('password').value})});
+    const username=form.elements.namedItem('username').value;
+    const payload=usePin?{username,pin:form.elements.namedItem('pin').value}:
+      {username,password:form.elements.namedItem('password').value};
+    const res=await fetch(usePin?'/api/auth/pin':'/api/auth/login',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!res.ok){const data=await res.json();throw new Error(data.error||'Sign in failed');}
     window.location.replace('/');
   }catch(e){error.textContent=e.message;}
