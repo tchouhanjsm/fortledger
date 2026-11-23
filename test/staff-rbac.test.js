@@ -9,6 +9,9 @@ test('permissions are deny-by-default for staff and owner retains full access',(
   assert.equal(may('cashier','settings.admin'),false);
   assert.equal(may('cashier','restaurant.write'),true);
   assert.equal(may('frontdesk','bookings.write'),true);
+  assert.equal(may('frontdesk','restaurant.read'),false);
+  assert.equal(may('manager','restaurant.pos'),false);
+  assert.equal(may('cashier','restaurant.pos'),true);
   assert.equal(may('frontdesk','refunds.write'),false);
   assert.equal(may('manager','settings.admin'),false);
   assert.equal(may('owner','staff.admin'),true);
@@ -77,7 +80,10 @@ test('front desk can manage bookings, not refunds or hotel admin settings',async
       Cookie:cookie,'Content-Type':'application/json'
     },body:method==='GET'?undefined:'{}'});
     assert.equal((await request('/api/bookings')).status,200);
-    assert.equal((await request('/api/restaurant/menu')).status,200);
+    assert.equal((await request('/api/restaurant/menu')).status,403);
+    assert.equal((await request('/api/restaurant/bills')).status,403);
+    assert.equal((await request('/api/restaurant/checked-in')).status,403);
+    assert.equal((await request('/api/bookings/1/folio')).status,200);
     assert.equal((await request('/api/restaurant/menu/import','POST')).status,403);
     assert.equal((await request('/api/bookings/1/payments/2/refunds','POST')).status,403);
     assert.equal((await request('/api/settings/business','PUT')).status,403);
