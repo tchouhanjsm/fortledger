@@ -50,6 +50,6 @@ test('real dashboard actions use shared route-aware target navigation',()=>{
   assert.match(source,/workspaceNavigator\.navigate\('bookings','bookings'\)/);
   assert.match(source,/workspaceNavigator\.navigate\('rooms','rooms'\)/);
   assert.match(source,/workspaceNavigator\.navigate\('rooms','maintenance-workspace'\)/);
-  assert.match(source,/workspaceNavigator\.navigate\('restaurant','restaurant-history-section'\)/);
+  assert.match(source,/workspaceNavigator\.navigate\(isRestaurantCashier\(\)\?'restaurant':'restaurant-admin','restaurant-history-section'\)/);
   assert.match(source,/workspaceNavigator\.navigate\('dashboard','home-closing'\)/);
 });

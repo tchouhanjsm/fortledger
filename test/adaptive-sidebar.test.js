@@ -12,7 +12,7 @@ test('main sidebar follows reception task order, with all eight bookmarkable rou
   assert.deepEqual(destinations,['dashboard','bookings','rooms','restaurant','guests',
     'invoices','business-settings','profile']);
   assert.equal(new Set(destinations).size,8);
-  assert.match(js,/nav\.hidden=Boolean\(currentUser&&!can\(VIEW_ACCESS/);
+  assert.match(js,/nav\.hidden=Boolean\(currentUser&&!canVisitView/);
 });
 test('adaptive sidebar keeps labels and variable height/width without using an icon-only rail',()=>{
   const start=css.indexOf('/* Kaizen V4: one responsive sidebar contract');

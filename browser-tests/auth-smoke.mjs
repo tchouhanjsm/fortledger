@@ -129,6 +129,9 @@ export async function runAuthenticatedBrowserSmoke(browser){
           assert.equal((await context.request.get(base+
             '/api/finance/restaurant/reconciliation.csv?date=2026-11-22')).status(),403);
         }else if(user.role==='frontdesk'){
+          await page.goto(base+'/#restaurant');
+          assert.equal(await page.locator('#restaurant').isVisible(),false);
+          assert.equal((await context.request.get(base+'/api/restaurant/bills')).status(),403);
           assert.equal((await context.request.get(base+'/api/bookings')).status(),200);
           assert.equal((await context.request.get(base+'/api/guests')).status(),200);
           assert.equal((await context.request.get(base+'/api/finance/closing/attention')).status(),403);
@@ -137,8 +140,9 @@ export async function runAuthenticatedBrowserSmoke(browser){
           assert.equal((await context.request.get(base+'/api/audit/daily_close/1')).status(),200);
           if(user.role==='manager'){
             // Real 390px keyboard/touch journey, not just a direct HTTP toggle.
-            await page.goto(base+'/#restaurant');
-            await page.locator('#restaurant').waitFor({state:'visible'});
+            await page.goto(base+'/#restaurant-admin');
+            await page.locator('#restaurant-admin').waitFor({state:'visible'});
+            assert.equal(await page.locator('#restaurant').isVisible(),false);
             // A real manager download never mutates the restaurant bill ledger.
             await page.locator('#restaurant-reconciliation-section > summary').click();
             await page.locator('#restaurant-reconciliation-date').fill('2026-11-22');
@@ -150,8 +154,11 @@ export async function runAuthenticatedBrowserSmoke(browser){
             assert.match(await page.locator('#restaurant-reconciliation-message').textContent(),
               /Verify operator-recorded receipts/);
             assert.equal(db.prepare('SELECT COUNT(*) n FROM restaurant_bills').get().n,billsBefore);
-            // Manager menu administration remains separate from cashier creation.
-            assert.equal(await page.getByRole('button',{name:'Add Synthetic Chai to bill'}).count(),0);
+            // A manager's menu action must never open or mutate a cashier draft.
+            await page.goto(base+'/#restaurant');
+            assert.equal(await page.locator('#restaurant').isVisible(),false);
+            await page.goto(base+'/#restaurant-admin');
+            await page.locator('#restaurant-admin').waitFor({state:'visible'});
             await page.locator('#menu-import-section > summary').click();
             await page.locator('#menu-availability-section > summary').click();
             await page.waitForFunction(()=>document.querySelector('#menu-availability-items .menu-availability-row button'));
@@ -172,6 +179,7 @@ export async function runAuthenticatedBrowserSmoke(browser){
             await page.getByRole('button',{name:'Make available: Synthetic Chai'}).waitFor();
             assert.equal((await context.request.get(base+'/api/restaurant/menu').then(r=>r.json())).length,0);
             assert.equal(await page.locator('#menu-items .menu-item').count(),0);
+            assert.equal(await page.locator('#restaurant').isVisible(),false);
             assert.equal(await page.getByRole('button',{name:'Make available: Synthetic Chai'}).isEnabled(),true);
             await page.getByRole('button',{name:'Make available: Synthetic Chai'}).click();
             await page.locator('#shizuka-confirm-dialog').waitFor({state:'visible'});

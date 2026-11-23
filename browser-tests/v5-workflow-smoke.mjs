@@ -26,8 +26,9 @@ export async function runV5WorkflowSmoke(browser){
     await page.locator('input[name=password]').fill(ownerPassword);
     await page.getByRole('button',{name:'Sign in'}).click();
     await page.waitForURL(base+'/');
-    await page.goto(base+'/#restaurant');
-    await page.locator('#restaurant').waitFor({state:'visible'});
+    await page.goto(base+'/#restaurant-admin');
+    await page.locator('#restaurant-admin').waitFor({state:'visible'});
+    assert.equal(await page.locator('#restaurant').isVisible(),false);
     await page.locator('#restaurant-table-management > summary').click();
     await page.locator('#restaurant-table-new').fill('Courtyard 1');
     await page.locator('#restaurant-table-create button').click();
@@ -41,6 +42,7 @@ export async function runV5WorkflowSmoke(browser){
     await page.waitForURL(base+'/');
     await page.goto(base+'/#restaurant');
     await page.locator('#restaurant').waitFor({state:'visible'});
+    assert.equal(await page.locator('#restaurant-admin').isVisible(),false);
     await page.locator('#restaurant-table').selectOption({label:'Courtyard 1'});
     await page.getByRole('button',{name:'Add Masala Chai to bill'}).click();
     await page.locator('#review-restaurant-bill').click();
@@ -51,6 +53,7 @@ export async function runV5WorkflowSmoke(browser){
     const billId=db.prepare('SELECT id FROM restaurant_bills ORDER BY id DESC LIMIT 1').get().id;
     assert.match(renderRestaurantReceipt(db,billId),/Table: Courtyard 1/);
     assert.equal(db.prepare('SELECT table_label FROM restaurant_bill_tables').get().table_label,'Courtyard 1');
+    await page.locator('#restaurant-jump-history').click();
     assert.match(await page.locator('#restaurant-history').textContent(),/Courtyard 1/);
     await page.locator('#logout').click();
     await page.waitForURL(base+'/login.html');
@@ -58,8 +61,8 @@ export async function runV5WorkflowSmoke(browser){
     await page.locator('input[name=password]').fill(ownerPassword);
     await page.getByRole('button',{name:'Sign in'}).click();
     await page.waitForURL(base+'/');
-    await page.goto(base+'/#restaurant');
-    await page.locator('#restaurant').waitFor({state:'visible'});
+    await page.goto(base+'/#restaurant-admin');
+    await page.locator('#restaurant-admin').waitFor({state:'visible'});
     await page.locator('#menu-import-section > summary').click();
     await page.locator('#menu-availability-section > summary').click();
     await page.waitForFunction(()=>document.querySelector('#menu-availability-count')?.textContent?.includes('1 of 1'));
