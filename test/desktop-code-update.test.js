@@ -44,7 +44,7 @@ const feed=async()=>({state:'installer_update_available',available:true,target_s
   remote:newSha.slice(0,12),run_number:90,
   download_url:'https://github.com/tchouhanjsm/fortledger/actions/runs/2/artifacts/3'});
 const tree=async sha=>sha===oldSha?before:after;
-const backup=()=>({restorable:true,owner_auth_present:true,independent_drive:true});
+const backup=()=>({restorable:true,owner_auth_present:true,owner_credential_recoverable:true,independent_drive:true});
 const freshness=()=>({state:'recent'});
 const content={'src/server.js':'new-server','public/index.html':'new-ui',
   'src/new-feature.js':'export const newFeature=true;'};
