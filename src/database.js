@@ -7,6 +7,7 @@ import { ensureInvoiceSchema } from './invoice-schema.js';
 import { ensureBusinessSettings } from './business-settings.js';
 import { ensureRestaurantSchema } from './restaurant.js';
 import {ensureRestaurantTablesSchema} from './restaurant-tables.js';
+import {ensureStaffPinSchema} from './staff-pin.js';
 import { ensureRefundSchema } from './payment-ledger.js';
 import {ensureTaxDraftSchema} from './tax-draft.js';
 import {ensureLogoSchema} from './hotel-logo.js';
@@ -187,10 +188,12 @@ export function openDatabase(filename = databasePath()) {
     }catch{
       throw new Error('Booking notes schema missing or incompatible; restore a verified backup');
     }
+    // v13: optional restaurant tables and disabled-by-default local staff PIN.
     // v13: optional restaurant table identities and immutable bill seating labels.
     // Both objects are new and never mutate prior paid bills or invoices.
     if(current<13)db.transaction(()=>{
       ensureRestaurantTablesSchema(db);
+      ensureStaffPinSchema(db);
       if(db.pragma('foreign_key_check').length)
         throw new Error('Restaurant table migration rejected: foreign key violations');
       db.pragma('user_version = 13');
@@ -198,6 +201,8 @@ export function openDatabase(filename = databasePath()) {
     try{
       db.prepare('SELECT id,label,active FROM restaurant_tables LIMIT 0').all();
       db.prepare('SELECT bill_id,table_id,table_label FROM restaurant_bill_tables LIMIT 0').all();
+      db.prepare('SELECT staff_id,device_hash,salt,verifier FROM staff_pin_credentials LIMIT 0').all();
+      db.prepare('SELECT enabled FROM staff_pin_policy WHERE id=1').all();
     }catch{
       throw new Error('Restaurant tables schema incomplete. Restore a verified backup before billing');
     }
