@@ -22,6 +22,7 @@ export async function runRestaurantCorrectionCasesSmoke(browser){
     await new Promise(resolve=>server.once('listening',resolve));
     const base='http://127.0.0.1:'+server.address().port;
     const context=await browser.newContext({viewport:{width,height:900}});
+    let ownerContext=null;
     try{
       async function signIn(page,username,password){
         await page.goto(base+'/login.html');
@@ -51,7 +52,10 @@ export async function runRestaurantCorrectionCasesSmoke(browser){
       assert.equal(db.prepare('SELECT COUNT(*) n FROM restaurant_correction_case_reviews').get().n,0);
       assert.deepEqual(db.prepare('SELECT * FROM restaurant_bills WHERE id=?').get(bill.id),saved);
       assert.equal(await panel.getByRole('button',{name:'Record owner decision'}).count(),0);
-      const ownerPage=await context.newPage();
+      // Separate browser cookies: an already logged-in manager visiting /login.html
+      // is redirected to the workspace instead of seeing a second login form.
+      ownerContext=await browser.newContext({viewport:{width,height:900}});
+      const ownerPage=await ownerContext.newPage();
       ownerPage.on('pageerror',e=>errors.push(e.message));
       await signIn(ownerPage,'owner',ownerPass);
       const ownerCard=ownerPage.locator('#restaurant-bill-'+bill.id);
@@ -70,6 +74,7 @@ export async function runRestaurantCorrectionCasesSmoke(browser){
       assert.deepEqual(errors,[],'No UI runtime failures at '+width+'px');
       console.log('PASS: manager saves nonfinancial correction case, owner records immutable disposition at '+width+'px');
     }finally{
+      await ownerContext?.close();
       await context.close();
       await new Promise(resolve=>server.close(resolve));
       db.close();
