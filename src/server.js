@@ -16,6 +16,7 @@ import {authGate,loadPasswordRecord,DEFAULT_AUTH_FILE} from './auth.js';
 import {renderRestaurantReceipt} from './restaurant-receipt.js';
 import {previewRestaurantCorrection} from './restaurant-correction-preview.js';
 import {prepareTaxDraft,getTaxDraft} from './tax-draft.js';
+import {gstReadiness} from './gst-readiness.js';
 import {streamTaxDraftPdf} from './tax-draft-pdf.js';
 import {setHotelLogo,getCurrentLogo,getActiveLogoId,getLogoAsset} from './hotel-logo.js';
 import {scheduleEncryptedBackups} from './encrypted-backups.js';
@@ -437,6 +438,7 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
     try{res.json(updateBusinessSettings(db,req.body));}
     catch(error){next(error);}
   });
+  app.get('/api/tax/readiness',(_req,res)=>res.json(gstReadiness(getBusinessSettings(db))));
   app.post('/api/invoices/:id/tax-draft',(req,res,next)=>{
     try{res.status(201).json(prepareTaxDraft(db,Number(req.params.id),req.body));}
     catch(error){next(error);}
