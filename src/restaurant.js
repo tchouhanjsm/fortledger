@@ -2,6 +2,7 @@ import { toPaise } from './finance.js';
 import {createHash,createHmac} from 'node:crypto';
 import {ensurePrintSchema} from './printer.js';
 import {recordAudit} from './financial-audit.js';
+import {saveBillTableSnapshot} from './restaurant-tables.js';
 export function ensureRestaurantSchema(db){
   db.exec(`
     CREATE TABLE IF NOT EXISTS menu_items (
@@ -206,10 +207,12 @@ export function setMenuItemAvailability(db,itemId,{active,expected_active}={},ac
 }
 
 export function listRestaurantBills(db){
-  // Read-only settlement state: never infer payment from room assignment alone.
-  return db.prepare(`SELECT b.*,s.method AS settlement_method,s.created_at AS settled_at
+  // Read-only settlement and original dining-table state; not open orders.
+  return db.prepare(`SELECT b.*,s.method AS settlement_method,s.created_at AS settled_at,
+      bt.table_id,bt.table_label
     FROM restaurant_bills b LEFT JOIN restaurant_settlements s
-      ON s.restaurant_bill_id=b.id ORDER BY b.id DESC`)
+      ON s.restaurant_bill_id=b.id
+    LEFT JOIN restaurant_bill_tables bt ON bt.bill_id=b.id ORDER BY b.id DESC`)
     .all().map(x=>({...x,items:JSON.parse(x.items_snapshot)}));
 }
 export function restaurantBillRequest(db,requestId){
@@ -223,6 +226,10 @@ export function createRestaurantBill(db,input,actor=null,{requireReviewedPrices=
   const requestId=input.request_id;
   if(requestId!==undefined&&(typeof requestId!=='string'||!/^[A-Za-z0-9_-]{16,80}$/.test(requestId)))
     throw new Error('Invalid restaurant bill request ID');
+  const table_id=input.table_id===undefined||input.table_id===null||input.table_id===''?
+    null:input.table_id;
+  if(table_id!==null&&(!Number.isSafeInteger(table_id)||table_id<1))
+    throw new Error('Choose a valid dining table');
   const payment_method=String(input.payment_method||'');
   if(!['cash','upi','card','room'].includes(payment_method))throw new Error('Select a valid payment method');
   const hasManual=payment_method==='room'&&
@@ -258,7 +265,7 @@ export function createRestaurantBill(db,input,actor=null,{requireReviewedPrices=
       ...(hasTax?{tax_rate:line.tax_rate}:{})};
   });
   const fingerprint=requestId?createHash('sha256').update(JSON.stringify({
-    payment_method,booking_id,manual_room,manual_guest,items:normalizedItems
+    payment_method,booking_id,manual_room,manual_guest,table_id,items:normalizedItems
   })).digest('hex'):null;
   return db.transaction(()=>{
     if(requestId){
@@ -291,7 +298,10 @@ export function createRestaurantBill(db,input,actor=null,{requireReviewedPrices=
     if(!Number.isSafeInteger(total_paise)||total_paise>1e11)throw new Error('Restaurant bill exceeds allowed amount');
     const result=db.prepare(`INSERT INTO restaurant_bills(payment_method,booking_id,items_snapshot,total_paise,tax_paise,manual_room,manual_guest)
       VALUES(?,?,?,?,?,?,?)`).run(payment_method,booking_id,JSON.stringify(items),total_paise,tax_paise,manual_room,manual_guest);
-    const response={id:Number(result.lastInsertRowid),payment_method,booking_id,manual_room,manual_guest,items,total_paise,tax_paise};
+    const seating=saveBillTableSnapshot(db,Number(result.lastInsertRowid),table_id);
+    const response={id:Number(result.lastInsertRowid),payment_method,booking_id,manual_room,manual_guest,
+      table_id:seating?.table_id??null,table_label:seating?.table_label??null,
+      items,total_paise,tax_paise};
     if(requestId)db.prepare('INSERT INTO restaurant_bill_requests(request_id,bill_id,fingerprint,response_json) VALUES(?,?,?,?)')
       .run(requestId,response.id,fingerprint,JSON.stringify(response));
     if(actor&&(!Number.isSafeInteger(actor.id)||actor.id<0||
@@ -299,7 +309,8 @@ export function createRestaurantBill(db,input,actor=null,{requireReviewedPrices=
       typeof actor.role!=='string'||!actor.role))
       throw new Error('Invalid restaurant bill actor');
     if(actor)recordAudit(db,actor,'restaurant_bill.created','restaurant_bill',response.id,{
-      payment_method,booking_id,manual_room,amount_paise:total_paise,
+      payment_method,booking_id,manual_room,table_id:seating?.table_id??null,
+      table_label:seating?.table_label??null,amount_paise:total_paise,
       request_id:requestId||null
     });
     return {...response,already_recorded:false};
