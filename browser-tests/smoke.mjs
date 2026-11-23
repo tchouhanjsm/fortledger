@@ -16,6 +16,7 @@ import {runRestaurantCorrectionCasesSmoke} from './restaurant-correction-cases-s
 import {runCheckoutInvoicePreflightSmoke} from './checkout-invoice-preflight-smoke.mjs';
 import {runExternalInvoiceOriginalsSmoke} from './external-invoice-originals-smoke.mjs';
 import {runCheckoutDocumentCaseSmoke} from './checkout-document-case-smoke.mjs';
+import {runBillingDocumentsRegisterSmoke} from './billing-documents-register-smoke.mjs';
 
 const screenshots=process.env.FORTLEDGER_CAPTURE_SCREENSHOTS==='1';
 if(screenshots)mkdirSync('browser-artifacts',{recursive:true});
@@ -505,6 +506,7 @@ try{
   await runCheckoutInvoicePreflightSmoke(browser);
   await runExternalInvoiceOriginalsSmoke(browser);
   await runCheckoutDocumentCaseSmoke(browser);
+  await runBillingDocumentsRegisterSmoke(browser);
   console.log('PASS: Chromium receipt-loss reconciliation, booking/payment flow, responsive 320(reflow proxy)/360/390/768/1024/1280/1440/1920 px.');
 }finally{
   await browser?.close();
