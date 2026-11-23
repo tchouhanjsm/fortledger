@@ -17,7 +17,13 @@ export function ensureExternalInvoiceOriginalsSchema(db){
     CHECK(length(pdf_bytes)=size_bytes)
   );
   CREATE INDEX IF NOT EXISTS idx_external_invoice_originals_date
-    ON external_invoice_originals(id DESC);`);
+    ON external_invoice_originals(id DESC);
+  CREATE TRIGGER IF NOT EXISTS guard_external_pdf_original_update
+    BEFORE UPDATE ON external_invoice_originals
+    BEGIN SELECT RAISE(ABORT,'Historical PDF originals cannot be updated'); END;
+  CREATE TRIGGER IF NOT EXISTS guard_external_pdf_original_delete
+    BEFORE DELETE ON external_invoice_originals
+    BEGIN SELECT RAISE(ABORT,'Historical PDF originals cannot be deleted'); END;`);
 }
 function nameFromHeader(name){
   if(typeof name!=='string'||name.length>700)throw new Error('A PDF filename is required');
