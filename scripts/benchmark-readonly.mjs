@@ -10,16 +10,25 @@ const PATHS=[
   '/api/rooms',
   '/api/bookings',
   '/api/finance/daily?date='+BUSINESS_DAY,
-  '/api/finance/closing/attention'
+  '/api/finance/closing/attention',
+  '/api/documents/register?kind=all&q=Synthetic',
+  '/api/documents/register?status=held_for_review',
+  '/api/restaurant/bills'
 ];
 function seedHistory(db,count){
   const add=db.prepare('INSERT INTO bookings(guest_name,checkin,checkout,rooms_count,category,nightly_rate_paise,status) VALUES(?,?,?,?,?,?,?)');
+  const proforma=db.prepare("INSERT INTO invoices(booking_id,kind,number,snapshot) VALUES(?,'proforma',?,?)");
+  const held=db.prepare("INSERT INTO checkout_document_cases(booking_id,version,state,snapshot_json,actor_username,hotel_business_date) VALUES(?,1,'held_for_review',?,'benchmark','2026-11-22')");
+  const receipt=db.prepare("INSERT INTO restaurant_bills(payment_method,booking_id,items_snapshot,total_paise,tax_paise) VALUES('cash',?,'[]',10000,500)");
   const start=Date.UTC(2020,0,1);
   db.transaction(()=>{
     for(let i=0;i<count;i++){
       const arrival=new Date(start+i*86400000).toISOString().slice(0,10);
       const departure=new Date(start+(i+1)*86400000).toISOString().slice(0,10);
-      add.run('Synthetic Guest '+i,arrival,departure,1,'Unassigned',400000,'checked_out');
+      const id=Number(add.run('Synthetic Guest '+i,arrival,departure,1,'Unassigned',400000,'checked_out').lastInsertRowid);
+      proforma.run(id,'SYN-'+String(i+1).padStart(6,'0'),'{}');
+      held.run(id,'{"version":1,"kind":"checkout_invoice_review_case","ready_for_legal_issuance":false}');
+      receipt.run(id);
     }
   })();
 }
@@ -62,10 +71,11 @@ const cpu=process.cpuUsage(cpuBefore);
 console.log(JSON.stringify({
   note:'Synthetic read-only local HTTP observations, not a hotel-machine SLA or production benchmark',
   node:process.version,timezone:'Asia/Kolkata',runs:[normal,history],
+  documents_and_receipts_are_synthetic_nonstatutory_sources:true,
   process_cpu_ms:+((cpu.user+cpu.system)/1000).toFixed(1),
   elapsed_ms:+(performance.now()-started).toFixed(1),
   rss_mib:+(process.memoryUsage().rss/1048576).toFixed(1),
-  limitations:['No real guest data, printer, PDF rendering, Chromium navigation, idle CPU or physical backup restore measured',
+  limitations:['No real guest data, printer, PDF rendering, Chromium navigation, browser menu interactions, idle CPU or physical backup restore measured',
     'Never compare results across different CI runner machines as production performance claims',
     'Read-only measurement only; no payment, booking or restaurant API mutations']
 },null,2));
