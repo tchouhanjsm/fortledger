@@ -62,8 +62,14 @@ begin
   if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
               Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
   begin
-    Result := 'Installation stopped before changing program files. Close the running app, ' +
-      'verify both hotel data/owner credentials, and confirm a recent recoverable encrypted ' +
-      'backup on a separate drive when updating an existing desktop installation.';
+    Result := 'Installation stopped safely before replacing program files.' + #13#10 +
+      'If the app is reported running after Task Manager was used, its separate Node server ' +
+      'may still be listening on port 3000.' + #13#10 +
+      'First finish all hotel bills and confirm your protected backup. Close FortLedger ' +
+      'from its Windows tray icon: Close FortLedger safely.' + #13#10 +
+      'If the tray was already terminated, restart Windows normally and run this installer ' +
+      'BEFORE starting FortLedger again. Never kill an unknown port-3000 process.' + #13#10 +
+      'A verified separate-drive encrypted database AND owner credential restore remains ' +
+      'mandatory for an existing hotel installation. This installer does not reset hotel data.';
   end;
 end;
