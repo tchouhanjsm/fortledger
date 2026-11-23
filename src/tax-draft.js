@@ -36,6 +36,7 @@ export function prepareTaxDraft(db,proformaId,input={}){
   if(!Array.isArray(sacCodes)||sacCodes.length!==sourceLines.length)
     throw new Error('One SAC code is required for every accommodation line');
   const blockers=[];
+  if(!business.legal_name)blockers.push('Registered legal supplier name is required; hotel trade name alone is not sufficient');
   if(!gstin.test(business.gstin||'')||!business.gstin.startsWith('08'))
     blockers.push('Rajasthan supplier GSTIN (08) must be configured and verified');
   if(!business.address)blockers.push('Registered supplier address is required');
