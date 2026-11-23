@@ -128,6 +128,29 @@
     </div>
     <p id="invoice-quick-message" class="muted" role="status">Select a booking to prepare the proforma without switching pages, or add a new reservation here.</p>
   </div>
+  <section id="billing-documents-register" aria-labelledby="billing-documents-title">
+    <h3 id="billing-documents-title">Billing &amp; Documents · searchable register</h3>
+    <p class="muted">Find saved proformas, checkout review cases, restaurant receipts and authorized archived originals. These are different document types—not a combined revenue or GST return. Only original historical PDFs are byte-for-byte archived.</p>
+    <div class="billing-register-controls">
+      <label>Search documents
+        <input id="billing-register-query" type="search" maxlength="100" placeholder="Number, guest, company or PDF filename">
+      </label>
+      <label>Document type
+        <select id="billing-register-kind">
+          <option value="all">All permitted documents</option>
+          <option value="proforma">Proformas</option>
+          <option value="checkout_case">Checkout reviews</option>
+          <option value="historical_original">Historical PDF originals (owner)</option>
+          <option value="restaurant_receipt">Restaurant receipts (manager/owner)</option>
+        </select>
+      </label>
+      <label>Recorded from <input id="billing-register-from" type="date"></label>
+      <label>Recorded to <input id="billing-register-to" type="date"></label>
+      <button id="billing-register-search" type="button" class="secondary">Find documents</button>
+    </div>
+    <div id="billing-register-list" role="status" aria-live="polite"><p class="muted">Search the register to view saved documents.</p></div>
+    <button id="billing-register-more" type="button" class="secondary" hidden>Show more documents</button>
+  </section>
   <details id="gst-readiness" hidden><summary>GST issuance readiness · owner / manager review</summary>
     <p class="muted">Proformas and tax review drafts are NOT statutory GST invoices. This checklist verifies local settings only; an accountant must confirm applicable law, e-invoicing and credit notes before legal issuance.</p>
     <button id="gst-readiness-refresh" type="button" class="secondary">Check GST readiness</button>
