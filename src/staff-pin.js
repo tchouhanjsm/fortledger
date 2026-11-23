@@ -131,9 +131,15 @@ export function createStaffPinService(db,{getOwnerHash,localOnly}){
       return {revoked:true};
     })();
   }
+  function enrolled(actor,cookie){
+    const device=cookieDevice(cookie);
+    if(!actor||!device||!enabled())return false;
+    return Boolean(db.prepare('SELECT 1 FROM staff_pin_credentials WHERE staff_id=? AND device_hash=?')
+      .get(actor.id,deviceDigest(device)));
+  }
   function revokeStaffId(id){
     db.prepare('DELETE FROM staff_pin_credentials WHERE staff_id=?').run(id);
     db.prepare('DELETE FROM staff_pin_failures WHERE staff_id=?').run(id);
   }
-  return {enabled,setEnabled,enroll,check,revoke,revokeStaffId,deviceCookieName:DEVICE_COOKIE};
+  return {enabled,setEnabled,enroll,check,revoke,revokeStaffId,enrolled,deviceCookieName:DEVICE_COOKIE};
 }
