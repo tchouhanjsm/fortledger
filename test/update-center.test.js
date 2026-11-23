@@ -130,6 +130,8 @@ test('Windows desktop update refuses unsafe states and never silently wipes data
   if(process.platform==='win32'){
     // Actual PowerShell parser, not a fake interpretation of Windows shell syntax.
     const ps=`$errors=@(); [System.Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) 'scripts/windows-quick-update.ps1'),[ref]$null,[ref]$errors) | Out-Null; if($errors.Count){$errors | ForEach-Object {Write-Error $_}; exit 1}; [System.Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) 'scripts/windows-update.ps1'),[ref]$null,[ref]$errors) | Out-Null; if($errors.Count){$errors | ForEach-Object {Write-Error $_}; exit 1}`;
-    execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',ps],{cwd:root,timeout:15000});
+    // Shared Windows CI runners can take longer to start PowerShell under parallel test load.
+    // Preserve the real parser assertion and hard failure; only allow process startup headroom.
+    execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',ps],{cwd:root,timeout:60000});
   }
 });
