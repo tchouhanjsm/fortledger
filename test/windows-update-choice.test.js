@@ -1,0 +1,58 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {chooseWindowsUpdateAction} from '../public/windows-update-choice.js';
+
+const candidate={platform:'windows',state:'installer_update_available',available:true,
+ download_url:'https://github.com/tchouhanjsm/fortledger/actions/runs/123/artifacts/456'};
+const ready={ready:true,update_mode:'code_only',target_sha:'a'.repeat(40)};
+test('eligible V7 owner sees in-place update first; installer download is hidden',()=>{
+ const result=chooseWindowsUpdateAction(candidate,ready);
+ assert.equal(result.in_place_ready,true);
+ assert.equal(result.show_in_place,true);
+ assert.equal(result.show_verified_installer,false);
+ assert.match(result.guidance,/No installer download or reinstall/);
+});
+test('older supervisor or native-only update still offers verified installer fallback',()=>{
+ for(const blocked of [
+  {ready:false,update_mode:'code_only',blockers:['No V7 supervisor']},
+  {ready:false,update_mode:'code_only',blockers:['Independent backup not verified']},
+  {ready:false,update_mode:'code_only',blockers:['Native launcher changed']},
+  {ready:true,update_mode:'installer',target_sha:'b'.repeat(40)},
+  {ready:true,update_mode:'code_only',target_sha:'bad'}
+ ]){
+  const result=chooseWindowsUpdateAction(candidate,blocked);
+  assert.equal(result.in_place_ready,false);
+  assert.equal(result.show_in_place,false);
+  assert.equal(result.show_verified_installer,true);
+  assert.match(result.guidance,/one-time V7 bootstrap or a native-component upgrade/);
+ }
+});
+test('invalid or absent GitHub installer artifacts never create a download option',()=>{
+ for(const state of [
+  {...candidate,download_url:'https://example.com/fake.exe'},
+  {...candidate,download_url:'http://github.com/tchouhanjsm/fortledger/actions/runs/1/artifacts/2'},
+  {...candidate,available:false},
+  {...candidate,platform:'mac'},
+  {...candidate,state:'installer_managed'}
+ ]){
+  const result=chooseWindowsUpdateAction(state,ready);
+  assert.equal(result.show_in_place,false);
+  assert.equal(result.show_verified_installer,false);
+ }
+});
+test('UI checks updater readiness before exposing installer fallback, without killing server',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const guard=readFileSync(new URL('../scripts/windows-installer-guard.ps1',import.meta.url),'utf8');
+ const installer=readFileSync(new URL('../installers/FortLedger.iss',import.meta.url),'utf8');
+ assert.match(app,/chooseWindowsUpdateAction\(state,readiness\)/);
+ assert.match(app,/update-center-download'\)\.hidden=true/);
+ assert.match(app,/update-center-download'\)\.hidden=!choice.show_verified_installer/);
+ assert.match(app,/Apply code update & restart/);
+ assert.match(guard,/Get-NetTCPConnection -LocalPort 3000 -State Listen/);
+ assert.match(guard,/OwningProcess -Unique/);
+ assert.match(guard,/Get-Process -Id \$ownerPid/);
+ assert.match(guard,/Port 3000 is still listening:/);
+ assert.match(installer,/restart Windows normally and run this installer/);
+ assert.doesNotMatch(guard+installer,/Stop-Process|taskkill|Process\.Kill\(/i);
+});
