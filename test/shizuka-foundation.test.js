@@ -49,7 +49,7 @@ test('local navigation icons have consistent geometry and accessible text',()=>{
     'Guests','Invoices','Hotel Settings','My Profile'];
   const ids=['layout-dashboard','calendar-days','bed-double','utensils',
     'users','receipt-text','settings-2','circle-user-round'];
-  const nav=html.match(/<nav aria-label="Primary">([\s\S]*?)<\/nav>/)?.[1];
+  const nav=html.match(/<nav[^>]*aria-label="Primary"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
   assert.ok(nav);
   assert.equal((nav.match(/class="nav-icon"/g)||[]).length,8);
   for(let i=0;i<labels.length;i++){
