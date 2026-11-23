@@ -92,7 +92,7 @@ export function searchBillingDocuments(db,actor,{
    items:entries.map(entry=>({
      ...entry,
      status:entry.kind==='proforma'?'saved_proforma_not_tax_invoice':
-       entry.kind==='checkout_case'?'held_for_review_not_issued':
+       entry.kind==='checkout_case'?entry.document_status+'_not_issued':
        entry.kind==='historical_original'?'unverified_external_pdf_original':
        'saved_restaurant_receipt_not_tax_invoice',
      bank_verified:false,delivery_confirmed:false,legally_issued_by_fortledger:false

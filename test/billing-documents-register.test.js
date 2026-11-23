@@ -4,6 +4,7 @@ import {openDatabase} from '../src/database.js';
 import {createProforma} from '../src/invoices.js';
 import {createRestaurantBill,importMenuCsv} from '../src/restaurant.js';
 import {transitionBooking} from '../src/booking-transitions.js';
+import {recordCheckoutCaseReview} from '../src/checkout-case-review.js';
 import {importExternalInvoiceOriginal} from '../src/external-invoice-originals.js';
 import {searchBillingDocuments} from '../src/billing-documents-register.js';
 import {createApp} from '../src/server.js';
@@ -119,4 +120,37 @@ test('authenticated document-register API is permission filtered even for direct
   assert.equal((await request('/api/documents/register',{cookie:manager,method:'POST',body:{}})).status,403);
   assert.equal(db.prepare('SELECT COUNT(*) n FROM invoices').get().n,1);
  }finally{await new Promise(resolve=>server.close(resolve));db.close();}
+});
+
+test('register status agrees with latest append-only checkout review event, never statutory issue',()=>{
+ const db=openDatabase(':memory:');
+ try{
+  const {id}=fixture(db);
+  const source=db.prepare('SELECT id,snapshot_json FROM checkout_document_cases WHERE booking_id=?').get(id);
+  const get=()=>searchBillingDocuments(db,{role:'owner'},{kind:'checkout_case'}).items[0];
+  assert.equal(get().document_status,'held_for_review');
+  assert.equal(get().status,'held_for_review_not_issued');
+  const first=recordCheckoutCaseReview(db,source.id,{
+    request_id:'test_review_status_request_0001',
+    status:'needs_source_review',source_evidence_checked:false,
+    note:'Original checkout charge source needs review'
+  },actor);
+  assert.equal(first.legally_approved,false);
+  assert.equal(get().document_status,'needs_source_review');
+  assert.equal(get().status,'needs_source_review_not_issued');
+  recordCheckoutCaseReview(db,source.id,{
+    request_id:'test_review_status_request_0002',
+    status:'reviewed_for_accountant',source_evidence_checked:true,
+    note:'Reviewed sources but statutory validation remains outstanding'
+  },actor);
+  const latest=get();
+  assert.equal(latest.document_status,'reviewed_for_accountant');
+  assert.equal(latest.status,'reviewed_for_accountant_not_issued');
+  assert.equal(latest.legally_issued_by_fortledger,false);
+  assert.equal(searchBillingDocuments(db,{role:'owner'},{status:'held_for_review'}).total,0);
+  assert.equal(searchBillingDocuments(db,{role:'owner'},{status:'reviewed_for_accountant'}).total,1);
+  assert.equal(db.prepare('SELECT snapshot_json FROM checkout_document_cases WHERE id=?').get(source.id).snapshot_json,
+    source.snapshot_json);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM invoices WHERE kind=\'proforma\'').get().n,1);
+ }finally{db.close();}
 });
