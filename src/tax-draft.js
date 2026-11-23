@@ -35,6 +35,10 @@ export function prepareTaxDraft(db,proformaId,input={}){
   const sacCodes=input.sac_codes;
   if(!Array.isArray(sacCodes)||sacCodes.length!==sourceLines.length)
     throw new Error('One SAC code is required for every accommodation line');
+  const rates=input.tax_rates===undefined?sourceLines.map(()=>5):input.tax_rates;
+  if(!Array.isArray(rates)||rates.length!==sourceLines.length||
+     rates.some(rate=>rate!==5&&rate!==18))
+    throw new Error('One reviewed accommodation GST rate (5% or 18%) is required per proforma line');
   const blockers=[];
   if(!business.legal_name)blockers.push('Registered legal supplier name is required; hotel trade name alone is not sufficient');
   if(!gstin.test(business.gstin||'')||!business.gstin.startsWith('08'))
@@ -44,40 +48,57 @@ export function prepareTaxDraft(db,proformaId,input={}){
     blockers.push('Recipient address required for registered or higher-value recipient');
   if(!signatory_name)blockers.push('Authorized signatory name not provided');
   blockers.push('Actual signature, e-invoice applicability, and hotel tax treatment require professional verification before issuance');
+  // Review-only: operator selects an illustrative rate, not a legally verified rule.
+  // Split GST buckets before rounding so mixed 5% and 18% never share a fictitious
+  // single document-level tax rate. Existing 5%-only snapshots retain exact values.
   const lines=sourceLines.map((line,i)=>{
     const sac=clean(sacCodes[i],6);
     if(!['996311','996312'].includes(sac))throw new Error('Select hotel room or campsite SAC for every line');
-    const taxableUnit=Math.round(line.rate_paise*100/105);
-    if(taxableUnit>750000)blockers.push('Line '+(i+1)+' exceeds the 5% accommodation value threshold; rate must be reviewed');
-    const taxable_paise=Math.round(line.total_paise*100/105);
-    return {...line,sac,taxable_paise,gst_paise:line.total_paise-taxable_paise};
+    const tax_rate=rates[i];
+    const taxableUnit=Math.round(line.rate_paise*100/(100+tax_rate));
+    if(tax_rate===5&&taxableUnit>750000)
+      blockers.push('Line '+(i+1)+' exceeds the 5% accommodation value threshold; rate must be reviewed');
+    if(tax_rate===18&&taxableUnit<=750000)
+      blockers.push('Line '+(i+1)+' previews 18% at or below the 7500 taxable-value threshold; accountant review required');
+    const taxable_paise=Math.round(line.total_paise*100/(100+tax_rate));
+    return {...line,sac,tax_rate,taxable_paise,gst_paise:line.total_paise-taxable_paise};
   });
   const total=lines.reduce((sum,line)=>sum+line.total_paise,0);
   if(total!==original.total_paise)throw new Error('Proforma line totals are inconsistent');
-  // Document-level 5% inclusive GST rounding is the authoritative total.
-  // Distribute the (usually one-paise) line rounding remainder explicitly so
-  // every displayed line adds exactly to the printed document values.
-  const taxable_paise=Math.round(total*100/105),gst_paise=total-taxable_paise;
-  let residual=taxable_paise-lines.reduce((sum,line)=>sum+line.taxable_paise,0);
-  for(let i=0;residual!==0;i=(i+1)%lines.length){
-    const step=Math.sign(residual);
-    const candidate=lines[i].taxable_paise+step;
-    if(candidate<0||candidate>lines[i].total_paise)continue;
-    lines[i].taxable_paise=candidate;
-    lines[i].gst_paise=lines[i].total_paise-candidate;
-    residual-=step;
+  const tax_breakdown=[];
+  for(const rate of [...new Set(rates)].sort((a,b)=>a-b)){
+    const bucketLines=lines.filter(line=>line.tax_rate===rate);
+    const bucketTotal=bucketLines.reduce((sum,line)=>sum+line.total_paise,0);
+    const expectedTaxable=Math.round(bucketTotal*100/(100+rate));
+    let residual=expectedTaxable-bucketLines.reduce((sum,line)=>sum+line.taxable_paise,0);
+    for(let i=0;residual!==0;i=(i+1)%bucketLines.length){
+      const step=Math.sign(residual);
+      const candidate=bucketLines[i].taxable_paise+step;
+      if(candidate<0||candidate>bucketLines[i].total_paise)continue;
+      bucketLines[i].taxable_paise=candidate;
+      bucketLines[i].gst_paise=bucketLines[i].total_paise-candidate;
+      residual-=step;
+    }
+    const bucketTax=bucketTotal-expectedTaxable;
+    tax_breakdown.push({tax_rate:rate,total_paise:bucketTotal,
+      taxable_paise:expectedTaxable,gst_paise:bucketTax,
+      cgst_paise:Math.round(bucketTax/2),sgst_paise:bucketTax-Math.round(bucketTax/2)});
   }
+  const taxable_paise=tax_breakdown.reduce((sum,bucket)=>sum+bucket.taxable_paise,0);
+  const gst_paise=tax_breakdown.reduce((sum,bucket)=>sum+bucket.gst_paise,0);
+  const cgst_paise=tax_breakdown.reduce((sum,bucket)=>sum+bucket.cgst_paise,0);
+  const sgst_paise=tax_breakdown.reduce((sum,bucket)=>sum+bucket.sgst_paise,0);
   if(lines.reduce((sum,line)=>sum+line.taxable_paise,0)!==taxable_paise||
-     lines.reduce((sum,line)=>sum+line.gst_paise,0)!==gst_paise)
-    throw new Error('Tax draft line reconciliation failed');
-  const cgst_paise=Math.round(gst_paise/2),sgst_paise=gst_paise-cgst_paise;
+     lines.reduce((sum,line)=>sum+line.gst_paise,0)!==gst_paise||
+     taxable_paise+gst_paise!==total||cgst_paise+sgst_paise!==gst_paise)
+    throw new Error('Tax draft rate-bucket reconciliation failed');
   const snapshot={
     kind:'tax_draft',label:'DRAFT - NOT A GST TAX INVOICE',
     proforma_id:source.id,proforma_number:source.number,prepared_on:hotelBusinessDate(),
     business,logo_asset_id:getActiveLogoId(db),recipient_name:original.bill_to,recipient_address,recipient_gstin,signatory_name,
     place_of_supply:'Rajasthan (08)',reverse_charge:false,
     guest_name:original.guest_name,checkin:original.checkin,checkout:original.checkout,
-    lines,total_paise:total,taxable_paise,gst_paise,cgst_paise,sgst_paise,
+    lines,tax_breakdown,total_paise:total,taxable_paise,gst_paise,cgst_paise,sgst_paise,
     paid_paise:original.paid_paise,due_paise:Math.max(0,total-original.paid_paise),
     terms:original.terms,readiness:{ready:false,blockers}
   };

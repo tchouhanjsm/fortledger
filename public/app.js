@@ -1277,13 +1277,20 @@ function openTaxDraft(invoice){
     description:invoice.snapshot.category+' - '+invoice.snapshot.meal_plan+' basis'
   }];
   for(const line of lines){
-    const row=label('label',undefined,'tax-sac-row');
+    const row=label('div',undefined,'tax-sac-row');
     row.append(label('span',line.description));
     const select=label('select');select.name='sac_codes';
     for(const [value,title] of [['996311','Hotel room accommodation (996311)'],['996312','Campsite accommodation (996312)']]){
       const option=label('option',title);option.value=value;select.append(option);
     }
-    row.append(select);list.append(row);
+    select.setAttribute('aria-label','Service accounting code for '+line.description);
+    const tax=label('select');tax.name='tax_rates';
+    tax.setAttribute('aria-label','Review GST rate for '+line.description);
+    for(const [rate,title] of [['5','5% without ITC (review only)'],
+      ['18','18% (review only)']]){
+      const option=label('option',title);option.value=rate;tax.append(option);
+    }
+    row.append(select,tax);list.append(row);
   }
   $('#tax-draft-message').textContent='';
   $('#tax-draft-dialog').showModal();
@@ -1299,7 +1306,8 @@ $('#tax-draft-form').onsubmit=async event=>{
       recipient_address:form.elements.namedItem('recipient_address').value,
       recipient_gstin:form.elements.namedItem('recipient_gstin').value,
       signatory_name:form.elements.namedItem('signatory_name').value,
-      sac_codes:[...document.querySelectorAll('#tax-draft-sac-list select')].map(x=>x.value)
+      sac_codes:[...document.querySelectorAll('#tax-draft-sac-list select[name="sac_codes"]')].map(x=>x.value),
+      tax_rates:[...document.querySelectorAll('#tax-draft-sac-list select[name="tax_rates"]')].map(x=>Number(x.value))
     };
     const draft=await api('/api/invoices/'+activeTaxProforma.id+'/tax-draft',
       {method:'POST',body:JSON.stringify(input)});

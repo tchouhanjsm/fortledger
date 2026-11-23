@@ -51,16 +51,18 @@ export function streamTaxDraftPdf(s,res,logo=null){
       pdf.addPage();pageHeader(pdf,s.proforma_number);y=105;
     }
     txt(pdf,item,LEFT,y,365,{size:8.5,height:itemHeight});
-    txt(pdf,'SAC '+entry.sac+'   |   '+money(entry.rate_paise)+' per room/night',LEFT,y+itemHeight,355,
+    txt(pdf,'SAC '+entry.sac+'  |  GST '+(entry.tax_rate??5)+'% (review)  |  '+money(entry.rate_paise)+'/room/night',LEFT,y+itemHeight,355,
       {size:7.3,height:16,color:MUTED});
     txt(pdf,money(entry.total_paise),428,y,124,{size:8.7,bold:true,height:18,align:'right'});
     y+=rowHeight;
   }
   line(pdf,y+1);
   y+=13;
+  const singleRate=s.tax_breakdown?.length===1?s.tax_breakdown[0].tax_rate:null;
+  const rateLabel=singleRate===null?'mixed rates':singleRate/2+'%';
   const totals=[
-    ['Taxable amount',s.taxable_paise],['CGST 2.5% (illustrative)',s.cgst_paise],
-    ['SGST 2.5% (illustrative)',s.sgst_paise],['Total including GST',s.total_paise],
+    ['Taxable amount',s.taxable_paise],['CGST '+rateLabel+' (review)',s.cgst_paise],
+    ['SGST '+rateLabel+' (review)',s.sgst_paise],['Total including GST',s.total_paise],
     ['Advance at proforma issue',s.paid_paise],['Proforma balance',s.due_paise]
   ];
   for(const [label,value] of totals){

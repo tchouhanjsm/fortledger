@@ -1,5 +1,10 @@
 # FortLedger — Development log
 
+## 2026-11-23 — GST B2: mixed-rate accountant review drafts
+- Tax review drafts now allow explicit illustrative 5% or 18% GST per accommodation line. Amounts are rounded and checked by rate bucket, with a separate CGST/SGST aggregate and warnings for questionable threshold/rate combinations.
+- Draft dialog and PDF label each selected rate; old clients without a rate field preserve their prior 5% illustration. Source proforma, payments, booked folio, and statutory tax invoice numbering are not modified; final issuance remains disabled.
+- Added rate validation, mixed-rate reconciliation, original-snapshot invariants and disabled legal-issuance regression tests.
+
 ## 2026-11-23 — Phase C: cashier print-state clarity and manager action parity
 - Fixed a role mismatch: restaurant manager/owner saw an Epson LAN Print button that server RBAC refused (only cashiers are allowed to initiate POS printing). Manager overview now shows saved receipts and correction estimates but no unavailable print action.
 - Cashier saved-bill cards now have read-only Check printer status. It shows no attempt, sending, sent-but-physical-paper-unverified or uncertain delivery, and the logged attempt count. Original confirm-before-reprint behavior remains.
