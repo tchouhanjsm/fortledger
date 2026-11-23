@@ -3170,7 +3170,42 @@ async function showFolio(booking){
   activeFolioBooking=booking.id;
   $('#folio-dialog').showModal();
   await refreshFolio();
+  // A read-only invoice readiness preview; never starts a financial write.
+  void refreshCheckoutInvoicePreflight();
 }
+async function refreshCheckoutInvoicePreflight(){
+  const id=activeFolioBooking;
+  const node=$('#folio-invoice-preflight-results'),button=$('#folio-invoice-preflight-refresh');
+  button.disabled=true;
+  node.replaceChildren(label('p','Checking the saved source ledger…','muted'));
+  try{
+    const result=await api('/api/bookings/'+id+'/checkout-invoice-preflight');
+    if(activeFolioBooking!==id)return;
+    node.replaceChildren(label('strong','Tax invoice: held for accountant review'),
+      label('p','Accommodation '+money(result.accommodation.current_charge_paise)+
+        ' · linked food room charges '+money(result.totals.restaurant_room_charges_paise)+
+        ' · total recorded charges '+money(result.totals.charges_paise)),
+      label('p','Operator-recorded receipts '+money(result.totals.operator_recorded_paise)+
+        ' · balance requiring follow-up '+money(result.totals.due_paise)),
+      label('p','Proforma '+(result.original_proforma?.number||'not yet saved')+
+        ' · billing recipient '+result.billing_recipient.name+' (unconfirmed)','muted'));
+    for(const bill of result.restaurant_room_charges)
+      node.append(label('p','Linked food bill #'+bill.bill_id+' · '+money(bill.total_paise)+
+        ' · '+bill.payment_state.replaceAll('_',' '),'muted'));
+    const unresolved=label('div');
+    unresolved.append(label('strong',result.blockers.length+' issuance blockers · '+result.warnings.length+' review notices'));
+    for(const issue of [...result.blockers,...result.warnings]){
+      const item=label('p',issue.message,'muted');
+      item.prepend(document.createTextNode(result.blockers.includes(issue)?'Blocked: ':'Review: '));
+      unresolved.append(item);
+    }
+    node.append(unresolved,label('p',
+      'Existing external invoice PDFs remain on the hotel computer; FortLedger has not verified their numbers or delivered any message.','muted'));
+  }catch(error){
+    if(activeFolioBooking===id)node.replaceChildren(label('p','Invoice preflight unavailable: '+error.message,'error'));
+  }finally{button.disabled=false;}
+}
+$('#folio-invoice-preflight-refresh').onclick=refreshCheckoutInvoicePreflight;
 // Preserve retry identities across folio dialog refreshes until a successful
 // API acknowledgment. An ambiguous fetch outcome is NOT proof of failure.
 const pendingFolioSettlements=new Map();
