@@ -1,5 +1,11 @@
 # FortLedger — Development log
 
+## 2026-11-23 — Historical external invoice PDF identification P2b
+- Added owner-transcribed printed invoice number, printed issue date, optional booking candidate and reason for each saved PDF; previous entries remain in an immutable append-only history. Source PDF bytes and hotel ledgers remain unchanged.
+- Duplicate candidate numbers in the same Indian FY are warned, not auto-renumbered; invoice series/GST validity still unverified. Owner can search the unified document register by latest reported number.
+- Owner-only protected POST/GET/replay APIs, additive schema, no statutory issuance or cloud integration. Node and browser tests include FY boundaries, source restore and role denials. See `docs/HISTORICAL_PDF_IDENTIFICATION.md`.
+
+
 ## 2026-11-23 — Unified Billing & Documents register (read-only Phase 4 foundation)
 - Added a low-click, searchable and paginated register across proformas, held checkout cases, restaurant receipt views and original historical external PDFs, filtering each source on the backend by the operator's role.
 - Searches number/title, guest, company, original filename and IST recorded dates; never parses PDFs, claims legal GST issuance, totals revenue across repeated representations or exposes owner-only originals to manager/frontdesk/cashier.
