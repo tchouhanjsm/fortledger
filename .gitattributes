@@ -1,0 +1,18 @@
+# Deterministic Git blob hashes for the source-only Windows patch updater.
+# Windows packaging must not silently convert JS/CSS/HTML into CRLF after
+# GitHub assigns the commit's blob SHA. PowerShell and C# are compiled/used
+# independently and never included in the source-only patch.
+*.js text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.csv text eol=lf
+*.svg text eol=lf
+*.map text eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.pdf binary
