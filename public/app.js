@@ -1217,6 +1217,7 @@ async function load(){
   $('#backup-button').hidden=!can('settings.admin');
   $('#save-restaurant-bill').hidden=!can('restaurant.pos')||!isRestaurantCashier();
   $('#restaurant-reconciliation-section').hidden=!can('finance.read');
+  $('#restaurant-correction-inbox').hidden=!can('restaurant.correction.preview');
   if(!$('#restaurant-reconciliation-date').value)
     $('#restaurant-reconciliation-date').value=hotelToday();
   $('#menu-import-section').hidden=!can('menu.manage');
@@ -3332,6 +3333,64 @@ $('#restaurant-new-after-save').onclick=()=>{
   if(restaurantCartOpen)closeRestaurantMobileCart();
   $('#menu-search').focus({preventScroll:true});
 };
+
+let restaurantCorrectionInboxOffset=0,restaurantCorrectionInboxFilter='open',restaurantCorrectionInboxRevision=0;
+async function refreshRestaurantCorrectionInbox(reset=true){
+  if(!can('restaurant.correction.preview')||!['owner','manager'].includes(currentUser?.role))return;
+  const filter=$('#restaurant-correction-inbox-state').value;
+  if(reset||restaurantCorrectionInboxFilter!==filter){
+    restaurantCorrectionInboxOffset=0;
+    restaurantCorrectionInboxFilter=filter;
+    $('#restaurant-correction-inbox-results').replaceChildren();
+  }
+  const version=++restaurantCorrectionInboxRevision;
+  const more=$('#restaurant-correction-inbox-more'),refresh=$('#restaurant-correction-inbox-refresh');
+  more.disabled=true;refresh.disabled=true;
+  try{
+    const params=new URLSearchParams({status:filter,offset:String(restaurantCorrectionInboxOffset)});
+    const data=await api('/api/restaurant/correction-cases/inbox?'+params);
+    if(version!==restaurantCorrectionInboxRevision)return;
+    $('#restaurant-correction-inbox-count').textContent=data.counts.awaiting_owner+
+      ' awaiting owner · '+data.counts.needs_accountant+
+      ' needing accountant · '+data.total+' matching '+filter.replaceAll('_',' ');
+    const list=$('#restaurant-correction-inbox-results');
+    if(!data.items.length&&!restaurantCorrectionInboxOffset)
+      list.append(label('p','No correction cases match this filter.','muted'));
+    for(const entry of data.items){
+      const card=label('article',undefined,'restaurant-history-card');
+      const title=label('strong','Case #'+entry.id+' · Bill #'+entry.bill_id);
+      const amount=label('p','Proposed correction '+money(entry.proposal.proposed_gross_paise)+
+        ' · '+entry.status.replaceAll('_',' ')+' · no financial adjustment');
+      const reason=label('p',entry.proposal.reason,'muted');
+      const source=label('button','Inspect original bill #'+entry.bill_id,'secondary');
+      source.type='button';
+      source.onclick=()=>{
+        const search=$('#restaurant-history-search');
+        search.value=String(entry.bill_id);
+        restaurantHistoryLimit=Math.max(restaurantHistoryLimit,30);
+        renderRestaurantHistory();
+        $('#restaurant-admin-history-slot').scrollIntoView({block:'start',behavior:'smooth'});
+        const match=$('#restaurant-bill-'+entry.bill_id);
+        if(match)match.scrollIntoView({block:'center',behavior:'smooth'});
+      };
+      card.append(title,amount,reason,
+        label('small','Requested by '+entry.actor_username+' · '+entry.created_at+' UTC'),source);
+      list.append(card);
+    }
+    restaurantCorrectionInboxOffset+=data.items.length;
+    more.hidden=restaurantCorrectionInboxOffset>=data.total;
+    more.textContent='Show more cases ('+(data.total-restaurantCorrectionInboxOffset)+' left)';
+  }catch(error){
+    $('#restaurant-correction-inbox-count').textContent='Correction inbox unavailable: '+error.message;
+    more.hidden=true;
+  }finally{if(version===restaurantCorrectionInboxRevision){more.disabled=false;refresh.disabled=false;}}
+}
+$('#restaurant-correction-inbox').addEventListener('toggle',event=>{
+  if(event.currentTarget.open)void refreshRestaurantCorrectionInbox();
+});
+$('#restaurant-correction-inbox-refresh').onclick=()=>refreshRestaurantCorrectionInbox();
+$('#restaurant-correction-inbox-state').onchange=()=>refreshRestaurantCorrectionInbox();
+$('#restaurant-correction-inbox-more').onclick=()=>refreshRestaurantCorrectionInbox(false);
 
 let tablesAdmin=[],tablesAdminBusy=false;
 function renderRestaurantTableManagement(){
