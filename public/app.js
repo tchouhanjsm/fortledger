@@ -1200,6 +1200,7 @@ async function load(){
   if(revision!==workspaceLoadRevision)return false;
   currentUser=operator;
   $('#gst-readiness').hidden=!['owner','manager'].includes(currentUser?.role)||!can('tax.review');
+  $('#accountant-readiness').hidden=currentUser?.role!=='owner';
   $('#historical-invoice-originals').hidden=currentUser?.role!=='owner';
   [rooms,bookings,invoices,businessSettings,menu,restaurantBills,restaurantTables,maintenanceIssues,guests,backupStatus,closeAttention]=snapshot;
   renderMenu();refreshRestaurantGuestPicker();renderRestaurantTablePicker();renderCart();renderRestaurantHistory();
@@ -1327,6 +1328,39 @@ $('#checkout-case-more').onclick=()=>loadCheckoutCases(false);
 $('#checkout-case-search').addEventListener('keydown',event=>{
   if(event.key==='Enter'){event.preventDefault();void loadCheckoutCases();}
 });
+
+// Owner-only read-only accountant exceptions. Never total document representations.
+async function refreshAccountantReadiness(){
+  if(currentUser?.role!=='owner')return;
+  const target=$('#accountant-readiness-results'),button=$('#accountant-readiness-refresh');
+  button.disabled=true;target.textContent='Inspecting saved review records…';
+  try{
+    const data=await api('/api/accountant/readiness');
+    const c=data.counts;
+    target.replaceChildren();
+    target.append(label('p',c.missing_historical_identifiers+
+      ' historical PDF(s) need identification · '+c.possible_historical_collisions+
+      ' possible number collisions · '+c.checkout_review_cases+' checkout case(s) · '+
+      c.restaurant_corrections_pending+' restaurant correction(s) pending.','muted'));
+    for(const issue of data.issues){
+      const row=label('div',undefined,'billing-register-row');
+      const summary=label('div');
+      summary.append(label('strong',issue.code.replaceAll('_',' ')),
+        label('small',issue.source+(issue.source_id?' #'+issue.source_id:'')+
+          (issue.date_value?' · '+issue.date_value+' ('+issue.date_semantics.replaceAll('_',' ')+')':'')),
+        label('p',issue.next_action,'muted'));
+      row.append(summary);target.append(row);
+    }
+    if(data.truncated)target.append(label('p','Showing the first '+data.issues.length+
+      ' exceptions; review the full source registers.','muted'));
+    target.append(label('p','Review only. No legal tax invoices, credit notes, returns or bank verification are created.','muted'));
+  }catch(error){target.textContent='Cannot inspect accountant readiness: '+error.message;}
+  finally{button.disabled=false;}
+}
+$('#accountant-readiness').addEventListener('toggle',event=>{
+  if(event.target.open)void refreshAccountantReadiness();
+});
+$('#accountant-readiness-refresh').onclick=refreshAccountantReadiness;
 
 // Historical online-generator originals. The browser sees local PDFs only
 // after the owner selects them. The server never browses arbitrary directories.
