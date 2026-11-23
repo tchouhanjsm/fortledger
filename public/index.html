@@ -184,6 +184,14 @@
       <button id="external-doc-refresh" type="button" class="secondary">Search archive</button>
     </div>
     <p class="muted">After viewing a saved original, the owner can manually record the number and date printed on it. These entries are unverified transcriptions, with immutable correction history and duplicate-number warnings. They do not become GST invoices or establish a legal numbering series.</p>
+    <div class="external-invoice-inventory-toolbar">
+      <div>
+        <strong>Accountant review worksheet</strong>
+        <p id="external-invoice-inventory-status" class="muted" role="status" aria-live="polite">Inventory not checked. Previous PDFs are not automatically discovered.</p>
+      </div>
+      <a id="external-invoice-inventory-csv" class="secondary" href="/api/external-invoice-originals/inventory.csv" download="fortledger-historical-pdf-review.csv">Download unverified inventory CSV</a>
+    </div>
+    <p class="muted">The worksheet includes original filenames and reported invoice details. It is owner-only, may be sensitive and is not a GST return or accountant approval.</p>
     <p id="external-ident-status" class="muted" role="status" aria-live="polite"></p>
     <div id="external-doc-list" role="status" aria-live="polite"></div>
     <button id="external-doc-more" type="button" class="secondary" hidden>Show more original PDFs</button>
