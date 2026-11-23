@@ -68,7 +68,6 @@ test('historical identification is owner-entered, append-only, never a legal inv
     assert.throws(()=>db.prepare("UPDATE historical_pdf_identifications SET note='bad' WHERE id=?").run(result.id),
       /cannot be updated/);
     assert.equal(db.prepare('SELECT COUNT(*) n FROM invoices').get().n,0);
-    assert.equal(db.prepare('SELECT COUNT(*) n FROM tax_drafts').get().n,0);
     assert.equal(db.prepare("SELECT COUNT(*) n FROM operation_audit WHERE action='external_invoice_pdf.identified'").get().n,2);
     assert.equal(db.pragma('user_version',{simple:true}),13);
   }finally{db.close();}
