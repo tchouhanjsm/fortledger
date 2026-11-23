@@ -118,3 +118,16 @@
 #restaurant-admin .restaurant-correction-review textarea{display:block;width:100%;min-height:66px;margin:7px 0 10px;box-sizing:border-box}
 #restaurant-admin .restaurant-correction-review>button{min-height:44px}
 #restaurant-admin .restaurant-correction-result{margin-top:10px;font-size:13px}
+
+/* Shizuka correction case review: compact, legible and safe on narrow staff screens. */
+#restaurant-admin .restaurant-correction-case-history{display:grid;gap:10px;margin:10px 0}
+#restaurant-admin .restaurant-correction-case-card{border:1px solid var(--hs-border,#d7ddd8);border-radius:10px;padding:12px;background:#fff}
+#restaurant-admin .restaurant-correction-case-card p{font-size:12px;margin:7px 0;overflow-wrap:anywhere}
+#restaurant-admin .restaurant-correction-case-card small{color:var(--hs-muted,#61716c)}
+#restaurant-admin .restaurant-correction-case-card label{display:block;margin:8px 0;font-size:12px}
+#restaurant-admin .restaurant-correction-case-card select,
+#restaurant-admin .restaurant-correction-case-card textarea{display:block;width:100%;max-width:100%;box-sizing:border-box;margin-top:5px;min-height:44px}
+#restaurant-admin .restaurant-correction-case-card textarea{min-height:66px}
+#restaurant-admin .restaurant-correction-case-card button,
+#restaurant-admin .restaurant-correction-review>button{min-height:44px}
+#restaurant-admin .restaurant-correction-case-card button{margin:8px 0}
