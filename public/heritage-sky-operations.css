@@ -239,3 +239,23 @@ main,.sidebar{max-width:100%;overflow-x:clip}
 
 /* Keep visually-hidden calendar labels from retaining a far-right static position and expanding the page scroll width after sidebar reflow. */
 .sr-only{left:0;top:0}
+
+
+/* Bundled Garh Jaisal menu: compact review, clear GST acknowledgement. */
+#bundled-menu-section{margin:16px 0;padding:12px 16px;border:1px solid var(--hs-border);
+  border-radius:12px;background:var(--hs-surface)}
+#bundled-menu-section>summary{cursor:pointer;min-height:44px;padding:10px 0;
+  font-weight:650;line-height:1.5}
+#bundled-menu-section .menu-import-actions{display:flex;gap:10px;flex-wrap:wrap;
+  margin:14px 0}
+#bundled-menu-section .menu-import-actions button{min-height:44px}
+.bundled-menu-acknowledge{display:flex;align-items:flex-start;gap:10px;
+  margin:12px 0;font-size:13px;line-height:1.55}
+.bundled-menu-acknowledge input{width:20px;height:20px;flex:0 0 20px;margin:1px 0 0}
+.bundled-menu-review{max-width:100%;min-width:0}
+#bundled-menu-message{font-size:13px;line-height:1.5}
+@media(max-width:600px){
+  #bundled-menu-section{padding:10px 12px}
+  #bundled-menu-section .menu-import-actions{flex-direction:column}
+  #bundled-menu-section .menu-import-actions button{width:100%}
+}
