@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
+import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
@@ -134,4 +135,21 @@ test('update agent and Windows tray refuse unsafe subprocess and require clean e
   assert.match(server,/FORTLEDGER_DESKTOP_UPDATE_HOST/);
   assert.match(app,/Apply code update & restart/);
   assert.doesNotMatch(launcher,/taskkill|Kill\(\)|Stop-Process/i);
+});
+
+test('Windows CI packages byte-for-byte Git blobs in src/public (no hidden CRLF conversion)',()=>{
+  if(process.platform!=='win32'||process.env.GITHUB_ACTIONS!=='true')return;
+  const root=path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+  const output=execFileSync('git',['ls-tree','-r','HEAD','src','public'],
+    {cwd:root,encoding:'utf8',maxBuffer:2*1024*1024});
+  let compared=0;
+  for(const line of output.trim().split(/\r?\n/)){
+    const match=/^100644 blob ([a-f0-9]{40})\t(.+)$/.exec(line);
+    if(!match)continue;
+    const [,expected,file]=match;
+    assert.equal(gitBlobSha(fs.readFileSync(path.join(root,file))),expected,
+      'Windows checkout changed Git blob bytes: '+file);
+    compared++;
+  }
+  assert.ok(compared>40,'Expected to verify the full installed JS/UI source set');
 });
