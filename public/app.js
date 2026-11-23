@@ -1734,6 +1734,7 @@ $('#owner-printer-form').onsubmit=async event=>{
     message.textContent=data.unchanged?'Printer setup was already saved.':
       'Printer setup saved. No printer connection or paper was tested. '+(enabled?
       'Use the TEST ONLY slip to check the cable and device.':'Receipt printing is disabled.');
+    printerTestRequestId=null;
     await refreshOwnerLanPrinter();
   }catch(error){message.textContent='Printer setup not saved: '+error.message;}
   finally{button.disabled=false;}
@@ -2897,6 +2898,13 @@ function renderRestaurantHistory(){
       check.onclick=refreshPrintStatus;
       const lan=label('button','LAN Print','secondary');lan.type='button';
       lan.onclick=async()=>{
+        try{
+          const status=await api('/api/printer/status');
+          if(!status.configured){
+            alert('Ethernet receipt printer is not configured. Ask the owner to set its LAN IP under My profile → Ethernet receipt printer.');
+            return;
+          }
+        }catch(error){alert('Cannot confirm LAN printer setup: '+error.message);return;}
         if(!confirm('Send existing saved receipt #'+bill.id+' to configured Epson LAN printer?'))return;
         try{
           const sent=await api('/api/restaurant/bills/'+bill.id+'/print',
