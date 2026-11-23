@@ -1583,6 +1583,8 @@ async function loadBillingRegister(reset=true){
         label('small',kindText+' · recorded '+entry.created_at+' UTC'+
           (entry.booking_id?' · Booking #'+entry.booking_id:'')+
           (entry.guest_name?' · '+entry.guest_name:'')));
+      if(entry.kind==='historical_original'&&entry.reported_ref)
+        info.append(label('small','Owner-reported printed number (unverified): '+entry.reported_ref));
       const actions=label('div',undefined,'billing-register-actions');
       if(entry.kind==='checkout_case'){
         const booking=bookings.find(b=>b.id===entry.booking_id);
