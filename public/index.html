@@ -133,6 +133,24 @@
     <button id="gst-readiness-refresh" type="button" class="secondary">Check GST readiness</button>
     <div id="gst-readiness-results" role="status" aria-live="polite"></div>
   </details>
+  <details id="historical-invoice-originals" hidden>
+    <summary>Historical invoice PDFs · protected owner archive</summary>
+    <p class="muted">Your online-generator originals remain untouched in their current folder. Choose PDF files explicitly to inventory them locally, then approve copying their exact bytes into the encrypted-backup SQLite archive. No invoice number, tax status or booking is inferred from a filename. No email is sent.</p>
+    <label class="external-doc-file-label">Choose historical PDF originals (max 8 MiB each)
+      <input id="external-doc-files" type="file" accept=".pdf,application/pdf" multiple>
+    </label>
+    <p id="external-doc-selection" class="muted" role="status">No files selected. Nothing has been copied.</p>
+    <button id="external-doc-import" type="button" class="secondary" disabled>Import selected original copies</button>
+    <p id="external-doc-import-status" class="muted" role="status" aria-live="polite"></p>
+    <div class="external-doc-search-row">
+      <label>Find archived original by filename
+        <input id="external-doc-search" type="search" maxlength="100" placeholder="Search saved PDF names">
+      </label>
+      <button id="external-doc-refresh" type="button" class="secondary">Search archive</button>
+    </div>
+    <div id="external-doc-list" role="status" aria-live="polite"></div>
+    <button id="external-doc-more" type="button" class="secondary" hidden>Show more original PDFs</button>
+  </details>
   <div id="invoice-list"><p class="muted">Loading invoices…</p></div>
   <div id="invoice-empty-action" class="empty-action" hidden><p>No proformas created yet. Choose a booking above or create a new reservation here to prepare one. Saved proformas cannot be edited; tax drafts remain review-only.</p></div></section>
   <section id="guests" class="panel">
