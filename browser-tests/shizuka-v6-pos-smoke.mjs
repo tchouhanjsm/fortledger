@@ -75,6 +75,9 @@ export async function runShizukaV6PosSmoke(browser){
       await page.locator('#restaurant-history-section').waitFor({state:'visible'});
       assert.equal(await page.locator('#restaurant-pos-editor').isVisible(),false);
       assert.match(await page.locator('#restaurant-history').textContent(),/100\.00/);
+      await page.getByRole('button',{name:'Check printer status'}).click();
+      assert.match(await page.locator('.restaurant-print-state').first().textContent(),
+        /No recorded Epson LAN attempt/);
       await page.goto(base+'/#profile');
       assert.equal(await page.evaluate(()=>document.body.classList.contains('restaurant-cart-open')),false,
         'Leaving restaurant workspace must never trap scrolling');
