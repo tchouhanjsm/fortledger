@@ -38,6 +38,13 @@ export async function runOwnerReleaseReadinessSmoke(browser){
         await page.waitForURL(base+'/');
         await page.goto(base+'/#profile');
         await page.locator('#profile').waitFor({state:'visible'});
+        // The hash route may render before the async auth/profile response
+        // has completed. Wait for the *expected* permission-dependent panel
+        // state instead of asserting against its transient initial hidden state.
+        if(user.owner)await page.locator('#release-status-panel').waitFor({state:'visible'});
+        else await page.waitForFunction(()=>
+          document.querySelector('#profile')?.classList.contains('active')||
+          document.querySelector('#profile')?.offsetParent!==null);
         assert.equal(await page.locator('#release-status-panel').isVisible(),user.owner);
         if(user.owner){
           assert.equal(reads,0,'Release checks must never run automatically on sign-in');
