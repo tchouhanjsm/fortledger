@@ -43,7 +43,7 @@ export function checkoutInvoicePreflight(db,bookingId){
     total_recorded_paise,original.total_paise,original.paid_paise].every(Number.isSafeInteger)||
     original.contract_total_paise+original.adjustments_paise!==original.total_paise||
     restaurant_due_paise!==folio.restaurant_due_paise||
-    Math.max(0,total_charges_paise-total_recorded_paise)!==folio.combined_due_paise)
+    original.due_paise+restaurant_due_paise!==folio.combined_due_paise)
     throw new Error('Checkout source amounts cannot be reconciled; stop and inspect the ledger');
   const blockers=[];
   const warnings=[];
