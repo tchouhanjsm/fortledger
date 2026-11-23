@@ -1,5 +1,11 @@
 # FortLedger — Development log
 
+## 2026-11-23 — Unified Billing & Documents register (read-only Phase 4 foundation)
+- Added a low-click, searchable and paginated register across proformas, held checkout cases, restaurant receipt views and original historical external PDFs, filtering each source on the backend by the operator's role.
+- Searches number/title, guest, company, original filename and IST recorded dates; never parses PDFs, claims legal GST issuance, totals revenue across repeated representations or exposes owner-only originals to manager/frontdesk/cashier.
+- No new database schema, native dependency, payment write, PDF issuance or email. Synthetic tests cover role isolation, pagination, date filters and responsive owner document retrieval. See `docs/BILLING_DOCUMENTS_REGISTER.md`.
+
+
 ## 2026-11-23 — Checkout-generated held document cases (Phase 2)
 - The successful authoritative checked-in→checked-out transition now writes an immutable versioned invoice-*review case* inside the same SQLite transaction. No statutory invoice number, PDF, GST determination, email or money write occurs.
 - Each booking has exactly one case, with frozen original folio source amounts and actor/business date; later payments do not overwrite it. Unavailable source preflight saves an actionable blocked case; critical case write failure rolls checkout back.

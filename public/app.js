@@ -1247,7 +1247,14 @@ async function load(){
   applyWorkspaceView();
   return true;
 }
+// Only present document types available to this staff role.
+function configureBillingRegisterRole(){
+  $('#billing-register-kind').querySelector('option[value=historical_original]').disabled=currentUser?.role!=='owner';
+  $('#billing-register-kind').querySelector('option[value=restaurant_receipt]').disabled=
+    !['owner','manager'].includes(currentUser?.role);
+}
 function renderInvoices(){
+  configureBillingRegisterRole();
   const picker=$('#invoice-booking-select');picker.replaceChildren();
   const first=label('option','Select a reservation');first.value='';picker.append(first);
   const available=bookings.filter(b=>b.status!=='cancelled'&&!invoices.some(i=>i.booking_id===b.id));
@@ -1267,6 +1274,7 @@ function renderInvoices(){
     const taxDraft=label('button','Tax draft','secondary');taxDraft.onclick=()=>openTaxDraft(inv);
     row.append(name,sum,link,taxDraft);list.append(row);
   }
+  void loadBillingRegister();
 }
 // One durable review case per completed physical checkout; no issued PDF.
 let checkoutCasesOffset=0,checkoutCasesQuery='';
@@ -1436,6 +1444,80 @@ $('#external-doc-import').onclick=async()=>{
     $('#external-doc-files').dispatchEvent(new Event('change'));
   }
 };
+// Read-only permission-filtered register; never add invoice/receipt values together.
+let billingRegisterState={query:'',kind:'all',from:'',to:''},billingRegisterOffset=0,
+  billingRegisterRevision=0;
+function billingFilters(){
+  return {query:$('#billing-register-query').value.trim(),
+    kind:$('#billing-register-kind').value,
+    from:$('#billing-register-from').value,to:$('#billing-register-to').value};
+}
+async function loadBillingRegister(reset=true){
+  if(!can('invoices.read'))return;
+  const filters=billingFilters(),changed=JSON.stringify(filters)!==JSON.stringify(billingRegisterState);
+  if(reset||changed){
+    billingRegisterRevision++;billingRegisterState=filters;billingRegisterOffset=0;
+    $('#billing-register-list').replaceChildren();
+  }
+  const version=billingRegisterRevision,button=$('#billing-register-search'),more=$('#billing-register-more');
+  button.disabled=true;more.disabled=true;
+  try{
+    const params=new URLSearchParams({q:filters.query,kind:filters.kind,
+      from:filters.from,to:filters.to,offset:String(billingRegisterOffset)});
+    const result=await api('/api/documents/register?'+params);
+    if(version!==billingRegisterRevision)return;
+    const list=$('#billing-register-list');
+    if(!billingRegisterOffset&&!result.items.length)
+      list.append(label('p','No matching documents for this role or search. Try another type or date range.','muted'));
+    for(const entry of result.items){
+      const row=label('div',undefined,'billing-register-row'),info=label('div');
+      const kindText={
+        proforma:'Proforma · not a tax invoice',
+        checkout_case:'Checkout review · held, not issued',
+        restaurant_receipt:'Restaurant receipt · not a tax invoice',
+        historical_original:'External original PDF · legal details unverified'
+      }[entry.kind];
+      info.append(label('strong',entry.title),
+        label('small',kindText+' · recorded '+entry.created_at+' UTC'+
+          (entry.booking_id?' · Booking #'+entry.booking_id:'')+
+          (entry.guest_name?' · '+entry.guest_name:'')));
+      const actions=label('div',undefined,'billing-register-actions');
+      if(entry.kind==='checkout_case'){
+        const booking=bookings.find(b=>b.id===entry.booking_id);
+        const open=label('button','View live folio','secondary');
+        open.disabled=!booking;open.onclick=()=>{if(booking)void showFolio(booking);};
+        actions.append(open);
+      }else{
+        const url=entry.kind==='proforma'?'/api/invoices/'+entry.source_id+'/pdf':
+          entry.kind==='historical_original'?
+          '/api/external-invoice-originals/'+entry.source_id+'/original':
+          '/api/restaurant/bills/'+entry.source_id+'/receipt';
+        const title=entry.kind==='historical_original'?'Download stored original':
+          entry.kind==='proforma'?'Download proforma PDF':'View saved receipt';
+        const link=label('a',title,'secondary');link.href=url;
+        if(entry.kind==='restaurant_receipt'){
+          link.target='_blank';link.rel='noopener noreferrer';
+        }else link.setAttribute('download','');
+        actions.append(link);
+      }
+      row.append(info,actions);list.append(row);
+    }
+    billingRegisterOffset+=result.items.length;
+    more.hidden=billingRegisterOffset>=result.total;
+    more.textContent='Show more documents ('+(result.total-billingRegisterOffset)+' left)';
+  }catch(error){
+    if(version===billingRegisterRevision)
+      $('#billing-register-list').append(label('p','Register search unavailable: '+error.message,'error'));
+    more.hidden=true;
+  }finally{button.disabled=false;more.disabled=false;}
+}
+$('#billing-register-search').onclick=()=>loadBillingRegister();
+$('#billing-register-more').onclick=()=>loadBillingRegister(false);
+for(const id of ['billing-register-query','billing-register-kind','billing-register-from','billing-register-to']){
+  $('#'+id).addEventListener('keydown',event=>{
+    if(event.key==='Enter'){event.preventDefault();void loadBillingRegister();}
+  });
+}
 let activeTaxProforma=null;
 function openTaxDraft(invoice){
   activeTaxProforma=invoice;
