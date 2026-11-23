@@ -157,14 +157,6 @@ export function recordHistoricalPdfIdentification(db,originalId,input,actor){
     if(normalized.booking_candidate_id!==null&&
       !db.prepare('SELECT id FROM bookings WHERE id=?').get(normalized.booking_candidate_id))
       throw new Error('Booking candidate does not exist in the hotel ledger');
-    const prior=latest(db,originalId);
-    if(prior&&prior.reported_number===normalized.reported_number&&
-       prior.reported_issue_date===normalized.reported_issue_date&&
-       prior.booking_candidate_id===normalized.booking_candidate_id&&
-       prior.note===normalized.note){
-      return {...decorate(prior),possible_duplicate_count:collisionCount(db,prior),
-        already_recorded:true};
-    }
     const id=Number(db.prepare(`INSERT INTO historical_pdf_identifications
       (original_id,request_id,fingerprint,reported_number,number_key,reported_issue_date,
         reported_financial_year,booking_candidate_id,note,actor_id,actor_username)
