@@ -1,4 +1,10 @@
 # FortLedger — Development log
+
+## 2026-11-23 — GST and saved restaurant correction phase A1 (read-only)
+- Added manager/owner permission-gated correction preview based solely on immutable saved restaurant item/tax snapshots. Partial quantity reviews, explicit reason, settled and room-charge warnings; no monetary writes or new schema.
+- Added tests for old menu-rate preservation, malformed/duplicate quantities, snapshot/ledger integrity, finance immutability and authenticated cashier/frontdesk denial.
+- Documented legal Rule 46/53 requirements and the accountant-gated final invoice, credit/debit note and GST return pipeline; never call a restaurant receipt or proforma a legal invoice.
+- Phase A2, legal tax invoice issuance, accountant validation and on-site physical gates remain pending.
 Append a dated entry for each meaningful implementation or business decision. Never record private guest data, account numbers or secrets here.
 
 ## 2026-11-20 — Repository initialization and first development increment
