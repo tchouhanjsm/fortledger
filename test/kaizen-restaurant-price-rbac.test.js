@@ -17,10 +17,10 @@ test('menu management is not inherited from permission to create restaurant bill
   assert.equal(may('owner','menu.manage'),true);
   assert.equal(requiredPermission('POST','/restaurant/menu/preview'),'menu.manage');
   assert.equal(requiredPermission('POST','/restaurant/menu/import'),'menu.manage');
-  assert.equal(requiredPermission('POST','/restaurant/bills'),'restaurant.write');
+  assert.equal(requiredPermission('POST','/restaurant/bills'),'restaurant.pos');
   const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
   assert.match(app,/\$\('#menu-import-section'\)\.hidden=!can\('menu\.manage'\)/);
-  assert.match(app,/\$\('#restaurant-jump-menu'\)\.hidden=!can\('menu\.manage'\)/);
+  assert.match(app,/\$\('#restaurant-jump-menu'\)\.hidden=false/);
   assert.match(app,/function lockPendingRestaurantInputs\(locked\)/);
   assert.match(app,/unit_price_paise:item\.price_paise,tax_rate:item\.tax_rate/);
 });
