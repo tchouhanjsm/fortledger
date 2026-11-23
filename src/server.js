@@ -25,6 +25,7 @@ import { streamProformaPdf } from './invoice-pdf.js';
 import { getBusinessSettings,updateBusinessSettings } from './business-settings.js';
 import {importMenuCsv,planMenuImport,listMenu,listMenuForManagement,setMenuItemAvailability,updateMenuItemPrice,createRestaurantBill,restaurantBillRequest,listRestaurantBills,linkManualRoomCharge} from './restaurant.js';
 import {listRestaurantTables,createRestaurantTable,changeRestaurantTable} from './restaurant-tables.js';
+import {planBundledMenuSync,applyBundledMenuSync} from './bundled-garh-jaisal-menu.js';
 import {getGuestFolio,settleRoomBill,settleCombined} from './folio.js';
 import {adjustedAccommodation,recordAccommodationAdjustment} from './accommodation-adjustments.js';
 import { NET_PAYMENTS_SQL, paymentHistory,recordRefund } from './payment-ledger.js';
@@ -345,6 +346,14 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
       res.json(setMenuItemAvailability(db,Number(req.params.id),req.body,req.actor));
     }catch(error){next(error);}
   });
+  app.get('/api/restaurant/menu/bundled/preview',(req,res,next)=>{
+    try{res.json(planBundledMenuSync(db,{signingKey:menuPreviewKey}));}
+    catch(error){next(error);}
+  });
+  app.post('/api/restaurant/menu/bundled/sync',(req,res,next)=>{
+    try{res.json(applyBundledMenuSync(db,req.body,req.actor,{signingKey:menuPreviewKey}));}
+    catch(error){next(error);}
+  });
   app.post('/api/restaurant/menu/preview',(req,res,next)=>{
     try{res.json(planMenuImport(db,req.body?.csv,{signingKey:menuPreviewKey}));}
     catch(error){next(error);}
@@ -623,7 +632,7 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
     }catch(error){next(error);}
   });
   app.use((err,req,res,_next)=>{
-    const isConflict=/availability|capacity|already assigned|Not enough|^Room out of service|^Assigned room is out of service|Existing room assignment conflicts|reservations exceed|Menu price or GST rate changed since review|Menu availability changed since review|Restaurant table visibility changed since review|Dining table is no longer available|Menu item not found or unavailable/i.test(err.message);
+    const isConflict=/availability|capacity|already assigned|Not enough|^Room out of service|^Assigned room is out of service|Existing room assignment conflicts|reservations exceed|Menu price or GST rate changed since review|Menu availability changed since review|Menu changed after the built-in preview|Restaurant table visibility changed since review|Dining table is no longer available|Menu item not found or unavailable/i.test(err.message);
     const isDuplicate=/UNIQUE constraint/.test(err.message);
     res.status(isConflict||isDuplicate?409:400).json({error:isDuplicate?'Room name already exists':err.message});
   });

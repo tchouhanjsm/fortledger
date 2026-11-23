@@ -49,6 +49,8 @@ export function requiredPermission(method,path){
     return method==='PATCH'?'menu.manage':null;
   if(/^\/restaurant\/menu\/\d+\/price$/.test(path))
     return method==='PATCH'?'menu.manage':null;
+  if(path==='/restaurant/menu/bundled/preview')return method==='GET'?'menu.manage':null;
+  if(path==='/restaurant/menu/bundled/sync')return method==='POST'?'menu.manage':null;
   if(path.startsWith('/restaurant/')){
     if(path==='/restaurant/menu/all')return method==='GET'?'menu.manage':null;
     if(/^\/restaurant\/menu\/\d+\/availability$/.test(path))

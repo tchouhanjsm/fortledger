@@ -271,6 +271,19 @@
       <div id="menu-availability-items"></div>
       <p class="muted">Need to correct just one current menu price or tax? Use Edit price in the list; old receipts remain unchanged.</p>
     </details>
+    <details id="bundled-menu-section" class="menu-availability-section">
+      <summary>Prebuilt Garh Jaisal Kitchen menu · 142 dishes</summary>
+      <p class="muted">The original printed menu and your previously prepared CSV are already bundled with FortLedger. No file upload is required. Review the 142 prices before using them.</p>
+      <p class="muted"><strong>GST needs approval:</strong> The printed menu does not state a tax rate. The supplied CSV assigns provisional 5% GST. Please check your applicable GST with your accountant before syncing or issuing bills.</p>
+      <p class="muted">This safe sync adds only missing dishes. It never edits existing menu prices, GST, unavailable dishes, IDs, or previously saved receipts.</p>
+      <div class="menu-import-actions">
+        <button type="button" id="bundled-menu-preview" class="secondary">Review prebuilt menu</button>
+        <button type="button" id="bundled-menu-sync" class="primary" disabled>Add missing dishes</button>
+      </div>
+      <label class="bundled-menu-acknowledge"><input id="bundled-menu-gst-ack" type="checkbox"> I have checked the provisional 5% GST setting and the printed menu prices.</label>
+      <p id="bundled-menu-message" role="status" aria-live="polite">Not reviewed. The existing menu has not been changed.</p>
+      <div id="bundled-menu-review" class="bundled-menu-review"></div>
+    </details>
     <p class="muted">Choose a CSV exported from Excel or Numbers. We recognise Item Name, Category, Price and GST/Tax Rate columns in any order. Prices must include tax.</p>
     <p><a href="/menu-template.csv" download>Download a sample CSV template</a></p>
     <div class="menu-import-actions"><input type="file" id="menu-csv" accept=".csv,text/csv"><button type="button" id="preview-menu" class="secondary">Check file</button><button type="button" id="import-menu" class="primary" disabled>Import verified menu</button></div>
