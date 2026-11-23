@@ -2324,24 +2324,54 @@ function renderRestaurantHistory(){
     const actions=label('div',undefined,'restaurant-history-actions');
     const print=label('button','View receipt','secondary');print.type='button';
     print.onclick=()=>showRestaurantReceipt(bill.id);
-    const lan=label('button','LAN Print','secondary');lan.type='button';
-    lan.onclick=async()=>{
-      if(!confirm('Send existing saved receipt #'+bill.id+' to configured Epson LAN printer?'))return;
-      try{
-        const sent=await api('/api/restaurant/bills/'+bill.id+'/print',
-          {method:'POST',body:JSON.stringify({reprint:false})});
-        alert(sent.notice);
-      }catch(error){
-        if(!/Previously attempted/.test(error.message)){alert(error.message);return;}
-        if(!confirm('Printing was previously attempted. Verify whether paper already printed before reprinting. Proceed?'))return;
+    actions.append(print);
+    // Only the cashier role is authorized to send an Epson LAN print job.
+    // Managers retain receipt inspection but must never see an action that 403s.
+    if(can('restaurant.pos')&&isRestaurantCashier()){
+      const printState=label('p','Printer attempt not checked.','restaurant-print-state');
+      printState.setAttribute('role','status');
+      printState.setAttribute('aria-live','polite');
+      const check=label('button','Check printer status','secondary');
+      check.type='button';
+      const refreshPrintStatus=async()=>{
+        check.disabled=true;
         try{
-          const retried=await api('/api/restaurant/bills/'+bill.id+'/print',
-            {method:'POST',body:JSON.stringify({reprint:true})});
-          alert(retried.notice);
-        }catch(next){alert(next.message);}
-      }
-    };
-    actions.append(print,lan);
+          const result=await api('/api/restaurant/bills/'+bill.id+'/print-status');
+          const job=result.status;
+          const attempts=job?.attempts||0;
+          const message=!job?'No recorded Epson LAN attempt. Browser receipts are not tracked here.':
+            job.state==='sent_unverified'?'Sent to printer connection '+attempts+' time(s); physical paper NOT verified. Inspect paper before any reprint.':
+            job.state==='sending'?'Printer send in progress or interrupted. Inspect paper; do not retry blindly.':
+            job.state==='uncertain'?'Print delivery uncertain after '+attempts+' attempt(s). Inspect physical paper before reprint.':
+            'Printer status unknown; inspect physical paper.';
+          printState.textContent=message;
+        }catch(error){printState.textContent='Printer status unavailable: '+error.message;}
+        finally{check.disabled=false;}
+      };
+      check.onclick=refreshPrintStatus;
+      const lan=label('button','LAN Print','secondary');lan.type='button';
+      lan.onclick=async()=>{
+        if(!confirm('Send existing saved receipt #'+bill.id+' to configured Epson LAN printer?'))return;
+        try{
+          const sent=await api('/api/restaurant/bills/'+bill.id+'/print',
+            {method:'POST',body:JSON.stringify({reprint:false})});
+          await refreshPrintStatus();
+          alert(sent.notice);
+        }catch(error){
+          await refreshPrintStatus();
+          if(!/Previously attempted/.test(error.message)){alert(error.message);return;}
+          if(!confirm('Printing was previously attempted. Verify whether paper already printed before reprinting. Proceed?'))return;
+          try{
+            const retried=await api('/api/restaurant/bills/'+bill.id+'/print',
+              {method:'POST',body:JSON.stringify({reprint:true})});
+            await refreshPrintStatus();
+            alert(retried.notice);
+          }catch(next){await refreshPrintStatus();alert(next.message);}
+        }
+      };
+      actions.append(check,lan);
+      article.append(printState);
+    }
     if(status.key==='unmatched'){
       const link=label('button','Link to guest','secondary');link.type='button';
       link.onclick=()=>linkPendingCharge(bill);

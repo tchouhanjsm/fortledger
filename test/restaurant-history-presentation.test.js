@@ -53,11 +53,17 @@ test('restaurant overview and filtered history are read-only, accessible and ali
   assert.match(app,/settled_at/);
   assert.match(app,/restaurant-history-details/);
   assert.match(app,/restaurant-history-items/);
+  assert.ok(app.includes("if(can('restaurant.pos')&&isRestaurantCashier())"));
+  assert.match(app,/Check printer status/);
+  assert.match(app,/physical paper NOT verified/);
+  const cashierPrintBlock=app.indexOf("if(can('restaurant.pos')&&isRestaurantCashier())");
+  assert.ok(cashierPrintBlock>=0&&app.indexOf("const lan=label('button','LAN Print'",cashierPrintBlock)>cashierPrintBlock,
+    'Manager must never see a cashier-only LAN Print button');
   assert.match(app,/restaurant-history-filters/);
   assert.match(app,/restaurantBillFilter=/);
   assert.match(app,/restaurantBillTime\(/);
   assert.match(app,/hotelDateAt\(/);
-  assert.equal(app.slice(app.indexOf('function renderRestaurantHistory'),app.indexOf("$('#restaurant-history-search').oninput")).includes("api('/api/restaurant/bills'"),false);
+  assert.equal(app.slice(app.indexOf('function renderRestaurantHistory'),app.indexOf("$('#restaurant-history-search').oninput")).includes("api('/api/restaurant/bills')"),false);
   assert.ok(html.indexOf('id="restaurant-history-section"')<html.indexOf('id="menu-import-section"'),
     'Saved bills should be more prominent than seldom-used menu administration');
 });
