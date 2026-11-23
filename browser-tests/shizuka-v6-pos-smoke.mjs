@@ -55,8 +55,10 @@ export async function runShizukaV6PosSmoke(browser){
         price_paise:10000,tax_rate:5,expected_price_paise:8000,
         expected_tax_rate:5,reason:'Reviewed synthetic restaurant price update'
       },{id:0,username:'owner',role:'owner'});
+      if(width===390)await page.locator('#restaurant-mobile-cart-close').click();
       await page.locator('#refresh-workspace').click();
       await page.waitForFunction(()=>document.querySelector('#refresh-message')?.textContent?.includes('Hotel records refreshed'));
+      if(width===390)await page.locator('#restaurant-mobile-cart').click();
       assert.equal(await page.locator('#save-restaurant-bill').isDisabled(),true,
         'Draft reviewed at old prices must not save when menu changes');
       await page.locator('#edit-restaurant-bill').click();
