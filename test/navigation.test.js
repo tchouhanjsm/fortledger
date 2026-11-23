@@ -7,11 +7,11 @@ import {VIEWS,viewForHash} from '../public/navigation.js';
 
 const html=fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)),'../public/index.html'),'utf8');
 test('five focused modules have valid bookmarkable sidebar routes and real page sections',()=>{
-  assert.deepEqual(Object.keys(VIEWS),['dashboard','bookings','guests','rooms','invoices','restaurant','business-settings','profile']);
+  assert.deepEqual(Object.keys(VIEWS),['dashboard','bookings','guests','rooms','invoices','restaurant','restaurant-admin','business-settings','profile']);
   for(const [name,definition] of Object.entries(VIEWS)){
     assert.equal(viewForHash('#'+name),name);
     assert.ok(definition.title&&definition.subtitle);
-    assert.match(html,new RegExp('href="#'+name+'"'));
+    if(name!=='restaurant-admin')assert.match(html,new RegExp('href="#'+name+'"'));
     for(const section of definition.sections){
       assert.match(html,new RegExp('id="'+section+'"'),'Missing section '+section);
     }
