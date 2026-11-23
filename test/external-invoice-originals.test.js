@@ -110,7 +110,9 @@ test('authenticated API: only owner may search, import, download or check uncert
   assert.match(got.headers.get('content-disposition'),/attachment/);
   assert.equal(got.headers.get('content-type').includes('application/pdf'),true);
   assert.deepEqual(Buffer.from(await got.arrayBuffer()),pdf);
-  assert.equal((await req('/api/external-invoice-originals/'+result.id+'/original',{cookie:ownerCookie,method:'DELETE'})).status,403);
+  assert.notEqual((await req('/api/external-invoice-originals/'+result.id+'/original',{cookie:ownerCookie,method:'DELETE'})).status,200,
+    'No endpoint accepts deletion of saved PDF originals');
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM external_invoice_originals').get().n,1);
   assert.equal(db.prepare('SELECT COUNT(*) n FROM invoices').get().n,0);
  }finally{await new Promise(resolve=>server.close(resolve));db.close();}
 });
