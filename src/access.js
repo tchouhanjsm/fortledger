@@ -23,6 +23,9 @@ export function requiredPermission(method,path){
   if(path==='/system/updates/install')return method==='POST'?'system.update':null;
   if(path==='/me')return method==='GET'?'profile.read':'profile.write';
   if(path==='/me/password')return method==='POST'?'profile.write':null;
+  if(path==='/me/quick-pin')return method==='GET'?'profile.read':
+    method==='POST'||method==='DELETE'?'profile.write':null;
+  if(path==='/system/staff-pin')return ['GET','POST'].includes(method)?'system.update':null;
   if(path.startsWith('/staff'))return 'staff.admin';
   if(path.startsWith('/audit/'))return method==='GET'?'audit.read':null;
   if(path==='/analytics/rooms')return method==='GET'?'analytics.read':null;
