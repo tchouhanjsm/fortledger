@@ -19,12 +19,22 @@ test('doctor authenticates newest backup before declaring it recent or reliable'
     db=openDatabase(live);savePasswordRecord(auth,'test-only-strong-owner-password-123');
     const saved=await createEncryptedBackup(db,backupDir,secret);
     const env={FORTLEDGER_BACKUP_DIR:backupDir,FORTLEDGER_BACKUP_PASSPHRASE:secret};
-    const healthy=diagnose({databaseFile:live,authFile:auth,env});
+    // Use a clock strictly after the filesystem's reported backup mtime.
+    // Windows timestamp rounding must not make a freshly authenticated backup
+    // appear to be from the future; production age rules remain unchanged.
+    const writtenAt=fs.statSync(saved.file).mtimeMs;
+    const now=new Date(Math.max(Date.now(),writtenAt)+1000);
+    const healthy=diagnose({databaseFile:live,authFile:auth,env,now});
     assert.equal(healthy.checks.find(c=>c.name==='Encrypted backup integrity').status,'pass');
     assert.equal(healthy.checks.find(c=>c.name==='Encrypted backups').status,'pass');
     assert.equal(healthy.checks.find(c=>c.name==='Backup storage separation').status,'warn');
     assert.equal(healthy.production_ready,false);
     assert.equal(verifyEncryptedBackupFile(saved.file,secret).rooms,7);
+    const stale=diagnose({databaseFile:live,authFile:auth,env,
+      now:new Date(writtenAt+37*3600000)});
+    assert.equal(stale.checks.find(c=>c.name==='Encrypted backup integrity').status,'pass');
+    assert.equal(stale.checks.find(c=>c.name==='Encrypted backups').status,'warn',
+      'A 37-hour-old authenticated backup remains stale and must not pass freshness');
 
     const corrupted=Buffer.from(fs.readFileSync(saved.file));
     corrupted[corrupted.length-1]^=0x02;
