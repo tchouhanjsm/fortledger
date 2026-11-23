@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {randomUUID} from 'node:crypto';
+import {randomUUID,createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {openDatabase} from '../src/database.js';
 import {createApp} from '../src/server.js';
@@ -54,6 +54,26 @@ test('table names are opt-in, audited and immutable on saved restaurant receipts
     assert.equal(db.pragma('foreign_key_check').length,0);
     assert.deepEqual(auditEvents(db,{entityType:'restaurant_table',entityId:table.id}).map(x=>x.action),
       ['restaurant_table.disabled','restaurant_table.created']);
+  }finally{db.close();}
+});
+test('legacy v12 table-free request fingerprint stays unchanged for safe retries after migration',()=>{
+  const db=openDatabase(':memory:');
+  try{
+    importMenuCsv(db,'name,category,price,tax_rate\nTea,Drinks,80,5');
+    const item=listMenu(db)[0],request_id=randomUUID();
+    const items=[{menu_item_id:item.id,quantity:1,unit_price_paise:item.price_paise,tax_rate:item.tax_rate}];
+    const original=JSON.stringify({
+      payment_method:'cash',booking_id:null,manual_room:'',manual_guest:'',items
+    });
+    const priorHash=createHash('sha256').update(original).digest('hex');
+    const bill=createRestaurantBill(db,{request_id,payment_method:'cash',items},owner,{requireReviewedPrices:true});
+    const recorded=db.prepare('SELECT fingerprint FROM restaurant_bill_requests WHERE request_id=?').get(request_id);
+    assert.equal(recorded.fingerprint,priorHash,
+      'An optional empty table must not invalidate old pending request IDs');
+    const retry=createRestaurantBill(db,{request_id,payment_method:'cash',items},owner,{requireReviewedPrices:true});
+    assert.equal(retry.already_recorded,true);
+    assert.equal(retry.id,bill.id);
+    assert.equal(db.prepare('SELECT COUNT(*) n FROM restaurant_bills').get().n,1);
   }finally{db.close();}
 });
 test('manager price and GST edit enforces exact prior state and preserves saved bills',()=>{
