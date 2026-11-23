@@ -94,6 +94,61 @@ export function listRestaurantCorrectionCases(db,billId){
     .all(billId).map(decorate);
 }
 
+
+/** Review attention only. Multiple requests against a saved line may be legitimate;
+ * never conclude a refund or credit was made, and never sum proposals as paid money. */
+function activeCorrectionLineAlerts(db,billId){
+  const rows=db.prepare(`SELECT c.id,c.proposal_json
+    FROM restaurant_correction_cases c
+    LEFT JOIN restaurant_correction_case_reviews r ON r.case_id=c.id
+    WHERE c.bill_id=? AND (r.id IS NULL OR r.disposition='needs_accountant')
+    ORDER BY c.id`).all(billId);
+  const indexed=new Map();
+  for(const row of rows){
+    let proposed;
+    try{proposed=JSON.parse(row.proposal_json);}
+    catch{throw new Error('Saved correction proposal is unreadable; stop and review source bill');}
+    if(!proposed||proposed.source_bill_id!==billId||!Array.isArray(proposed.lines))
+      throw new Error('Saved correction proposal has inconsistent source evidence');
+    const seen=new Set();
+    for(const line of proposed.lines){
+      if(!Number.isSafeInteger(line.line_index)||line.line_index<0||
+         !Number.isSafeInteger(line.correction_quantity)||line.correction_quantity<1||
+         !Number.isSafeInteger(line.original_quantity)||line.original_quantity<1||
+         line.correction_quantity>line.original_quantity||
+         seen.has(line.line_index))
+        throw new Error('Saved correction proposal has invalid original line quantities');
+      seen.add(line.line_index);
+      const current=indexed.get(line.line_index)||{
+        original_quantity:line.original_quantity,requests:[]
+      };
+      if(current.original_quantity!==line.original_quantity)
+        throw new Error('Conflicting original line quantities across correction cases');
+      current.requests.push({id:row.id,quantity:line.correction_quantity});
+      indexed.set(line.line_index,current);
+    }
+  }
+  const perCase=new Map();
+  for(const [lineIndex,group] of indexed){
+    if(group.requests.length<2)continue;
+    const sum=group.requests.reduce((total,entry)=>total+entry.quantity,0);
+    if(!Number.isSafeInteger(sum))throw new Error('Correction quantity proposals exceed safe range');
+    for(const request of group.requests){
+      const other=group.requests.filter(entry=>entry.id!==request.id);
+      const flags=perCase.get(request.id)||[];
+      flags.push({
+        code:sum>group.original_quantity?
+          'proposed_quantities_exceed_saved_line':'possible_same_line_overlap',
+        line_index:lineIndex,original_quantity:group.original_quantity,
+        active_proposed_quantity:sum,related_case_count:other.length,
+        related_case_ids:other.slice(0,10).map(entry=>entry.id)
+      });
+      perCase.set(request.id,flags);
+    }
+  }
+  return perCase;
+}
+
 /** Read-only, source-linked inbox; never mutates credits, payments, tax or receipt history. */
 export function restaurantCorrectionInbox(db,actor,{status='open',offset=0,limit=30}={}){
   actorCheck(actor,['owner','manager']);
@@ -109,8 +164,14 @@ export function restaurantCorrectionInbox(db,actor,{status='open',offset=0,limit
     COALESCE(SUM(CASE WHEN r.id IS NULL THEN 1 ELSE 0 END),0) AS awaiting_owner,
     COALESCE(SUM(CASE WHEN r.disposition='needs_accountant' THEN 1 ELSE 0 END),0) AS needs_accountant`+from).get();
   const total=db.prepare('SELECT COUNT(*) AS n'+from+where).get().n;
-  const items=db.prepare(CASE_SELECT+where+' ORDER BY c.id DESC LIMIT ? OFFSET ?')
+  const cases=db.prepare(CASE_SELECT+where+' ORDER BY c.id DESC LIMIT ? OFFSET ?')
     .all(limit,offset).map(decorate);
+  const risksByBill=new Map();
+  const items=cases.map(entry=>{
+    if(!risksByBill.has(entry.bill_id))
+      risksByBill.set(entry.bill_id,activeCorrectionLineAlerts(db,entry.bill_id));
+    return {...entry,review_alerts:risksByBill.get(entry.bill_id).get(entry.id)||[]};
+  });
   return {status,offset,limit,total,
     counts:{open:counts.awaiting_owner+counts.needs_accountant,
       awaiting_owner:counts.awaiting_owner,needs_accountant:counts.needs_accountant,
