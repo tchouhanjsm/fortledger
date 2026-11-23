@@ -1277,7 +1277,7 @@ function openTaxDraft(invoice){
     description:invoice.snapshot.category+' - '+invoice.snapshot.meal_plan+' basis'
   }];
   for(const line of lines){
-    const row=label('label',undefined,'tax-sac-row');
+    const row=label('div',undefined,'tax-sac-row');
     row.append(label('span',line.description));
     const select=label('select');select.name='sac_codes';
     for(const [value,title] of [['996311','Hotel room accommodation (996311)'],['996312','Campsite accommodation (996312)']]){
