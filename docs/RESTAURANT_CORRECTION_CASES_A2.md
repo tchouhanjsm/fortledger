@@ -17,7 +17,7 @@
 - `GET /api/restaurant/correction-cases/request/:requestId` finds an uncertain case outcome (owner/manager).
 - `POST /api/restaurant/correction-cases/:caseId/review` stores one immutable owner decision with `{request_id, disposition:'needs_accountant'|'dismissed', note}` (owner only). A different request cannot replay an ID, and one case cannot be decided twice.
 
-Two **new** additive SQLite support tables are created and structurally checked at startup. No original bill, guest, accounting, printer or payment tables change, and `user_version` stays 13 to allow a source-only update rollback to read the previous schema. Every case creation and owner decision is auditable against the original bill in `operation_audit`. No external data submission, cloud dependency or installer/runtime change is needed.
+Two **new** additive SQLite support tables are created and structurally checked at startup. Both tables have idempotent SQLite UPDATE/DELETE refusal triggers, installed on fresh and existing v13 databases, so review evidence cannot be silently rewritten through accidental direct SQL. The application can still append new requests and one owner decision; this is not a substitute for protected encrypted off-device backups. No original bill, guest, accounting, printer or payment tables change, and `user_version` stays 13 to allow a source-only update rollback to read the previous schema. Every case creation and owner decision is auditable against the original bill in `operation_audit`. No external data submission, cloud dependency or installer/runtime change is needed.
 
 ## Unresolved accounting policy and legal gate
 

@@ -27,7 +27,19 @@ export function ensureRestaurantCorrectionCaseSchema(db){
     actor_id INTEGER NOT NULL,
     actor_username TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )`);
+  );
+  CREATE TRIGGER IF NOT EXISTS guard_restaurant_correction_case_update
+    BEFORE UPDATE ON restaurant_correction_cases
+    BEGIN SELECT RAISE(ABORT,'Restaurant correction cases cannot be updated'); END;
+  CREATE TRIGGER IF NOT EXISTS guard_restaurant_correction_case_delete
+    BEFORE DELETE ON restaurant_correction_cases
+    BEGIN SELECT RAISE(ABORT,'Restaurant correction cases cannot be deleted'); END;
+  CREATE TRIGGER IF NOT EXISTS guard_restaurant_correction_review_update
+    BEFORE UPDATE ON restaurant_correction_case_reviews
+    BEGIN SELECT RAISE(ABORT,'Restaurant correction reviews cannot be updated'); END;
+  CREATE TRIGGER IF NOT EXISTS guard_restaurant_correction_review_delete
+    BEFORE DELETE ON restaurant_correction_case_reviews
+    BEGIN SELECT RAISE(ABORT,'Restaurant correction reviews cannot be deleted'); END;`);
 }
 function actorCheck(actor,roles){
   if(!actor||!Number.isSafeInteger(actor.id)||actor.id<0||
