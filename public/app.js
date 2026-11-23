@@ -1300,7 +1300,8 @@ async function loadCheckoutCases(reset=true){
       const detail=label('div');
       detail.append(label('strong','Review #'+entry.id+' · Booking #'+entry.booking_id+' · '+entry.guest_name),
         label('small','Checkout '+entry.hotel_business_date+
-          ' · held for review · saved '+entry.created_at+' UTC'));
+          ' · '+(entry.review_status||'held_for_review').replaceAll('_',' ')+
+          ' · not legally issued · saved '+entry.created_at+' UTC'));
       if(preflight)detail.append(label('p','Recorded charges '+money(preflight.totals.charges_paise)+
         ' · received (operator-recorded) '+money(preflight.totals.operator_recorded_paise)+
         ' · still due '+money(preflight.totals.due_paise)+' · legal issuance blocked'));
@@ -1309,6 +1310,45 @@ async function loadCheckoutCases(reset=true){
       const action=label('button','View live guest folio','secondary');
       action.disabled=!booking;
       action.onclick=()=>{if(booking)void showFolio(booking);};
+      if(['owner','manager'].includes(currentUser?.role)){
+        const actions=label('div',undefined,'checkout-case-review-actions');
+        const choice=label('select');
+        choice.setAttribute('aria-label','Review action for checkout case '+entry.id);
+        for(const [value,text] of [['needs_source_review','Needs source review'],
+          ['reviewed_for_accountant','Source reviewed — send to accountant']]){
+          const option=label('option',text);option.value=value;choice.append(option);
+        }
+        const note=label('textarea');
+        note.rows=2;note.maxLength=300;
+        note.setAttribute('aria-label','Review note for checkout case '+entry.id);
+        note.placeholder='Reason / source evidence checked (at least 10 characters)';
+        const checkedLabel=label('label');
+        const checked=label('input');checked.type='checkbox';
+        checkedLabel.append(checked,document.createTextNode(' I inspected the original source evidence'));
+        const save=label('button','Save nonstatutory review','secondary');
+        save.type='button';
+        const status=label('p','','muted');status.setAttribute('role','status');
+        save.onclick=async()=>{
+          if(note.value.trim().length<10){status.textContent='Enter a review note of at least 10 characters.';note.focus();return;}
+          if(choice.value==='reviewed_for_accountant'&&!checked.checked){
+            status.textContent='Source evidence confirmation required.';checked.focus();return;
+          }
+          const requestId=save.dataset.requestId||(save.dataset.requestId=crypto.randomUUID());
+          save.disabled=true;
+          try{
+            await api('/api/checkout-document-cases/'+entry.id+'/reviews',{method:'POST',
+              body:{request_id:requestId,status:choice.value,note:note.value.trim(),
+                source_evidence_checked:checked.checked}});
+            status.textContent='Review recorded; legal GST invoice remains blocked.';
+            save.dataset.requestId='';
+            await loadCheckoutCases();
+          }catch(error){
+            status.textContent='Review not confirmed: '+error.message+
+              '. Retain the same details and retry without a new request ID.';
+          }finally{save.disabled=false;}
+        };
+        actions.append(choice,note,checkedLabel,save,status);detail.append(actions);
+      }
       row.append(detail,action);
       list.append(row);
     }

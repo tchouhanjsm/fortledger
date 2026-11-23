@@ -25,6 +25,7 @@ import {ensureRestaurantCorrectionCaseSchema} from './restaurant-correction-case
 import {ensureExternalInvoiceOriginalsSchema} from './external-invoice-originals.js';
 import {ensureHistoricalPdfIdentificationSchema} from './historical-pdf-identifications.js';
 import {ensureCheckoutDocumentCaseSchema} from './checkout-document-case.js';
+import {ensureCheckoutCaseReviewSchema} from './checkout-case-review.js';
 import {ensureLanPrinterSettingsSchema} from './lan-printer-settings.js';
 
 export function openDatabase(filename = databasePath()) {
@@ -251,8 +252,10 @@ export function openDatabase(filename = databasePath()) {
     // checkout is backfilled or implicitly declared legally invoiced.
     db.transaction(()=>{
       ensureCheckoutDocumentCaseSchema(db);
+      ensureCheckoutCaseReviewSchema(db);
       try{
         db.prepare('SELECT id,booking_id,version,state,snapshot_json,actor_username,hotel_business_date,created_at FROM checkout_document_cases LIMIT 0').all();
+        db.prepare('SELECT id,case_id,request_id,fingerprint,status,note,source_evidence_checked,actor_id,actor_username,created_at FROM checkout_case_review_events LIMIT 0').all();
       }catch{
         throw new Error('Checkout document case table is incompatible; restore a verified backup');
       }
