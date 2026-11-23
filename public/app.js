@@ -10,6 +10,7 @@ import {prepareDailyClosing} from './daily-close-preparation.js';
 import {shiftHandover} from './shift-handover.js';
 import {stayMetrics} from './stay-metrics.js';
 import {createOwnerUpdateNotice} from './update-notice.js';
+import {chooseWindowsUpdateAction} from './windows-update-choice.js';
 const $ = selector => document.querySelector(selector);
 const confirmAction=createConfirmAction($('#shizuka-confirm-dialog'));
 $('#skip-to-main').onclick=()=>{
@@ -2025,7 +2026,9 @@ $('#update-center-check').onclick=async()=>{
     const verifiedUrl=/^https:\/\/github\.com\/tchouhanjsm\/fortledger\/actions\/runs\/[0-9]+\/artifacts\/[0-9]+$/.test(state.download_url||'');
     if(state.platform==='windows'&&state.state==='installer_update_available'&&state.available===true&&verifiedUrl){
       installerDownloadUrl=state.download_url;
-      $('#update-center-download').hidden=false;
+      // Do not tempt a second installer download before the supervisor has
+      // had a chance to check whether an in-place patch is available.
+      $('#update-center-download').hidden=true;
     }
     $('#update-center-windows').hidden=state.platform!=='windows'||installerManaged;
     $('#update-center-mac').hidden=state.platform!=='mac';
@@ -2036,11 +2039,18 @@ $('#update-center-check').onclick=async()=>{
       for(const blocker of readiness.blockers||[])list.append(label('li',blocker));
       const ready=Boolean(readiness.ready)&&
         /^[a-f0-9]{40}$/i.test(readiness.target_sha||'');
-      $('#update-center-readiness-status').textContent=ready?
-        (readiness.update_mode==='code_only'?
-          'Verified code-only update ready. No reinstall: FortLedger will finish work, patch reviewed app files and restart.':
-          'Verified GitHub commit, protected backup configuration and external supervisor are ready.'):
-        'One-click code update is blocked until the listed safety checks pass. An installer may be required for native or launcher changes.';
+      const choice=chooseWindowsUpdateAction(state,readiness);
+      if(installerManaged){
+        $('#update-center-download').hidden=!choice.show_verified_installer;
+        $('#update-center-desktop').hidden=!choice.show_verified_installer;
+      }
+      $('#update-center-readiness-status').textContent=installerManaged?
+        choice.guidance:
+        ready?
+          (readiness.update_mode==='code_only'?
+            'Verified code-only update ready. No reinstall: FortLedger will finish work, patch reviewed app files and restart.':
+            'Verified GitHub commit, protected backup configuration and external supervisor are ready.'):
+          'One-click code update is blocked until the listed safety checks pass. Review the blockers before restarting.';
       if(ready){
         approvedUpdateSha=readiness.target_sha;
         $('#update-center-install').textContent=readiness.update_mode==='code_only'?

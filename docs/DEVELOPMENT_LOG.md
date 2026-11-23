@@ -1,5 +1,11 @@
 # FortLedger — Development log
 
+## 2026-11-23 — Windows Update Center code-first action and installer port diagnostics
+- Root cause from installer code: the Windows Update Center exposed **Download verified Windows update** even if a V7 owner supervisor was capable of applying a verified source-only patch; its installer guard rejected any port-3000 listener even if a tray parent had been ended from Task Manager.
+- Update Center now prefers **Apply code update & restart** when *existing* verified supervisor and backup checks pass, hiding repeated installer downloads in that case. Older/missing-supervisor and native upgrades retain the verified installer fallback.
+- Installer guard now identifies the current port listener PID/process name read-only and shows the specific blocking reason (including backup/credential failures) to the setup UI. No process termination, data rewrite, number allocation, new dependency or weakening of the original installer safety gates. See `docs/WINDOWS_UPDATE_NO_REINSTALL_AND_PORT_3000.md`.
+
+
 ## 2026-11-23 — Accountant historical PDF inventory handoff (P2c)
 - Owner-only read-only progress counters and CSV download across byte-exact archived online-generator PDF originals and latest owner-entered historical number/date; pending identification, possible duplicate FY serial and format review are explicit.
 - CSV is injection-neutralized and contains no PDF bytes, tax IDs, payment totals, guest names or free-text notes; filename may still contain personal data and remains owner-only.

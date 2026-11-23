@@ -51,19 +51,37 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Code: Integer;
   Parameters: String;
+  DiagnosticPath: String;
+  Diagnostic: AnsiString;
 begin
   Result := '';
   ExtractTemporaryFile('windows-installer-guard.ps1');
   ExtractTemporaryFile('windows-verify-owner-companion.mjs');
+  DiagnosticPath := ExpandConstant('{tmp}\fortledger-installer-blocker.txt');
   Parameters := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' +
     ExpandConstant('{tmp}\windows-installer-guard.ps1') + '" -InstallDirectory "' +
     ExpandConstant('{app}') + '" -Verifier "' +
-    ExpandConstant('{tmp}\windows-verify-owner-companion.mjs') + '"';
+    ExpandConstant('{tmp}\windows-verify-owner-companion.mjs') + '" -DiagnosticFile "' +
+    DiagnosticPath + '"';
   if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
               Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
   begin
-    Result := 'Installation stopped before changing program files. Close the running app, ' +
-      'verify both hotel data/owner credentials, and confirm a recent recoverable encrypted ' +
-      'backup on a separate drive when updating an existing desktop installation.';
+    // Show the actual reason (live port/PID, missing independent encrypted
+    // backup, or missing original owner credential) instead of the same generic
+    // "app is running" message for unrelated refusal causes.
+    if LoadStringFromFile(DiagnosticPath, Diagnostic) and (Length(Diagnostic) > 0) then
+    begin
+      Result := String(Diagnostic);
+      Exit;
+    end;
+    Result := 'Installation stopped safely before replacing program files.' + #13#10 +
+      'If the app is reported running after Task Manager was used, its separate Node server ' +
+      'may still be listening on port 3000.' + #13#10 +
+      'First finish all hotel bills and confirm your protected backup. Close FortLedger ' +
+      'from its Windows tray icon: Close FortLedger safely.' + #13#10 +
+      'If the tray was already terminated, restart Windows normally and run this installer ' +
+      'BEFORE starting FortLedger again. Never kill an unknown port-3000 process.' + #13#10 +
+      'A verified separate-drive encrypted database AND owner credential restore remains ' +
+      'mandatory for an existing hotel installation. This installer does not reset hotel data.';
   end;
 end;
