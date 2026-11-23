@@ -2219,6 +2219,52 @@ function showRestaurantReceipt(id){
   const href='/api/restaurant/bills/'+encodeURIComponent(id)+'/receipt';
   window.open(href,'_blank','noopener');
 }
+function restaurantCorrectionReviewPanel(bill){
+  const panel=label('details',undefined,'restaurant-correction-review');
+  const title=label('summary','Estimate correction · no changes saved');
+  panel.append(title,label('p',
+    'Manager/owner review only. This is not a GST credit note, refund or adjustment to the saved bill.','muted'));
+  const choices=[];
+  (bill.items||[]).forEach((item,index)=>{
+    const row=label('div',undefined,'restaurant-correction-line');
+    const name=label('label');
+    const box=label('input');box.type='checkbox';box.value=String(index);
+    name.append(box,document.createTextNode(' '+item.name+' · '+money(item.unit_price_paise)+
+      ' × '+item.quantity));
+    const qtyLabel=label('label','Quantity to review ');
+    const qty=label('input');qty.type='number';qty.min='1';qty.max=String(item.quantity);
+    qty.step='1';qty.value=String(item.quantity);
+    qty.setAttribute('aria-label','Quantity to review: '+item.name);
+    qtyLabel.append(qty);row.append(name,qtyLabel);panel.append(row);
+    choices.push({index,box,qty});
+  });
+  const reasonLabel=label('label','Reason for correction review');
+  const reason=label('textarea');reason.maxLength=300;reason.rows=2;
+  reason.placeholder='Describe the incorrect saved quantity, charge or service';
+  reasonLabel.append(reason);panel.append(reasonLabel);
+  const action=label('button','Calculate estimated impact','secondary');
+  action.type='button';
+  const outcome=label('div',undefined,'restaurant-correction-result');
+  outcome.setAttribute('role','status');outcome.setAttribute('aria-live','polite');
+  action.onclick=async()=>{
+    const lines=choices.filter(entry=>entry.box.checked)
+      .map(entry=>({line_index:entry.index,quantity:Number(entry.qty.value)}));
+    outcome.replaceChildren();
+    action.disabled=true;
+    try{
+      const result=await api('/api/restaurant/bills/'+bill.id+'/correction-preview',
+        {method:'POST',body:JSON.stringify({reason:reason.value,lines})});
+      outcome.append(label('strong','Estimated reduction: '+money(result.proposed_gross_paise)),
+        label('p','Historic included tax component: '+money(result.proposed_tax_paise)+
+          ' · remaining original value: '+money(result.remaining_gross_paise)));
+      outcome.append(label('p','No bill, payment, room balance or GST record was changed.','muted'));
+      for(const blocker of result.blockers)outcome.append(label('p','• '+blocker,'muted'));
+    }catch(error){outcome.append(label('p',error.message,'error'));}
+    finally{action.disabled=false;}
+  };
+  panel.append(action,outcome);
+  return panel;
+}
 function renderRestaurantHistory(){
   renderRestaurantOverview();
   const list=$('#restaurant-history');list.replaceChildren();
@@ -2301,6 +2347,8 @@ function renderRestaurantHistory(){
       actions.append(link);
     }
     article.append(actions);
+    if(can('restaurant.correction.preview')&&['owner','manager'].includes(currentUser?.role))
+      article.append(restaurantCorrectionReviewPanel(bill));
     list.append(article);
   }
   if(!matched.length)list.append(label('p',restaurantBills.length?

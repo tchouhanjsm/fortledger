@@ -107,3 +107,14 @@
   #restaurant-admin{padding:16px 12px}
 }
 @media(min-width:701px){#restaurant .restaurant-mobile-cart,#restaurant .restaurant-mobile-close{display:none!important}}
+
+/* Phase A1: read-only manager correction estimate; no bill-edit controls. */
+#restaurant-admin .restaurant-correction-review{margin:12px 0 4px;padding:12px;border:1px solid var(--hs-border,#d7ddd8);border-radius:12px;background:#fafbf8}
+#restaurant-admin .restaurant-correction-review summary{cursor:pointer;font-weight:650;min-height:36px}
+#restaurant-admin .restaurant-correction-review>p{font-size:12px;margin:8px 0}
+#restaurant-admin .restaurant-correction-line{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0}
+#restaurant-admin .restaurant-correction-line label{display:inline-flex;align-items:center;gap:8px;font-size:13px}
+#restaurant-admin .restaurant-correction-line input[type=number]{width:76px;min-height:40px}
+#restaurant-admin .restaurant-correction-review textarea{display:block;width:100%;min-height:66px;margin:7px 0 10px;box-sizing:border-box}
+#restaurant-admin .restaurant-correction-review>button{min-height:44px}
+#restaurant-admin .restaurant-correction-result{margin-top:10px;font-size:13px}
