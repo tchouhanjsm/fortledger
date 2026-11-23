@@ -14,6 +14,7 @@ import {runBundledMenuSmoke} from './bundled-menu-smoke.mjs';
 import {runShizukaV6PosSmoke} from './shizuka-v6-pos-smoke.mjs';
 import {runRestaurantCorrectionCasesSmoke} from './restaurant-correction-cases-smoke.mjs';
 import {runCheckoutInvoicePreflightSmoke} from './checkout-invoice-preflight-smoke.mjs';
+import {runExternalInvoiceOriginalsSmoke} from './external-invoice-originals-smoke.mjs';
 
 const screenshots=process.env.FORTLEDGER_CAPTURE_SCREENSHOTS==='1';
 if(screenshots)mkdirSync('browser-artifacts',{recursive:true});
@@ -501,6 +502,7 @@ try{
   await runShizukaV6PosSmoke(browser);
   await runRestaurantCorrectionCasesSmoke(browser);
   await runCheckoutInvoicePreflightSmoke(browser);
+  await runExternalInvoiceOriginalsSmoke(browser);
   console.log('PASS: Chromium receipt-loss reconciliation, booking/payment flow, responsive 320(reflow proxy)/360/390/768/1024/1280/1440/1920 px.');
 }finally{
   await browser?.close();

@@ -92,6 +92,16 @@ export function requiredPermission(method,path){
   if(path==='/housekeeping')return method==='GET'?'housekeeping.read':null;
   if(path.startsWith('/housekeeping/'))return method==='PATCH'?'housekeeping.write':null;
   if(path.startsWith('/rooms'))return method==='GET'?'rooms.read':'rooms.write';
+  // Historic originals may contain third-party GSTIN/address data:
+  // keep listing, importing and downloading owner-only.
+  if(path==='/external-invoice-originals')
+    return method==='GET'?'external.documents.read':null;
+  if(path==='/external-invoice-originals/import')
+    return method==='POST'?'external.documents.import':null;
+  if(/^\/external-invoice-originals\/by-digest\/[a-f0-9]{64}$/.test(path))
+    return method==='GET'?'external.documents.read':null;
+  if(/^\/external-invoice-originals\/\d+\/original$/.test(path))
+    return method==='GET'?'external.documents.read':null;
   if(path==='/tax/readiness')return method==='GET'?'tax.review':null;
   if(/^\/bookings\/\d+\/checkout-invoice-preflight$/.test(path))
     return method==='GET'?'invoices.read':null;

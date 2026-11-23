@@ -22,6 +22,7 @@ import {ensureBookingCreateSchema} from './booking-create.js';
 import {ensureFolioSettlementRequestSchema} from './folio.js';
 import {ensureAccommodationAdjustmentSchema} from './accommodation-adjustments.js';
 import {ensureRestaurantCorrectionCaseSchema} from './restaurant-correction-cases.js';
+import {ensureExternalInvoiceOriginalsSchema} from './external-invoice-originals.js';
 
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -229,6 +230,19 @@ export function openDatabase(filename = databasePath()) {
       }
       if(db.pragma('foreign_key_check').length)
         throw new Error('Restaurant correction review schema has foreign key violations');
+    })();
+    // Additive, separate external-PDF archive: keeps exact bytes in SQLite so
+    // existing encrypted database snapshots include them. Older code can
+    // ignore this new table after a source-only patch rollback.
+    db.transaction(()=>{
+      ensureExternalInvoiceOriginalsSchema(db);
+      try{
+        db.prepare('SELECT id,sha256,original_filename,size_bytes,pdf_bytes,actor_username,imported_at FROM external_invoice_originals LIMIT 0').all();
+      }catch{
+        throw new Error('Historical original PDF archive schema is incompatible; restore a verified backup before importing');
+      }
+      if(db.pragma('foreign_key_check').length)
+        throw new Error('Historical PDF archive has foreign key violations');
     })();
     // Fail on startup, not while accepting a guest's bill, if a later manual
     // schema change or damaged file removed the idempotency ledger after v8.

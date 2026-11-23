@@ -1,5 +1,11 @@
 # FortLedger — Development log
 
+## 2026-11-23 — Local historical invoice originals register
+- Owner-only batch selection and explicit import of external online-generator PDFs from local file picker. Original folder untouched, no automatic folder scanning.
+- Exact PDF bytes stored in the existing encrypted-backup SQLite ledger, immutable update/delete triggers, SHA-256 replay/damage detection and saved-original retrieval. Search by filename, not inferred invoice number.
+- No statutory series, issued tax invoice, PDF reinterpretation, GST policy, payment, guest or booking changes. Source-only update; no new dependencies. See `docs/HISTORICAL_EXTERNAL_INVOICE_ORIGINALS.md`.
+
+
 ## 2026-11-23 — Goal-first checkout invoice preflight, Phase 1
 - Confirmed operator workflow: final invoices currently come from an external online PDF generator, saved locally and manually shared by email; historic numbering policy remains unapproved. Actual PDFs have **not** been accessed or imported.
 - Added read-only GET checkout preflight in the existing guest folio, using authoritative SQLite accommodation adjustments, booked contract, saved original proforma, recorded guest payments, linked room-food receipts and settled status.

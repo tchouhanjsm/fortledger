@@ -1199,6 +1199,7 @@ async function load(){
   if(revision!==workspaceLoadRevision)return false;
   currentUser=operator;
   $('#gst-readiness').hidden=!['owner','manager'].includes(currentUser?.role)||!can('tax.review');
+  $('#historical-invoice-originals').hidden=currentUser?.role!=='owner';
   [rooms,bookings,invoices,businessSettings,menu,restaurantBills,restaurantTables,maintenanceIssues,guests,backupStatus,closeAttention]=snapshot;
   renderMenu();refreshRestaurantGuestPicker();renderRestaurantTablePicker();renderCart();renderRestaurantHistory();
   if(businessSettings){
@@ -1267,6 +1268,123 @@ function renderInvoices(){
     row.append(name,sum,link,taxDraft);list.append(row);
   }
 }
+// Historical online-generator originals. The browser sees local PDFs only
+// after the owner selects them. The server never browses arbitrary directories.
+const MAX_ORIGINAL_PDF=8*1024*1024;
+let externalOriginalOffset=0,externalOriginalQuery='',externalOriginalBusy=false;
+function selectedOriginals(){
+  return Array.from($('#external-doc-files').files||[]);
+}
+$('#external-doc-files').addEventListener('change',()=>{
+  const files=selectedOriginals();
+  const bytes=files.reduce((sum,file)=>sum+file.size,0);
+  const invalid=files.filter(file=>file.size<64||file.size>MAX_ORIGINAL_PDF||
+    !file.name.toLowerCase().endsWith('.pdf'));
+  $('#external-doc-selection').textContent=files.length?
+    files.length+' PDF file(s) selected · '+(bytes/1048576).toFixed(1)+
+      ' MiB · '+(invalid.length?invalid.length+' invalid or oversized file(s) — choose PDF files under 8 MiB':
+      'nothing copied yet; original folder remains unchanged'):
+    'No files selected. Nothing has been copied.';
+  $('#external-doc-import').disabled=!files.length||Boolean(invalid.length)||externalOriginalBusy;
+});
+async function refreshExternalOriginals(reset=true){
+  if(currentUser?.role!=='owner')return;
+  const query=$('#external-doc-search').value.trim();
+  if(reset||query!==externalOriginalQuery){
+    externalOriginalOffset=0;externalOriginalQuery=query;
+    $('#external-doc-list').replaceChildren();
+  }
+  const more=$('#external-doc-more');more.disabled=true;
+  try{
+    const data=await api('/api/external-invoice-originals?q='+
+      encodeURIComponent(externalOriginalQuery)+'&offset='+externalOriginalOffset);
+    const list=$('#external-doc-list');
+    if(!externalOriginalOffset&&!data.items.length)
+      list.append(label('p','No archived originals match this search. Choose PDFs above to make a verified local copy.','muted'));
+    for(const documentEntry of data.items){
+      const row=label('div',undefined,'external-original-row');
+      const text=label('div');
+      text.append(label('strong',documentEntry.original_filename),
+        label('small','Archive #'+documentEntry.id+' · '+(documentEntry.size_bytes/1024).toFixed(0)+
+          ' KiB · imported '+documentEntry.imported_at+' UTC · checksum '+documentEntry.sha256.slice(0,12)));
+      const link=label('a','Download saved original','secondary');
+      link.href='/api/external-invoice-originals/'+documentEntry.id+'/original';
+      link.setAttribute('download',documentEntry.original_filename);
+      row.append(text,link);list.append(row);
+    }
+    externalOriginalOffset+=data.items.length;
+    more.hidden=externalOriginalOffset>=data.total;
+    more.textContent='Show more originals ('+(data.total-externalOriginalOffset)+' left)';
+  }catch(error){
+    $('#external-doc-list').append(label('p','Archive search unavailable: '+error.message,'error'));
+    more.hidden=true;
+  }finally{more.disabled=false;}
+}
+$('#historical-invoice-originals').addEventListener('toggle',event=>{
+  if(event.target.open&&currentUser?.role==='owner')void refreshExternalOriginals();
+});
+$('#external-doc-refresh').onclick=()=>refreshExternalOriginals();
+$('#external-doc-search').addEventListener('keydown',event=>{
+  if(event.key==='Enter'){event.preventDefault();void refreshExternalOriginals();}
+});
+$('#external-doc-more').onclick=()=>refreshExternalOriginals(false);
+$('#external-doc-import').onclick=async()=>{
+  if(currentUser?.role!=='owner'||externalOriginalBusy)return;
+  const files=selectedOriginals();
+  if(!files.length)return;
+  if(!confirm('Copy '+files.length+' selected PDF original(s) into the protected local FortLedger SQLite archive?'+
+      '\\nThe folder files will not change. No invoice number, GST document or email is issued.'))return;
+  const button=$('#external-doc-import'),status=$('#external-doc-import-status');
+  externalOriginalBusy=true;button.disabled=true;$('#external-doc-files').disabled=true;
+  let imported=0,already=0,failed=0;
+  try{
+    for(const file of files){
+      status.textContent='Importing '+(imported+already+failed+1)+' of '+files.length+
+        ' — local original copy only…';
+      try{
+        const data=await file.arrayBuffer();
+        if(data.byteLength<64||data.byteLength>MAX_ORIGINAL_PDF)
+          throw new Error('PDF size must be 64 bytes to 8 MiB');
+        let result;
+        try{
+          const response=await fetch('/api/external-invoice-originals/import',{
+            method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/pdf','X-FL-Original-Filename':encodeURIComponent(file.name)},
+            body:data});
+          let body;try{body=await response.json();}catch{}
+          if(!response.ok)throw new Error(body?.error||'Original PDF was not imported');
+          result=body;
+        }catch(error){
+          if(!(error instanceof TypeError))throw error;
+          // If a response is lost after commit, ask the durable hash ledger
+          // rather than treating an ambiguous network failure as a new upload.
+          const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',data)))
+            .map(value=>value.toString(16).padStart(2,'0')).join('');
+          const lookup=await api('/api/external-invoice-originals/by-digest/'+digest);
+          if(!lookup.recorded)throw error;
+          result={...lookup.item,already_recorded:true};
+        }
+        if(result.already_recorded)already++;else imported++;
+      }catch(error){
+        failed++;
+        // Do not include guest names, original PDF filenames or content in logs.
+        status.textContent='Import paused after '+imported+' new, '+already+
+          ' previously saved; '+failed+' file(s) need review. '+error.message+
+          ' You may repeat the same selection safely; identical PDF bytes cannot duplicate.';
+        break;
+      }
+    }
+    if(!failed){
+      status.textContent=imported+' new original(s) stored; '+already+
+        ' duplicate(s) already preserved. No statutory invoice or email created.';
+      $('#external-doc-files').value='';
+    }
+    await refreshExternalOriginals();
+  }finally{
+    externalOriginalBusy=false;$('#external-doc-files').disabled=false;
+    $('#external-doc-files').dispatchEvent(new Event('change'));
+  }
+};
 let activeTaxProforma=null;
 function openTaxDraft(invoice){
   activeTaxProforma=invoice;
