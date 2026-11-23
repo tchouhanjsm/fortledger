@@ -1198,6 +1198,7 @@ async function load(){
   ]);
   if(revision!==workspaceLoadRevision)return false;
   currentUser=operator;
+  $('#gst-readiness').hidden=!['owner','manager'].includes(currentUser?.role)||!can('tax.review');
   [rooms,bookings,invoices,businessSettings,menu,restaurantBills,restaurantTables,maintenanceIssues,guests,backupStatus,closeAttention]=snapshot;
   renderMenu();refreshRestaurantGuestPicker();renderRestaurantTablePicker();renderCart();renderRestaurantHistory();
   if(businessSettings){
@@ -3183,6 +3184,25 @@ $('#hotel-logo-upload').onclick=async()=>{
   }catch(error){message.textContent=error.message;}
   finally{button.disabled=false;}
 };
+async function refreshGstReadiness(){
+  const target=$('#gst-readiness-results'),button=$('#gst-readiness-refresh');
+  if(!can('tax.review')||!['owner','manager'].includes(currentUser?.role))return;
+  target.replaceChildren();button.disabled=true;
+  try{
+    const report=await api('/api/tax/readiness');
+    target.append(label('p',report.completed_local_fields+' of '+report.required_local_fields+
+      ' supplier configuration checks complete. Legal issuance remains DISABLED.'));
+    const localList=label('ul');
+    for(const check of report.checks)
+      localList.append(label('li',(check.complete?'Present: ':'Missing: ')+check.label));
+    target.append(localList,label('h4','Accountant approvals still required'));
+    const pending=label('ul');
+    for(const item of report.accountant_reviews)pending.append(label('li',item));
+    target.append(pending);
+  }catch(error){target.append(label('p',error.message,'error'));}
+  finally{button.disabled=false;}
+}
+$('#gst-readiness-refresh').onclick=refreshGstReadiness;
 $('#business-form').onsubmit=async event=>{
   event.preventDefault();
   const form=event.currentTarget,message=$('#settings-message'),button=form.querySelector('[type=submit]');
@@ -3191,6 +3211,7 @@ $('#business-form').onsubmit=async event=>{
     const body=Object.fromEntries(new FormData(form));
     businessSettings=await api('/api/settings/business',{method:'PUT',body:JSON.stringify(body)});
     message.textContent='Saved successfully';
+    if($('#gst-readiness').open)void refreshGstReadiness();
   }catch(e){message.textContent=e.message;}
   finally{button.disabled=false;}
 };
