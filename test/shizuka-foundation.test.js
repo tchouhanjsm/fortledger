@@ -45,16 +45,16 @@ test('spacing scale and focus use one consistent source, not an added competing 
     'The Heritage Sky root owns base typography and surfaces');
 });
 test('local navigation icons have consistent geometry and accessible text',()=>{
-  const labels=['Dashboard','Booking Calendar','Room Inventory','Guests',
-    'Invoices','Hotel Settings','Restaurant','My Profile'];
-  const ids=['layout-dashboard','calendar-days','bed-double','users',
-    'receipt-text','settings-2','utensils','circle-user-round'];
+  const labels=['Dashboard','Booking Calendar','Room Inventory','Restaurant',
+    'Guests','Invoices','Hotel Settings','My Profile'];
+  const ids=['layout-dashboard','calendar-days','bed-double','utensils',
+    'users','receipt-text','settings-2','circle-user-round'];
   const nav=html.match(/<nav aria-label="Primary">([\s\S]*?)<\/nav>/)?.[1];
   assert.ok(nav);
   assert.equal((nav.match(/class="nav-icon"/g)||[]).length,8);
   for(let i=0;i<labels.length;i++){
     assert.match(nav,new RegExp('href="/shizuka-icons\\.svg#'+ids[i]+'"'));
-    assert.ok(nav.includes(labels[i]+'</a>'));
+    assert.ok(nav.includes('<span class="nav-label">'+labels[i]+'</span></a>'));
     assert.ok(sprite.includes('id="'+ids[i]+'" viewBox="0 0 24 24"'));
   }
   assert.equal((nav.match(/aria-hidden="true"/g)||[]).length,8);
