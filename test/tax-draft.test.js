@@ -71,3 +71,50 @@ test('authenticated application can download tax draft PDF; no issued-tax endpoi
     assert.equal((await fetch(base+'/api/tax-invoices',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,404);
   }finally{await new Promise(resolve=>server.close(resolve));db.close();}
 });
+
+test('review-only draft supports a separately selected 18% accommodation illustration',()=>{
+  const db=openDatabase(':memory:');
+  try{
+    const proforma=fixture(db,9000);
+    const draft=prepareTaxDraft(db,proforma.id,{
+      sac_codes:['996311'],tax_rates:[18],signatory_name:'Synthetic reviewer'});
+    assert.equal(draft.snapshot.total_paise,1800000);
+    assert.equal(draft.snapshot.taxable_paise,Math.round(1800000*100/118));
+    assert.equal(draft.snapshot.gst_paise,1800000-draft.snapshot.taxable_paise);
+    assert.equal(draft.snapshot.tax_breakdown.length,1);
+    assert.equal(draft.snapshot.tax_breakdown[0].tax_rate,18);
+    assert.equal(draft.snapshot.lines[0].tax_rate,18);
+    assert.equal(draft.snapshot.readiness.ready,false);
+    assert.ok(draft.snapshot.readiness.blockers.some(x=>x.includes('REVIEW ONLY')));
+    assert.equal(getInvoice(db,proforma.id).snapshot.tax_rate,5,
+      'Existing proforma presentation must not be rewritten by a tax review');
+    assert.equal(db.prepare("SELECT count(*) n FROM sqlite_master WHERE name='tax_invoices'").get().n,0);
+    assert.throws(()=>prepareTaxDraft(db,proforma.id,{sac_codes:['996311'],tax_rates:[12]}),/5% or 18%/);
+    assert.throws(()=>prepareTaxDraft(db,proforma.id,{sac_codes:['996311'],tax_rates:[]}),/required per proforma line/);
+  }finally{db.close();}
+});
+
+test('mixed 5 and 18 percent draft independently reconciles every rate bucket',()=>{
+  const db=openDatabase(':memory:');
+  try{
+    const booking=db.prepare(`INSERT INTO bookings(guest_name,checkin,checkout,rooms_count,category,nightly_rate_paise)
+      VALUES('Synthetic mixed-tax guest','2026-12-01','2026-12-02',2,'Unassigned',450000)`).run();
+    const source=createProforma(db,Number(booking.lastInsertRowid),{lines:[
+      {description:'Synthetic standard room',rooms:1,nights:1,rate:4500},
+      {description:'Synthetic second room',rooms:1,nights:1,rate:4500}
+    ]});
+    const draft=prepareTaxDraft(db,source.id,{sac_codes:['996311','996311'],tax_rates:[5,18]});
+    const snap=draft.snapshot;
+    assert.equal(snap.tax_breakdown.length,2);
+    assert.deepEqual(snap.tax_breakdown.map(x=>x.tax_rate),[5,18]);
+    assert.equal(snap.tax_breakdown[0].taxable_paise,Math.round(450000*100/105));
+    assert.equal(snap.tax_breakdown[1].taxable_paise,Math.round(450000*100/118));
+    assert.equal(snap.total_paise,900000);
+    assert.equal(snap.taxable_paise+snap.gst_paise,snap.total_paise);
+    assert.equal(snap.cgst_paise+snap.sgst_paise,snap.gst_paise);
+    assert.equal(snap.lines.reduce((sum,line)=>sum+line.taxable_paise,0),snap.taxable_paise);
+    assert.equal(snap.lines.reduce((sum,line)=>sum+line.gst_paise,0),snap.gst_paise);
+    assert.ok(snap.readiness.blockers.some(x=>x.includes('18% at or below')));
+    assert.equal(snap.readiness.ready,false);
+  }finally{db.close();}
+});
