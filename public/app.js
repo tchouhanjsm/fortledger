@@ -1275,6 +1275,88 @@ $('#tax-draft-form').onsubmit=async event=>{
   }catch(error){message.textContent=error.message;}
   finally{button.disabled=false;}
 };
+
+let staffPinOwnerEnabled=false;
+async function refreshStaffPinPanels(){
+  const local=['127.0.0.1','localhost'].includes(window.location.hostname);
+  const owner=currentUser?.role==='owner'&&local;
+  const staff=['frontdesk','cashier'].includes(currentUser?.role)&&local;
+  $('#owner-staff-pin').hidden=!owner;
+  $('#profile-quick-pin').hidden=!staff;
+  if(owner){
+    try{
+      const data=await api('/api/system/staff-pin');
+      staffPinOwnerEnabled=Boolean(data.enabled);
+      $('#owner-staff-pin-state').textContent=staffPinOwnerEnabled?
+        'Quick PIN enabled on this computer. Staff must enroll individually.':
+        'Quick PIN disabled (default). Password sign-in remains available.';
+      $('#owner-staff-pin-toggle').textContent=staffPinOwnerEnabled?'Disable and revoke all quick PINs':
+        'Enable staff quick PIN';
+    }catch(error){$('#owner-staff-pin-state').textContent='Policy unavailable: '+error.message;}
+  }
+  if(staff){
+    try{
+      const data=await api('/api/me/quick-pin');
+      const button=$('#profile-quick-pin-form').querySelector('[type=submit]');
+      button.disabled=!data.available||currentUser.login_method==='pin';
+      $('#profile-quick-pin-revoke').disabled=!data.enrolled||currentUser.login_method==='pin';
+      $('#profile-quick-pin-state').textContent=currentUser.login_method==='pin'?
+        'You signed in using a PIN. Sign out and use your full password to enroll, change or revoke it.':
+        !data.available?'Quick PIN is not enabled on this computer. Ask the owner to enable it.':
+        data.enrolled?'This browser has a registered quick PIN. You can reset or revoke it.':
+          'This browser is not enrolled yet. Enter your current password to register it.';
+    }catch(error){$('#profile-quick-pin-state').textContent='PIN status unavailable: '+error.message;}
+  }
+}
+$('#owner-staff-pin-form').onsubmit=async event=>{
+  event.preventDefault();
+  if(!currentUser||currentUser.role!=='owner')return;
+  const form=event.currentTarget,button=$('#owner-staff-pin-toggle'),message=$('#owner-staff-pin-message');
+  const enable=!staffPinOwnerEnabled;
+  if(!confirm((enable?'Enable':'Disable')+' local staff PIN quick sign-in? '+
+    (enable?'Each staff member must enroll with their full password; this does not enable phones.':
+      'This immediately revokes all enrolled quick PIN credentials and PIN sessions.')))return;
+  button.disabled=true;
+  try{
+    await api('/api/system/staff-pin',{method:'POST',body:JSON.stringify({
+      enabled:enable,current_password:form.elements.namedItem('current_password').value
+    })});
+    message.textContent=enable?'Quick PIN enabled only on this local computer.':
+      'Quick PIN disabled. All saved PIN credentials and PIN sessions revoked.';
+    form.reset();await refreshStaffPinPanels();
+  }catch(error){message.textContent='PIN policy not changed: '+error.message;}
+  finally{button.disabled=false;form.elements.namedItem('current_password').value='';}
+};
+$('#profile-quick-pin-form').onsubmit=async event=>{
+  event.preventDefault();
+  const form=event.currentTarget,button=form.querySelector('[type=submit]'),
+    message=$('#profile-quick-pin-message');
+  if(!['frontdesk','cashier'].includes(currentUser?.role))return;
+  const body=Object.fromEntries(new FormData(form));
+  if(!/^[0-9]{6}$/.test(body.pin)||body.pin!==body.confirm_pin){
+    message.textContent='Enter and confirm the same six numeric digits.';return;
+  }
+  button.disabled=true;
+  try{
+    await api('/api/me/quick-pin',{method:'POST',body:JSON.stringify(body)});
+    message.textContent='This local browser is registered. Next time choose Use staff PIN on sign-in.';
+    await refreshStaffPinPanels();
+  }catch(error){message.textContent='PIN enrollment not confirmed: '+error.message;}
+  finally{form.reset();button.disabled=false;}
+};
+$('#profile-quick-pin-revoke').onclick=async()=>{
+  const form=$('#profile-quick-pin-form'),message=$('#profile-quick-pin-message');
+  const password=form.elements.namedItem('current_password').value;
+  if(!password){message.textContent='Enter your current full password above before revoking quick PINs.';return;}
+  if(!confirm('Revoke all registered PIN credentials for your account? You can still sign in using your password.'))return;
+  const button=$('#profile-quick-pin-revoke');button.disabled=true;
+  try{
+    await api('/api/me/quick-pin',{method:'DELETE',body:JSON.stringify({current_password:password})});
+    message.textContent='All your quick PIN credentials were revoked. Full password sign-in remains available.';
+    await refreshStaffPinPanels();
+  }catch(error){message.textContent='PINs not revoked: '+error.message;}
+  finally{form.reset();button.disabled=false;}
+};
 async function renderProfile(){
   if(!currentUser)return;
   $('#profile-name').textContent=currentUser.display_name;
@@ -1286,6 +1368,7 @@ async function renderProfile(){
   const perms=$('#profile-permissions');perms.replaceChildren();
   const labels=currentUser.permissions.includes('*')?['Full owner access']:currentUser.permissions.map(p=>p.replaceAll('.',' · '));
   for(const perm of labels)perms.append(label('span',perm,'permission-pill'));
+  await refreshStaffPinPanels();
   if(currentUser.role==='owner'){
     const staff=await api('/api/staff');
     const list=$('#staff-list');list.replaceChildren();
