@@ -76,6 +76,7 @@ export async function runShizukaV6PosSmoke(browser){
       assert.equal(await page.locator('#restaurant-pos-editor').isVisible(),false);
       assert.match(await page.locator('#restaurant-history').textContent(),/100\.00/);
       await page.getByRole('button',{name:'Check printer status'}).click();
+      await page.waitForFunction(()=>document.querySelector('.restaurant-print-state')?.textContent?.includes('No recorded Epson LAN attempt'));
       assert.match(await page.locator('.restaurant-print-state').first().textContent(),
         /No recorded Epson LAN attempt/);
       await page.goto(base+'/#profile');
