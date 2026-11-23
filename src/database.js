@@ -23,6 +23,7 @@ import {ensureFolioSettlementRequestSchema} from './folio.js';
 import {ensureAccommodationAdjustmentSchema} from './accommodation-adjustments.js';
 import {ensureRestaurantCorrectionCaseSchema} from './restaurant-correction-cases.js';
 import {ensureExternalInvoiceOriginalsSchema} from './external-invoice-originals.js';
+import {ensureHistoricalPdfIdentificationSchema} from './historical-pdf-identifications.js';
 import {ensureCheckoutDocumentCaseSchema} from './checkout-document-case.js';
 
 export function openDatabase(filename = databasePath()) {
@@ -256,6 +257,18 @@ export function openDatabase(filename = databasePath()) {
       }
       if(db.pragma('foreign_key_check').length)
         throw new Error('Checkout case schema has foreign key violations');
+    })();
+    // Additive owner transcription ledger. External originals and original legal
+    // invoice series remain untouched; legacy v13 source can ignore this table.
+    db.transaction(()=>{
+      ensureHistoricalPdfIdentificationSchema(db);
+      try{
+        db.prepare('SELECT id,original_id,request_id,fingerprint,reported_number,number_key,reported_issue_date,reported_financial_year,booking_candidate_id,note,actor_id,actor_username,created_at FROM historical_pdf_identifications LIMIT 0').all();
+      }catch{
+        throw new Error('Historical PDF identification ledger is incompatible; verify a protected backup before use');
+      }
+      if(db.pragma('foreign_key_check').length)
+        throw new Error('Historical PDF identification ledger contains broken references');
     })();
     // Fail on startup, not while accepting a guest's bill, if a later manual
     // schema change or damaged file removed the idempotency ledger after v8.

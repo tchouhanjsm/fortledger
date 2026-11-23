@@ -98,6 +98,11 @@ export function requiredPermission(method,path){
   if(path==='/checkout-document-cases')return method==='GET'?'invoices.read':null;
   if(/^\/bookings\/\d+\/checkout-document-case$/.test(path))
     return method==='GET'?'invoices.read':null;
+  if(/^\/external-invoice-originals\/\d+\/identifications$/.test(path))
+    return method==='GET'?'external.documents.read':
+      method==='POST'?'external.documents.import':null;
+  if(/^\/external-invoice-originals\/identifications\/request\/[A-Za-z0-9_-]+$/.test(path))
+    return method==='GET'?'external.documents.read':null;
   if(path==='/external-invoice-originals')
     return method==='GET'?'external.documents.read':null;
   if(path==='/external-invoice-originals/import')

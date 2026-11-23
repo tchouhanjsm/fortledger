@@ -295,3 +295,21 @@
 #billing-documents-register .billing-register-actions a{display:inline-flex;align-items:center;min-height:44px}
 @media(max-width:1100px){#billing-documents-register .billing-register-controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){#billing-documents-register{padding:14px}#billing-documents-register .billing-register-controls{grid-template-columns:1fr}#billing-documents-register .billing-register-row{flex-direction:column;align-items:stretch}#billing-documents-register .billing-register-actions a{width:100%;justify-content:center}}
+
+/* Historical external PDF number/date transcription: compact, reversible by
+   appending another entry. Never display owner-only data to other staff roles. */
+#historical-invoice-originals .external-original-actions{display:flex;flex:0 1 360px;min-width:220px;gap:10px;flex-direction:column}
+#historical-invoice-originals .external-original-identification{border:1px solid var(--border,#e5e0d7);border-radius:10px;padding:10px}
+#historical-invoice-originals .external-original-identification summary{font-size:13px;cursor:pointer}
+#historical-invoice-originals .external-original-identification-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+#historical-invoice-originals .external-original-identification-form label{display:block;font-size:12px;min-width:0}
+#historical-invoice-originals .external-original-identification-form label:nth-child(3),
+#historical-invoice-originals .external-original-identification-form label:nth-child(4){grid-column:1/-1}
+#historical-invoice-originals .external-original-identification-form input,
+#historical-invoice-originals .external-original-identification-form textarea{display:block;margin-top:5px;width:100%;box-sizing:border-box;min-height:44px;font-size:14px}
+#historical-invoice-originals .external-original-identification-form textarea{min-height:72px}
+#historical-invoice-originals .external-original-identification-form button,
+#historical-invoice-originals .external-original-identification-form p{grid-column:1/-1;margin:0}
+#historical-invoice-originals .external-original-identification-history{max-height:220px;overflow-y:auto;font-size:12px;overflow-wrap:anywhere}
+@media(max-width:700px){#historical-invoice-originals .external-original-actions{min-width:0;width:100%;flex:1 1 auto}}
+@media(max-width:440px){#historical-invoice-originals .external-original-identification-form{grid-template-columns:1fr}}
