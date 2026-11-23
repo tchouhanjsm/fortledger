@@ -92,6 +92,27 @@ try{
       'Hidden dashboard should not be exposed by responsive CSS');
     const manifest=await page.locator('link[rel="manifest"]').getAttribute('href');
     assert.equal(manifest,'/manifest.webmanifest','Both mobile and desktop should offer local install metadata');
+    const navGeometry=await page.evaluate(()=>{
+      const sidebar=document.querySelector('.sidebar');
+      const links=[...sidebar.querySelectorAll('nav a')].filter(a=>!a.hidden);
+      const rect=sidebar.getBoundingClientRect();
+      return {sidebarWidth:rect.width,sidebarHeight:rect.height,
+        navVisible:getComputedStyle(sidebar.querySelector('nav')).display!=='none',
+        linkHeights:links.map(a=>Math.round(a.getBoundingClientRect().height)),
+        linkWidths:links.map(a=>Math.round(a.getBoundingClientRect().width)),
+        navOverflowX:sidebar.querySelector('nav').scrollWidth-sidebar.querySelector('nav').clientWidth};
+    });
+    if(width>700){
+      assert.ok(navGeometry.sidebarWidth>=200&&navGeometry.sidebarWidth<=274,
+        'Adaptive sidebar width must stay useful at '+width+'px');
+      assert.equal(navGeometry.navVisible,true);
+      assert.ok(navGeometry.linkHeights.every(h=>h>=44),
+        'Sidebar tap/keyboard targets must stay >=44px');
+      assert.ok(navGeometry.linkWidths.every(w=>w>150),
+        'Navigation labels must remain visible, not an icon-only rail');
+      assert.ok(navGeometry.navOverflowX<=2,'No horizontal sidebar navigation clipping');
+      assert.ok(navGeometry.sidebarHeight>=849&&navGeometry.sidebarHeight<=852);
+    }else assert.equal(navGeometry.navVisible,false);
     if(width<=700){
       // Booking rows render before async profile/collections initialization;
       // wait for role-aware mobile navigation instead of racing its setup.
@@ -100,6 +121,12 @@ try{
       assert.equal(await page.getByRole('navigation',{name:'Primary'}).isVisible(),false);
       const bookingsShortcut=page.locator('#mobile-shortcuts a[data-view="bookings"]');
       assert.equal(await bookingsShortcut.getAttribute('aria-current'),'page');
+      await page.locator('#mobile-more-toggle').click();
+      assert.equal(await page.locator('#mobile-more-panel').isVisible(),true);
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator('#mobile-more-panel').isVisible(),false);
+      assert.equal(await page.locator('#mobile-more-toggle').getAttribute('aria-expanded'),'false');
+      assert.equal(await page.evaluate(()=>document.activeElement?.id),'mobile-more-toggle');
       await page.locator('#mobile-more-toggle').click();
       assert.equal(await page.locator('#mobile-more-panel').isVisible(),true);
       await page.locator('#mobile-more-panel a[data-view="guests"]').click();

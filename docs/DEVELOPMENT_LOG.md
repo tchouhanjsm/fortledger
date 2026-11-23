@@ -357,3 +357,11 @@ All five increments completed in this development session were reviewed and merg
 - The API requires system.update, local loopback owner sign-in and strips reviewer names, proof references, file paths and private details. Cashiers/managers/front desk cannot call it.
 - The status remains NOT RELEASED even if all operator evidence is attested. This UI cannot approve GST documents, install software or change hotel data.
 - See docs/KAIZEN_V3_RELEASE_STATUS.md; independent real Windows, Epson, backup restore, LAN and accountant acceptance remains pending.
+
+## 2026-11-23 — V4 deep audit: device-aware sidebar and secure staff quick PIN design
+- Audited current main source from product, frontend, hotel operations, security and QA perspectives; distinguished verified missing functionality, CSS maintenance debt, and unverified operational/security hypotheses.
+- Refined the existing sidebar's auto width, height-based spacing, visible labels and navigation geometry without duplicating the phone's existing bottom navigation or exposing role-forbidden links.
+- Mobile More now supports Escape to close and returns keyboard focus. Chromium tests cover eight widths and navigation dimensions.
+- Specified optional six-digit PIN as a **trusted-device quick unlock**, not as a replacement for the 12-character owner/password security requirement. The security RFC requires device enrollment, an off-database secret, persistent lockout, audit and backup recovery before implementation.
+- Verified restaurant reconciliation export and pre-save bill review already exist. Pending product features remain an audited **post-save** restaurant correction and manager-only single menu item price/GST editor; physical release gates remain open.
+- Read docs/KAIZEN_V4_DEEP_AUDIT_AND_PIN_RFC.md for code evidence and prioritized security contract.
