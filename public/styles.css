@@ -278,6 +278,30 @@
 #checkout-document-cases .checkout-case-row small{display:block;font-size:12px;color:var(--muted,#65706c)}
 #checkout-document-cases .checkout-case-row p{font-size:14px;margin:8px 0;overflow-wrap:anywhere}
 @media(max-width:600px){#checkout-document-cases{padding:14px}#checkout-document-cases .checkout-case-row{align-items:stretch;flex-direction:column}}
+/* SHIZUKA: review work belongs below its source evidence, with no crowded horizontal form. */
+#checkout-document-cases .checkout-case-row>div:first-child{flex:1 1 0;min-width:0}
+#checkout-document-cases .checkout-case-review-actions{
+  display:grid;grid-template-columns:minmax(0,1fr);gap:10px;
+  margin-top:12px;padding:12px;border:1px solid var(--border,#e5e0d7);
+  border-radius:10px;background:var(--surface,#faf9f6)
+}
+#checkout-document-cases .checkout-case-review-actions select,
+#checkout-document-cases .checkout-case-review-actions textarea{
+  box-sizing:border-box;display:block;width:100%;min-height:44px;max-width:100%;
+  font:inherit
+}
+#checkout-document-cases .checkout-case-review-actions textarea{min-height:78px;resize:vertical}
+#checkout-document-cases .checkout-case-review-actions label{display:flex;align-items:center;gap:9px;line-height:1.5}
+#checkout-document-cases .checkout-case-review-actions input[type=checkbox]{width:20px;height:20px;flex:0 0 20px}
+#checkout-document-cases .checkout-case-review-actions :is(select,textarea,button):focus-visible{
+  outline:2px solid var(--accent,#2d675c);outline-offset:3px
+}
+#checkout-document-cases .checkout-case-review-actions button{justify-self:start}
+@media(max-width:600px){
+  #checkout-document-cases .checkout-case-review-actions{padding:12px}
+  #checkout-document-cases .checkout-case-review-actions button{width:100%}
+}
+
 
 /* Billing & Documents: compact source-aware register, not a revenue dashboard. */
 #billing-documents-register{margin-block:18px;padding:16px;border:1px solid var(--border,#e5e0d7);border-radius:12px}
