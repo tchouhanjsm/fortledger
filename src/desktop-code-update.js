@@ -95,7 +95,7 @@ function checkBackup({env,platform,freshness=backupFreshness,
     throw new Error('The encrypted backup must be recent; prepare a fresh protected backup first');
   const health=backupHealth({env});
   if(health?.restorable!==true||health?.owner_auth_present!==true||
-     health?.independent_drive!==true)
+     health?.owner_credential_recoverable!==true||health?.independent_drive!==true)
     throw new Error('The external encrypted hotel and original owner credentials must pass restore verification');
 }
 export async function inspectDesktopCodeUpdate({
