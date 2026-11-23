@@ -2972,8 +2972,11 @@ function renderRestaurantHistory(){
   for(const button of $('#restaurant-history-filters').querySelectorAll('[data-bill-filter]')){
     button.setAttribute('aria-pressed',String(button.dataset.billFilter===restaurantBillFilter));
   }
-  const query=$('#restaurant-history-search').value.trim().toLocaleLowerCase().replace(/^#/,'');
+  const rawQuery=$('#restaurant-history-search').value.trim();
+  const exactBillId=/^#\d+$/.test(rawQuery)?Number(rawQuery.slice(1)):null;
+  const query=rawQuery.toLocaleLowerCase().replace(/^#/,'');
   const matched=restaurantBills.filter(bill=>{
+    if(exactBillId!==null&&bill.id!==exactBillId)return false;
     const status=restaurantBillStatus(bill).key;
     if(restaurantBillFilter==='unpaid'&&status!=='unpaid')return false;
     if(restaurantBillFilter==='paid'&&status!=='paid')return false;
@@ -3366,7 +3369,8 @@ async function refreshRestaurantCorrectionInbox(reset=true){
       source.type='button';
       source.onclick=()=>{
         const search=$('#restaurant-history-search');
-        search.value=String(entry.bill_id);
+        search.value='#'+entry.bill_id;
+        restaurantBillFilter='all';
         restaurantHistoryLimit=Math.max(restaurantHistoryLimit,30);
         renderRestaurantHistory();
         $('#restaurant-admin-history-slot').scrollIntoView({block:'start',behavior:'smooth'});
