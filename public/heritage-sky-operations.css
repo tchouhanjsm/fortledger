@@ -210,3 +210,29 @@ main,.sidebar{max-width:100%;overflow-x:clip}
   justify-content:space-between;gap:7px;line-height:1.4;font-size:12px}
 .release-status-items li strong{font-weight:650}
 .release-status-items li span{font-size:11px;color:var(--hs-muted)}
+
+
+/* V5: seating tags are deliberately not a second restaurant order workflow. */
+.restaurant-table-create{display:flex;align-items:end;flex-wrap:wrap;gap:10px;margin:14px 0}
+.restaurant-table-create label{flex:0 0 auto;font-weight:650;font-size:13px}
+.restaurant-table-create input{flex:1 1 190px;min-width:0;max-width:300px;min-height:44px;
+  padding:10px 12px;border:1px solid #cbd4dd;border-radius:10px;background:var(--hs-surface);color:var(--hs-ink)}
+.restaurant-table-create button{min-height:44px}
+.restaurant-table-admin-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  border-top:1px solid var(--hs-border);padding:10px 0;font-size:13px}
+.restaurant-table-admin-row button{min-height:44px;flex:0 0 auto}
+#restaurant-table-help{font-size:12px}
+#restaurant-table-management>summary{min-height:44px;cursor:pointer;padding:12px 0;font-weight:650}
+#restaurant-table-admin-message{font-size:13px;line-height:1.45}
+#menu-price-dialog{width:min(570px,calc(100vw - 24px))}
+#menu-price-dialog .form-grid{margin:15px 0}
+#menu-price-dialog label{min-width:0}
+#menu-price-dialog textarea{width:100%;min-height:88px;padding:10px 12px;
+  font:inherit;border:1px solid #cbd4dd;border-radius:10px}
+#menu-price-dialog input{min-height:44px}
+#menu-price-dialog .dialog-actions{margin-top:16px}
+@media(max-width:600px){
+  .restaurant-table-create{align-items:stretch;flex-direction:column}
+  .restaurant-table-create input{flex:auto;width:100%;max-width:none}
+  .restaurant-table-admin-row{align-items:flex-start;flex-direction:column}
+}
