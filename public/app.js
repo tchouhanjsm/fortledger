@@ -2230,9 +2230,8 @@ function showRestaurantReceipt(id){
 }
 function restaurantCorrectionReviewPanel(bill){
   const panel=label('details',undefined,'restaurant-correction-review');
-  const title=label('summary','Estimate correction · no changes saved');
-  panel.append(title,label('p',
-    'Manager/owner review only. This is not a GST credit note, refund or adjustment to the saved bill.','muted'));
+  panel.append(label('summary','Correction cases · original receipt protected'),
+    label('p','Record an internal review case, not a refund, GST credit note, revised receipt or change to the guest folio.','muted'));
   const choices=[];
   (bill.items||[]).forEach((item,index)=>{
     const row=label('div',undefined,'restaurant-correction-line');
@@ -2249,29 +2248,115 @@ function restaurantCorrectionReviewPanel(bill){
   });
   const reasonLabel=label('label','Reason for correction review');
   const reason=label('textarea');reason.maxLength=300;reason.rows=2;
-  reason.placeholder='Describe the incorrect saved quantity, charge or service';
+  reason.placeholder='Describe the incorrect saved quantity, charge or service (10+ characters)';
   reasonLabel.append(reason);panel.append(reasonLabel);
-  const action=label('button','Calculate estimated impact','secondary');
-  action.type='button';
+  const controls=label('div',undefined,'restaurant-history-actions');
+  const estimate=label('button','Calculate impact','secondary');estimate.type='button';
+  const submit=label('button','Record case for owner review','primary');submit.type='button';submit.hidden=true;
+  controls.append(estimate,submit);panel.append(controls);
   const outcome=label('div',undefined,'restaurant-correction-result');
-  outcome.setAttribute('role','status');outcome.setAttribute('aria-live','polite');
-  action.onclick=async()=>{
+  outcome.setAttribute('role','status');outcome.setAttribute('aria-live','polite');panel.append(outcome);
+  const history=label('div',undefined,'restaurant-correction-case-history');
+  const reload=label('button','View correction case history','secondary');reload.type='button';
+  panel.append(reload,history);
+  let pendingCase=null;
+  const invalidate=()=>{pendingCase=null;submit.hidden=true;outcome.replaceChildren();};
+  reason.addEventListener('input',invalidate);
+  for(const {box,qty} of choices){box.addEventListener('change',invalidate);qty.addEventListener('input',invalidate);}
+  const loadCases=async()=>{
+    reload.disabled=true;history.replaceChildren();
+    try{
+      const cases=await api('/api/restaurant/bills/'+bill.id+'/correction-cases');
+      if(!cases.length)history.append(label('p','No correction cases recorded for this receipt.','muted'));
+      for(const entry of cases){
+        const card=label('div',undefined,'restaurant-correction-case-card');
+        card.append(label('strong','Case #'+entry.id+' · '+entry.status.replaceAll('_',' ')),
+          label('p','Proposed '+money(entry.proposal.proposed_gross_paise)+
+            ' including historic tax '+money(entry.proposal.proposed_tax_paise)+' · '+entry.proposal.reason));
+        card.append(label('small','Submitted by '+entry.actor_username+' · '+entry.created_at+' UTC'));
+        if(entry.review){
+          card.append(label('p','Owner decision: '+entry.review.disposition.replaceAll('_',' ')+
+            ' · '+entry.review.note));
+        }else if(currentUser?.role==='owner'){
+          const decisionLabel=label('label','Owner decision ');
+          const decision=label('select');
+          for(const [value,name] of [['needs_accountant','Escalate for accountant review'],
+            ['dismissed','Dismiss request (no adjustment)']]){
+            const option=label('option',name);option.value=value;decision.append(option);
+          }
+          decisionLabel.append(decision);
+          const noteLabel=label('label','Decision reason ');
+          const note=label('textarea');note.rows=2;note.maxLength=300;
+          note.placeholder='Explain the disposition (10–300 characters)';
+          noteLabel.append(note);
+          const record=label('button','Record owner decision','secondary');record.type='button';
+          let intent=null;
+          const clear=()=>{intent=null;};
+          note.addEventListener('input',clear);decision.addEventListener('change',clear);
+          const feedback=label('p',undefined,'muted');feedback.setAttribute('role','status');
+          record.onclick=async()=>{
+            if(!intent)intent={request_id:crypto.randomUUID(),disposition:decision.value,note:note.value};
+            record.disabled=true;feedback.textContent='';
+            try{
+              await api('/api/restaurant/correction-cases/'+entry.id+'/review',
+                {method:'POST',body:JSON.stringify(intent)});
+              feedback.textContent='Owner decision recorded. No ledger or GST adjustment made.';
+              await loadCases();
+            }catch(error){
+              feedback.textContent='Review not confirmed: '+error.message+
+                '. Retry unchanged details with the same request ID; do not create a second decision.';
+            }finally{record.disabled=false;}
+          };
+          card.append(decisionLabel,noteLabel,record,feedback);
+        }
+        history.append(card);
+      }
+    }catch(error){history.append(label('p','Case history unavailable: '+error.message,'muted'));}
+    finally{reload.disabled=false;}
+  };
+  reload.onclick=loadCases;
+  estimate.onclick=async()=>{
     const lines=choices.filter(entry=>entry.box.checked)
       .map(entry=>({line_index:entry.index,quantity:Number(entry.qty.value)}));
-    outcome.replaceChildren();
-    action.disabled=true;
+    outcome.replaceChildren();submit.hidden=true;pendingCase=null;
+    estimate.disabled=true;
     try{
+      const intent={reason:reason.value,lines};
       const result=await api('/api/restaurant/bills/'+bill.id+'/correction-preview',
-        {method:'POST',body:JSON.stringify({reason:reason.value,lines})});
-      outcome.append(label('strong','Estimated reduction: '+money(result.proposed_gross_paise)),
-        label('p','Historic included tax component: '+money(result.proposed_tax_paise)+
-          ' · remaining original value: '+money(result.remaining_gross_paise)));
-      outcome.append(label('p','No bill, payment, room balance or GST record was changed.','muted'));
+        {method:'POST',body:JSON.stringify(intent)});
+      pendingCase={...intent,request_id:crypto.randomUUID()};
+      outcome.append(label('strong','Estimated correction: '+money(result.proposed_gross_paise)),
+        label('p','Historic tax component: '+money(result.proposed_tax_paise)+
+          ' · unchanged original receipt: '+money(result.source_total_paise)));
+      outcome.append(label('p','Recording a case only creates an internal review request; it cannot issue a tax credit or transfer money.','muted'));
       for(const blocker of result.blockers)outcome.append(label('p','• '+blocker,'muted'));
+      submit.hidden=false;
     }catch(error){outcome.append(label('p',error.message,'error'));}
-    finally{action.disabled=false;}
+    finally{estimate.disabled=false;}
   };
-  panel.append(action,outcome);
+  submit.onclick=async()=>{
+    if(!pendingCase)return;
+    submit.disabled=true;
+    try{
+      let recorded;
+      try{
+        recorded=await api('/api/restaurant/bills/'+bill.id+'/correction-cases',
+          {method:'POST',body:JSON.stringify(pendingCase)});
+      }catch(error){
+        if(!(error instanceof TypeError))throw error;
+        // Lost POST response: inspect durable request identity before another POST.
+        const lookup=await api('/api/restaurant/correction-cases/request/'+pendingCase.request_id);
+        if(!lookup.recorded)throw error;
+        recorded=lookup.case;
+      }
+      submit.hidden=true;pendingCase=null;
+      outcome.append(label('p','Case #'+recorded.id+' recorded for owner review. No saved bill, payment or GST amount was changed.'));
+      await loadCases();
+    }catch(error){
+      outcome.append(label('p','Case save not confirmed: '+error.message+
+        '. Retry without changing this form to reuse the original request ID.','error'));
+    }finally{submit.disabled=false;}
+  };
   return panel;
 }
 function renderRestaurantHistory(){
