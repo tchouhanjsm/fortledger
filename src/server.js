@@ -10,6 +10,7 @@ import {verifyLocalBackupHealth} from './backup-health.js';
 import {prepareVerifiedUpgradeBackup,UpgradeBackupRefusal} from './upgrade-backup.js';
 import {updateStatus} from './update-status.js';
 import {inspectUpdateReadiness,createSupervisedUpdateIpc} from './update-readiness.js';
+import {inspectDesktopCodeUpdate} from './desktop-code-update.js';
 import { fileURLToPath } from 'node:url';
 import {authGate,loadPasswordRecord,DEFAULT_AUTH_FILE} from './auth.js';
 import {renderRestaurantReceipt} from './restaurant-receipt.js';
@@ -182,7 +183,7 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
       updateDraining=true;
       res.once('finish',()=>setImmediate(()=>app.locals.stopForUpdate(readiness.target_sha)));
       return res.status(202).json({accepted:true,
-        message:'The separate Windows supervisor is finishing active requests, verifying the backup and applying the pinned tested commit. Reopen and sign in after restart.'});
+        message:'The local update supervisor is finishing active requests before applying verified code changes. Reopen FortLedger after it restarts. Hotel data is not replaced.'});
     }catch(error){
       installPending=false;
       next(error);
@@ -679,10 +680,20 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
       typeof process.send==='function'&&!tls&&
       host==='127.0.0.1'&&port===3000;
     const ipc=supervised?createSupervisedUpdateIpc(process):null;
+    const desktopCodeHost=process.platform==='win32'&&
+      process.env.FORTLEDGER_DESKTOP_INSTALLER==='1'&&
+      process.env.FORTLEDGER_DESKTOP_UPDATE_HOST==='1'&&
+      !supervised&&!tls&&host==='127.0.0.1'&&port===3000;
     const app=createApp(db,{authRecord,authFile:DEFAULT_AUTH_FILE,network,
       ...(ipc?{updateService:{
         inspect:()=>inspectUpdateReadiness({supervised:true}),
         request:sha=>ipc.request(sha)
+      }}:desktopCodeHost?{updateService:{
+        inspect:()=>inspectDesktopCodeUpdate(),
+        request:async sha=>{
+          if(!/^[a-f0-9]{40}$/i.test(sha))throw new Error('Invalid desktop patch commit');
+          return true; // The tray parent performs ALL code file writes after clean exit.
+        }
       }}:{})});
     const server=tls?https.createServer({cert:tls.cert,key:tls.key,minVersion:'TLSv1.2'},app):app;
     let backups=null;
@@ -715,6 +726,25 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
         });
       });
       process.stdin.resume();
+    }
+    if(desktopCodeHost){
+      let stopping=false;
+      app.locals.stopForUpdate=(sha)=>{
+        if(stopping)return;
+        stopping=true;
+        // Desktop tray is an independent parent. Do not replace any installed
+        // source files while a request, WAL connection or backup job is live.
+        listener.close(async()=>{
+          try{await closeDataSafely();}
+          catch(error){
+            console.error('Desktop code update shutdown blocked:',error.message);
+            process.exitCode=1;return;
+          }
+          // Exactly one control line on stdout; the tray checks child exit 0
+          // before allowing the separate, pinned update helper to run.
+          process.stdout.write('FORTLEDGER_DESKTOP_PATCH:'+sha+'\\n',()=>process.exit(0));
+        });
+      };
     }
     if(supervised){
       let stopping=false;
