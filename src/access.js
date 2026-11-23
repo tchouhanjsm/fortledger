@@ -1,7 +1,7 @@
 export const ROLE_PERMISSIONS={
   owner:['*'],
   manager:['bookings.read','bookings.write','payments.write','refunds.write','rooms.read','rooms.write',
-    'invoices.read','invoices.write','tax.review','restaurant.read','restaurant.link','restaurant.correction.preview','menu.manage','folio.read','folio.write','folio.adjust',
+    'invoices.read','invoices.write','tax.review','restaurant.read','restaurant.link','restaurant.correction.preview','restaurant.correction.request','menu.manage','folio.read','folio.write','folio.adjust',
     'settings.read','audit.read','finance.read','finance.write','analytics.read','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','maintenance.manage','guests.read','guests.write','profile.read','profile.write','system.health.read'],
   frontdesk:['bookings.read','bookings.write','payments.write','rooms.read',
     'invoices.read','invoices.write','folio.read','folio.write','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','guests.read','guests.write',
@@ -60,6 +60,13 @@ export function requiredPermission(method,path){
     // Credit/correction previews do not alter money; managers inspect them, not cashiers.
     if(/^\/restaurant\/bills\/\d+\/correction-preview$/.test(path))
       return method==='POST'?'restaurant.correction.preview':null;
+    if(/^\/restaurant\/bills\/\d+\/correction-cases$/.test(path))
+      return method==='GET'?'restaurant.correction.preview':
+        method==='POST'?'restaurant.correction.request':null;
+    if(/^\/restaurant\/correction-cases\/request\/[A-Za-z0-9_-]+$/.test(path))
+      return method==='GET'?'restaurant.correction.request':null;
+    if(/^\/restaurant\/correction-cases\/\d+\/review$/.test(path))
+      return method==='POST'?'restaurant.correction.review':null;
     // POS financial operations require a narrow role, not generic restaurant visibility.
     if(path==='/restaurant/bills')return method==='POST'?'restaurant.pos':
       method==='GET'?'restaurant.read':null;

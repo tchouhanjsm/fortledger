@@ -1,5 +1,12 @@
 # FortLedger — Development log
 
+## 2026-11-23 — Restaurant correction review cases A2
+- Built append-only correction *cases* on top of A1 source-snapshot estimator. Owner/manager can save a reviewed historic proposed correction with stable request ID, actor and date; original bill/receipt is immutable.
+- Added owner-only, single-decision case disposition: Needs accountant review / Dismissed (no credit). Both explicitly have zero financial and GST effects. Two additive optional tables preserve SQLite schema version 13 and make source-only patch rollback compatible.
+- Added per-bill case history, owner review controls, uncertain-response case lookup and tests for persistence across restart, request replay, role denial, audit, no changes to folio/daily collections/saved receipts.
+- Full monetary reversal/credit, tax credit note and payment/refund reconciliation remain pending under #139/#147. Physical acceptance #135 open. See `docs/RESTAURANT_CORRECTION_CASES_A2.md`.
+
+
 ## 2026-11-23 — GST B2: mixed-rate accountant review drafts
 - Tax review drafts now allow explicit illustrative 5% or 18% GST per accommodation line. Amounts are rounded and checked by rate bucket, with a separate CGST/SGST aggregate and warnings for questionable threshold/rate combinations.
 - Draft dialog and PDF label each selected rate; old clients without a rate field preserve their prior 5% illustration. Source proforma, payments, booked folio, and statutory tax invoice numbering are not modified; final issuance remains disabled.

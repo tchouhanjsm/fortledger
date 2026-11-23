@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import {authGate,loadPasswordRecord,DEFAULT_AUTH_FILE} from './auth.js';
 import {renderRestaurantReceipt} from './restaurant-receipt.js';
 import {previewRestaurantCorrection} from './restaurant-correction-preview.js';
+import {listRestaurantCorrectionCases,restaurantCorrectionRequest,submitRestaurantCorrectionCase,reviewRestaurantCorrectionCase} from './restaurant-correction-cases.js';
 import {prepareTaxDraft,getTaxDraft} from './tax-draft.js';
 import {gstReadiness} from './gst-readiness.js';
 import {streamTaxDraftPdf} from './tax-draft-pdf.js';
@@ -397,6 +398,26 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.post('/api/restaurant/bills/:id/correction-preview',(req,res,next)=>{
     try{res.json(previewRestaurantCorrection(db,Number(req.params.id),req.body));}
     catch(error){next(error);}
+  });
+  app.get('/api/restaurant/bills/:id/correction-cases',(req,res,next)=>{
+    try{res.json(listRestaurantCorrectionCases(db,Number(req.params.id)));}
+    catch(error){next(error);}
+  });
+  app.post('/api/restaurant/bills/:id/correction-cases',(req,res,next)=>{
+    try{
+      const result=submitRestaurantCorrectionCase(db,Number(req.params.id),req.body,req.actor);
+      res.status(result.already_recorded?200:201).json(result);
+    }catch(error){next(error);}
+  });
+  app.get('/api/restaurant/correction-cases/request/:requestId',(req,res,next)=>{
+    try{res.json(restaurantCorrectionRequest(db,req.params.requestId));}
+    catch(error){next(error);}
+  });
+  app.post('/api/restaurant/correction-cases/:caseId/review',(req,res,next)=>{
+    try{
+      const result=reviewRestaurantCorrectionCase(db,Number(req.params.caseId),req.body,req.actor);
+      res.status(result.already_recorded?200:201).json(result);
+    }catch(error){next(error);}
   });
   app.post('/api/restaurant/bills/:id/link-booking',(req,res,next)=>{
     try{res.json(linkManualRoomCharge(db,Number(req.params.id),Number(req.body?.booking_id),

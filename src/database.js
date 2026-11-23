@@ -21,6 +21,7 @@ import {ensureGuestSchema} from './guests.js';
 import {ensureBookingCreateSchema} from './booking-create.js';
 import {ensureFolioSettlementRequestSchema} from './folio.js';
 import {ensureAccommodationAdjustmentSchema} from './accommodation-adjustments.js';
+import {ensureRestaurantCorrectionCaseSchema} from './restaurant-correction-cases.js';
 
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -214,6 +215,21 @@ export function openDatabase(filename = databasePath()) {
     // Additive v7 support table: existing v7 installations also need tombstones
     // without modifying historical booking or payment records.
     ensureBookingCreateSchema(db);
+    // Additive correction-review queues on v13: only new optional tables, no
+    // existing bill/payment/folio row changes and no schema version bump.
+    // Older v13 source stays compatible with the ledger if a code-only rollback
+    // is needed; malformed existing queues fail closed on startup.
+    db.transaction(()=>{
+      ensureRestaurantCorrectionCaseSchema(db);
+      try{
+        db.prepare('SELECT id,bill_id,request_id,fingerprint,proposal_json,actor_id,actor_username,created_at FROM restaurant_correction_cases LIMIT 0').all();
+        db.prepare('SELECT id,case_id,request_id,fingerprint,disposition,note,actor_id,actor_username,created_at FROM restaurant_correction_case_reviews LIMIT 0').all();
+      }catch{
+        throw new Error('Restaurant correction review schema is incompatible; stop and inspect the ledger before operating');
+      }
+      if(db.pragma('foreign_key_check').length)
+        throw new Error('Restaurant correction review schema has foreign key violations');
+    })();
     // Fail on startup, not while accepting a guest's bill, if a later manual
     // schema change or damaged file removed the idempotency ledger after v8.
     // Do not silently reconstruct historic request markers that no longer exist.
