@@ -106,6 +106,8 @@ export function requiredPermission(method,path){
   // keep listing, importing and downloading owner-only.
   if(path==='/accountant/readiness')
     return method==='GET'?'external.documents.read':null;
+  if(path==='/accountant/readiness.csv')
+    return method==='GET'?'external.documents.read':null;
   if(path==='/documents/register')return method==='GET'?'invoices.read':null;
   if(path==='/checkout-document-cases')return method==='GET'?'invoices.read':null;
   if(/^\/checkout-document-cases\/\d+\/reviews$/.test(path))

@@ -5,7 +5,7 @@ import {getBusinessSettings} from './business-settings.js';
 // Source-linked review exceptions, not financial totals or a GST filing.
 // Owner-only route authorization is enforced independently in access/server.
 export function accountantReadiness(db,{limit=80}={}){
-  if(!Number.isSafeInteger(limit)||limit<1||limit>200)
+  if(!Number.isSafeInteger(limit)||limit<1||limit>15000)
     throw new Error('Invalid accountant readiness limit');
   const inventory=historicalPdfInventory(db);
   const supplier=gstReadiness(getBusinessSettings(db));
@@ -48,7 +48,10 @@ export function accountantReadiness(db,{limit=80}={}){
         date,'owner_reported_pdf_issue_date_unverified');
   }
   const cases=db.prepare(
-    "SELECT id,hotel_business_date,snapshot_json FROM checkout_document_cases ORDER BY id DESC LIMIT 1000"
+    "SELECT c.id,c.hotel_business_date,c.snapshot_json,"+
+    "(SELECT r.status FROM checkout_case_review_events r WHERE r.case_id=c.id "+
+    "ORDER BY r.id DESC LIMIT 1) AS review_status "+
+    "FROM checkout_document_cases c ORDER BY c.id DESC LIMIT 1000"
   ).all();
   const checkoutCount=db.prepare('SELECT COUNT(*) AS n FROM checkout_document_cases').get().n;
   for(const c of cases){
@@ -60,8 +63,12 @@ export function accountantReadiness(db,{limit=80}={}){
       else if(!snapshot.preflight?.billing_recipient?.confirmed)
         code='checkout_recipient_unconfirmed';
     }catch{code='checkout_snapshot_unreadable';}
+    if(c.review_status==='reviewed_for_accountant')code='checkout_accountant_signoff_pending';
+    else if(c.review_status==='needs_source_review')code='checkout_source_review_required';
     add('checkout_case',c.id,code,
-      'Owner/manager: inspect the frozen checkout snapshot and current folio; do not issue a GST invoice',
+      c.review_status==='reviewed_for_accountant'?
+        'Accountant: independently check dated tax policy, recipient, original PDF series and authority; NOT approved':
+        'Owner/manager: inspect frozen checkout and live folio evidence; do not issue a GST invoice',
       c.hotel_business_date,'hotel_business_date_not_invoice_issue_date');
   }
   const corrections=db.prepare(
@@ -89,6 +96,10 @@ export function accountantReadiness(db,{limit=80}={}){
     possible_historical_collisions:inventory.potential_duplicate_originals,
     possible_historical_format_issues:inventory.possible_format_issues,
     checkout_review_cases:checkoutCount,
+    checkout_staff_reviewed_cases:db.prepare(
+      "SELECT COUNT(*) AS n FROM checkout_document_cases c WHERE ("+
+      "SELECT r.status FROM checkout_case_review_events r WHERE r.case_id=c.id ORDER BY r.id DESC LIMIT 1)"+
+      "='reviewed_for_accountant'").get().n,
     restaurant_corrections_pending:correctionCount,
     missing_supplier_local_fields:supplier.required_local_fields-supplier.completed_local_fields
   };
