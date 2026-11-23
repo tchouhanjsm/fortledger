@@ -25,6 +25,7 @@ import {ensureRestaurantCorrectionCaseSchema} from './restaurant-correction-case
 import {ensureExternalInvoiceOriginalsSchema} from './external-invoice-originals.js';
 import {ensureHistoricalPdfIdentificationSchema} from './historical-pdf-identifications.js';
 import {ensureCheckoutDocumentCaseSchema} from './checkout-document-case.js';
+import {ensureLanPrinterSettingsSchema} from './lan-printer-settings.js';
 
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -269,6 +270,19 @@ export function openDatabase(filename = databasePath()) {
       }
       if(db.pragma('foreign_key_check').length)
         throw new Error('Historical PDF identification ledger contains broken references');
+    })();
+    // Optional local printer setup and transport-diagnostic replay ledger.
+    // Additive v13 tables; no existing bookings, receipts or print attempts change.
+    db.transaction(()=>{
+      ensureLanPrinterSettingsSchema(db);
+      try{
+        db.prepare('SELECT id,enabled,host,port,actor_username,updated_at FROM lan_printer_settings LIMIT 0').all();
+        db.prepare('SELECT id,request_id,printer_fingerprint,state,actor_username,last_error,created_at,updated_at FROM lan_printer_diagnostics LIMIT 0').all();
+      }catch{
+        throw new Error('Local Ethernet printer configuration schema is incompatible');
+      }
+      if(db.pragma('foreign_key_check').length)
+        throw new Error('Printer setup schema has broken foreign keys');
     })();
     // Fail on startup, not while accepting a guest's bill, if a later manual
     // schema change or damaged file removed the idempotency ledger after v8.
