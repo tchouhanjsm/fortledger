@@ -59,7 +59,7 @@ export async function checkInstallerUpdate({
           Number.isFinite(a.size_in_bytes)&&a.size_in_bytes>=MIN_ARTIFACT_BYTES);
       if(!official)continue;
       return {...base,state:'installer_update_available',available:true,
-        remote:run.head_sha.slice(0,12),run_number:run.run_number,
+        remote:run.head_sha.slice(0,12),target_sha:run.head_sha.toLowerCase(),run_number:run.run_number,
         download_url:'https://github.com/tchouhanjsm/fortledger/actions/runs/'+
           run.id+'/artifacts/'+official.id,
         message:installed?
