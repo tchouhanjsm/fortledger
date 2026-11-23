@@ -8,8 +8,23 @@ $db=Join-Path $live 'fortledger.sqlite'
 $auth=Join-Path $live 'admin-auth.json'
 try {
   if (Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue) {
-    if (@(Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue).Count -gt 0) {
-      throw 'FortLedger or another application is running on port 3000. Finish bookings/bills and close FortLedger from the tray before installing.'
+    $listeners=@(Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue)
+    if ($listeners.Count -gt 0) {
+      # Task Manager may close the tray while leaving its Node server alive.
+      # Diagnose the exact listener without killing a server mid-transaction.
+      $owners=@($listeners | Select-Object -ExpandProperty OwningProcess -Unique |
+        ForEach-Object {
+          $ownerPid=[int]$_
+          $processName='unknown'
+          try { $processName=(Get-Process -Id $ownerPid -ErrorAction Stop).ProcessName }
+          catch { }
+          ('PID '+$ownerPid+' ('+$processName+')')
+        })
+      throw ('Port 3000 is still listening: '+($owners -join ', ')+
+        '. Close FortLedger from the Windows system tray, not Task Manager. '+
+        'If the tray was forcibly ended and a Node server remained, finish hotel work, '+
+        'verify a recoverable backup, then restart Windows normally and run the installer '+
+        'before reopening FortLedger. Never terminate unknown processes or bypass this guard.')
     }
   }
   $dbExists=Test-Path -LiteralPath $db -PathType Leaf
