@@ -58,7 +58,7 @@ test('only manager and owner can read inactive menu and change availability over
   assert.equal(requiredPermission('GET','/restaurant/menu/all'),'menu.manage');
   assert.equal(requiredPermission('PATCH','/restaurant/menu/1/availability'),'menu.manage');
   assert.equal(requiredPermission('GET','/restaurant/menu'),'restaurant.read');
-  assert.equal(requiredPermission('POST','/restaurant/bills'),'restaurant.write');
+  assert.equal(requiredPermission('POST','/restaurant/bills'),'restaurant.pos');
   const db=openDatabase(':memory:');
   importMenuCsv(db,sample);
   createStaff(db,{username:'cashierqa',display_name:'Cashier QA',role:'cashier',
