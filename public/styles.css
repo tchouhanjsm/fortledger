@@ -278,3 +278,20 @@
 #checkout-document-cases .checkout-case-row small{display:block;font-size:12px;color:var(--muted,#65706c)}
 #checkout-document-cases .checkout-case-row p{font-size:14px;margin:8px 0;overflow-wrap:anywhere}
 @media(max-width:600px){#checkout-document-cases{padding:14px}#checkout-document-cases .checkout-case-row{align-items:stretch;flex-direction:column}}
+
+/* Billing & Documents: compact source-aware register, not a revenue dashboard. */
+#billing-documents-register{margin-block:18px;padding:16px;border:1px solid var(--border,#e5e0d7);border-radius:12px}
+#billing-documents-register h3{margin:0 0 6px}
+#billing-documents-register .billing-register-controls{display:grid;grid-template-columns:minmax(210px,2fr) minmax(170px,1fr) minmax(145px,1fr) minmax(145px,1fr) auto;align-items:end;gap:12px;margin:16px 0}
+#billing-documents-register .billing-register-controls label{min-width:0;font-size:13px;font-weight:600}
+#billing-documents-register .billing-register-controls input,
+#billing-documents-register .billing-register-controls select{margin-top:6px;width:100%;min-height:44px;box-sizing:border-box}
+#billing-documents-register button{min-height:44px}
+#billing-documents-register .billing-register-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--border,#e5e0d7)}
+#billing-documents-register .billing-register-row>div:first-child{min-width:0;overflow-wrap:anywhere}
+#billing-documents-register .billing-register-row strong,#billing-documents-register .billing-register-row small{display:block}
+#billing-documents-register .billing-register-row small{font-size:12px;color:var(--muted,#65706c);line-height:1.55}
+#billing-documents-register .billing-register-actions{flex-shrink:0}
+#billing-documents-register .billing-register-actions a{display:inline-flex;align-items:center;min-height:44px}
+@media(max-width:1100px){#billing-documents-register .billing-register-controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){#billing-documents-register{padding:14px}#billing-documents-register .billing-register-controls{grid-template-columns:1fr}#billing-documents-register .billing-register-row{flex-direction:column;align-items:stretch}#billing-documents-register .billing-register-actions a{width:100%;justify-content:center}}
