@@ -15,7 +15,8 @@ import { fileURLToPath } from 'node:url';
 import {authGate,loadPasswordRecord,DEFAULT_AUTH_FILE} from './auth.js';
 import {renderRestaurantReceipt} from './restaurant-receipt.js';
 import {previewRestaurantCorrection} from './restaurant-correction-preview.js';
-import {listRestaurantCorrectionCases,restaurantCorrectionRequest,submitRestaurantCorrectionCase,reviewRestaurantCorrectionCase} from './restaurant-correction-cases.js';
+import {listRestaurantCorrectionCases,restaurantCorrectionInbox,restaurantCorrectionRequest,
+  submitRestaurantCorrectionCase,reviewRestaurantCorrectionCase} from './restaurant-correction-cases.js';
 import {prepareTaxDraft,getTaxDraft} from './tax-draft.js';
 import {gstReadiness} from './gst-readiness.js';
 import {checkoutInvoicePreflight} from './checkout-invoice-preflight.js';
@@ -460,6 +461,12 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
       const result=submitRestaurantCorrectionCase(db,Number(req.params.id),req.body,req.actor);
       res.status(result.already_recorded?200:201).json(result);
     }catch(error){next(error);}
+  });
+  app.get('/api/restaurant/correction-cases/inbox',(req,res,next)=>{
+    try{res.json(restaurantCorrectionInbox(db,req.actor,{
+      status:req.query.status??'open',offset:Number(req.query.offset??0),limit:30
+    }));}
+    catch(error){next(error);}
   });
   app.get('/api/restaurant/correction-cases/request/:requestId',(req,res,next)=>{
     try{res.json(restaurantCorrectionRequest(db,req.params.requestId));}

@@ -93,6 +93,31 @@ export function listRestaurantCorrectionCases(db,billId){
   return db.prepare(CASE_SELECT+' WHERE c.bill_id=? ORDER BY c.id DESC LIMIT 100')
     .all(billId).map(decorate);
 }
+
+/** Read-only, source-linked inbox; never mutates credits, payments, tax or receipt history. */
+export function restaurantCorrectionInbox(db,actor,{status='open',offset=0,limit=30}={}){
+  actorCheck(actor,['owner','manager']);
+  if(!['open','awaiting_owner','needs_accountant','all'].includes(status)||
+    !Number.isSafeInteger(offset)||offset<0||offset>20000||
+    !Number.isSafeInteger(limit)||limit<1||limit>50)
+    throw new Error('Invalid restaurant correction inbox query');
+  const from=' FROM restaurant_correction_cases c LEFT JOIN restaurant_correction_case_reviews r ON r.case_id=c.id';
+  const where=status==='open'?" WHERE (r.id IS NULL OR r.disposition='needs_accountant')":
+    status==='awaiting_owner'?' WHERE r.id IS NULL':
+    status==='needs_accountant'?" WHERE r.disposition='needs_accountant'":'';
+  const counts=db.prepare(`SELECT COUNT(*) AS all_count,
+    COALESCE(SUM(CASE WHEN r.id IS NULL THEN 1 ELSE 0 END),0) AS awaiting_owner,
+    COALESCE(SUM(CASE WHEN r.disposition='needs_accountant' THEN 1 ELSE 0 END),0) AS needs_accountant`+from).get();
+  const total=db.prepare('SELECT COUNT(*) AS n'+from+where).get().n;
+  const items=db.prepare(CASE_SELECT+where+' ORDER BY c.id DESC LIMIT ? OFFSET ?')
+    .all(limit,offset).map(decorate);
+  return {status,offset,limit,total,
+    counts:{open:counts.awaiting_owner+counts.needs_accountant,
+      awaiting_owner:counts.awaiting_owner,needs_accountant:counts.needs_accountant,
+      all:counts.all_count},
+    items,financial_entries_written:false,gst_credit_notes_issued:false,refunds_sent:false};
+}
+
 export function restaurantCorrectionRequest(db,requestId){
   requestKey(requestId);
   const row=db.prepare('SELECT id FROM restaurant_correction_cases WHERE request_id=?').get(requestId);

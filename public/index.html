@@ -344,6 +344,23 @@
     <div><span class="restaurant-overview-label">Room bills to settle</span><strong id="restaurant-room-unpaid">0</strong><small>Not yet paid</small></div>
     <div><span class="restaurant-overview-label">Needs guest linking</span><strong id="restaurant-room-unmatched">0</strong><small>Manual room charges</small></div>
   </div>
+  <details id="restaurant-correction-inbox" class="restaurant-reconciliation" hidden>
+    <summary>Saved-bill correction inbox · owner / manager</summary>
+    <p class="muted">Read-only list of original-bill correction requests. Owner review and accountant escalation never transfer a refund, amend a receipt, or issue a GST credit note.</p>
+    <div class="restaurant-reconciliation-actions">
+      <label for="restaurant-correction-inbox-state">Show</label>
+      <select id="restaurant-correction-inbox-state">
+        <option value="open">Needs action</option>
+        <option value="awaiting_owner">Awaiting owner</option>
+        <option value="needs_accountant">Sent for accountant review</option>
+        <option value="all">All cases (including dismissed)</option>
+      </select>
+      <button id="restaurant-correction-inbox-refresh" type="button" class="secondary">Refresh cases</button>
+    </div>
+    <p id="restaurant-correction-inbox-count" class="muted" role="status" aria-live="polite"></p>
+    <div id="restaurant-correction-inbox-results"></div>
+    <button id="restaurant-correction-inbox-more" type="button" class="secondary" hidden>Show more cases</button>
+  </details>
   <div id="restaurant-admin-history-slot"></div>
   <details id="restaurant-reconciliation-section" class="restaurant-reconciliation" hidden>
     <summary>Daily restaurant reconciliation — download CSV</summary>

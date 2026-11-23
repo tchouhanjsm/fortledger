@@ -67,6 +67,8 @@ export function requiredPermission(method,path){
       return method==='PATCH'?'menu.manage':null;
     if(path==='/restaurant/menu/preview'||path==='/restaurant/menu/import')
       return method==='POST'?'menu.manage':null;
+    if(path==='/restaurant/correction-cases/inbox')
+      return method==='GET'?'restaurant.correction.preview':null;
     // Credit/correction previews do not alter money; managers inspect them, not cashiers.
     if(/^\/restaurant\/bills\/\d+\/correction-preview$/.test(path))
       return method==='POST'?'restaurant.correction.preview':null;
