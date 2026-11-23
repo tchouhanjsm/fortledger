@@ -548,9 +548,9 @@
     <label>Recipient GSTIN (optional)<input name="recipient_gstin" maxlength="15" placeholder="15-character GSTIN"></label>
     <label>Authorized signatory (name only)<input name="signatory_name" maxlength="120" placeholder="For draft review"></label>
   </div>
-  <h3>Review service accounting codes (SAC)</h3>
+  <h3>Review SAC and illustrative GST rate for each accommodation line</h3>
   <div id="tax-draft-sac-list"></div>
-  <p class="muted">Hotel accommodation: 996311. Campsite services: 996312. Confirm classification with your accountant.</p>
+  <p class="muted">Hotel accommodation: 996311; campsite: 996312. Choose 5% or 18% only for draft comparison. Rate depends on actual supply date and taxable value per room per day. Neither selection authorizes a legal invoice.</p>
   <p id="tax-draft-message" role="alert"></p>
   <div class="dialog-actions"><button type="button" class="secondary" id="cancel-tax-draft">Cancel</button><button type="submit" class="primary">Generate draft PDF</button></div>
 </form></dialog>
