@@ -19,6 +19,10 @@ test('benchmark never opens the real hotel data path or performs financial write
   assert.match(script,/openDatabase\(':memory:'\)/);
   assert.match(script,/\.listen\(0,'127\.0\.0\.1'\)/);
   assert.match(script,/EXPLAIN QUERY PLAN/);
+  assert.match(script,/\/api\/documents\/register/);
+  assert.match(script,/\/api\/restaurant\/bills/);
+  assert.match(script,/proforma\.run/);
+  assert.match(script,/held\.run/);
   assert.doesNotMatch(script,/process\.env\.FORTLEDGER_DATA_DIR|databasePath\(/);
   assert.doesNotMatch(script,/fetch\([^\n]+method:\s*['"]POST['"]/);
 });

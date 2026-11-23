@@ -18,3 +18,6 @@ It reports end-to-end HTTP+JSON p50/p95/max of 10 measured requests (after 2 war
 ## Release boundary
 
 The PR only adds a synthetic benchmarking script, pure sample aggregator tests, npm command and one CI measurement step. Zero database schema changes, network listener changes, app UI changes, or hotel records. Roll back by reverting files; it does not affect hotel data.
+
+## V8 documents/POS scoped baseline
+In-memory fixtures now seed proportional synthetic proformas, immutable held checkout cases and saved restaurant receipts for 28 and 700 historical bookings. The same local HTTP+JSON p50/p95 benchmark includes read-only Billing & Documents searches and saved-bill listing. No true staff UI, initial browser render, printer paper, real Windows machine, hotel SQLite path, guest record, or backup restore is measured. No financial POST, caching or speculative query optimization is introduced. Compare only equivalent runner samples and keep NOT RELEASED until physical acceptance.
