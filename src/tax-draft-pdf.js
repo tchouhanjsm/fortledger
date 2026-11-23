@@ -26,7 +26,7 @@ export function streamTaxDraftPdf(s,res,logo=null){
   if(logo?.data){
     try{pdf.image(logo.data,480,67,{fit:[65,50]});}catch{/* optional logo */ }
   }
-  txt(pdf,(s.business.hotel_name||'GARH JAISAL').toUpperCase(),LEFT,87,375,{size:15,bold:true,height:24});
+  txt(pdf,(s.business.legal_name||s.business.hotel_name||'GARH JAISAL').toUpperCase(),LEFT,87,375,{size:15,bold:true,height:24});
   txt(pdf,'Prepared '+s.prepared_on+'   |   Supplier GSTIN: '+(s.business.gstin||'NOT CONFIGURED'),
     LEFT,114,WIDTH,{size:8,color:MUTED,height:17});
   txt(pdf,s.business.address||'Supplier address missing',LEFT,133,WIDTH,{size:8,color:MUTED,height:24});
