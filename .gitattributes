@@ -9,6 +9,7 @@
 *.css text eol=lf
 *.csv text eol=lf
 *.svg text eol=lf
+*.webmanifest text eol=lf
 *.map text eol=lf
 *.png binary
 *.jpg binary
