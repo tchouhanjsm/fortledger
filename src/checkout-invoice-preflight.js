@@ -67,7 +67,7 @@ export function checkoutInvoicePreflight(db,bookingId){
   // The hotel keeps pre-FortLedger legal PDFs in an external local folder.
   // These PDFs are NOT discoverable by this server; no serial uniqueness claim.
   blockers.push({code:'external_invoice_history_unreconciled',
-    message:'Existing online-generator PDFs and invoice-123 numbering history are not linked or reconciled'});
+    message:'Existing online-generator PDFs and their invoice-number history are not linked or reconciled'});
   blockers.push({code:'gst_accountant_policy_missing',
     message:'5% room/food practice is operator-reported; dated GST classification and legal policy require accountant approval'});
   blockers.push({code:'statutory_issuance_disabled',
@@ -106,7 +106,7 @@ export function checkoutInvoicePreflight(db,bookingId){
       practice:'Operator-reported 5% food and room — NOT verified tax policy',
       legal_invoice_enabled:false},
     historic_pdf_archive:{location:'external_local_folder_not_imported',
-      last_reported_number:'invoice-123',numbering_policy_approved:false,
+      last_confirmed_number:null,numbering_policy_approved:false,
       invoice_already_issued_for_booking:'unknown'},
     blockers,warnings,
     financial_entries_written:false,number_reserved:false,pdf_issued:false,
