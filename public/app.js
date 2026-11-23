@@ -129,7 +129,7 @@ const dateISO = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+
 const addDays = (d,days) => { const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+days);return x; };
 const fmtDay = iso => new Date(iso+'T12:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
 const statusOptions=['reserved','checked_in','checked_out','cancelled'];
-let rooms=[],bookings=[],invoices=[],businessSettings=null,menu=[],restaurantBills=[],maintenanceIssues=[],guests=[],backupStatus=null,closeAttention=[],cart=[],editingId=null,weekStart=new Date(),calendarMode='week';
+let rooms=[],bookings=[],invoices=[],businessSettings=null,menu=[],restaurantTables=[],restaurantBills=[],maintenanceIssues=[],guests=[],backupStatus=null,closeAttention=[],cart=[],editingId=null,weekStart=new Date(),calendarMode='week';
 weekStart=addDays(weekStart,-((weekStart.getDay()+6)%7));
 let connectionState='checking';
 function setConnectionStatus(state){
@@ -1160,6 +1160,7 @@ async function load(){
     allowed('settings.read')?api('/api/settings/business'):Promise.resolve(null),
     allowed('restaurant.read')?api('/api/restaurant/menu'):Promise.resolve([]),
     allowed('restaurant.read')?api('/api/restaurant/bills'):Promise.resolve([]),
+    allowed('restaurant.read')?api('/api/restaurant/tables'):Promise.resolve([]),
     allowed('maintenance.read')?api('/api/maintenance'):Promise.resolve([]),
     allowed('guests.read')?api('/api/guests'):Promise.resolve([]),
     allowed('system.health.read')?api('/api/system/backup-status'):Promise.resolve(null),
@@ -1167,8 +1168,8 @@ async function load(){
   ]);
   if(revision!==workspaceLoadRevision)return false;
   currentUser=operator;
-  [rooms,bookings,invoices,businessSettings,menu,restaurantBills,maintenanceIssues,guests,backupStatus,closeAttention]=snapshot;
-  renderMenu();refreshRestaurantGuestPicker();renderCart();renderRestaurantHistory();
+  [rooms,bookings,invoices,businessSettings,menu,restaurantBills,restaurantTables,maintenanceIssues,guests,backupStatus,closeAttention]=snapshot;
+  renderMenu();refreshRestaurantGuestPicker();renderRestaurantTablePicker();renderCart();renderRestaurantHistory();
   if(businessSettings){
     for(const [key,value] of Object.entries(businessSettings)){
       const field=$('#business-form').elements.namedItem(key);if(field)field.value=value;
@@ -1185,6 +1186,7 @@ async function load(){
   if(!$('#restaurant-reconciliation-date').value)
     $('#restaurant-reconciliation-date').value=hotelToday();
   $('#menu-import-section').hidden=!can('menu.manage');
+  $('#restaurant-table-management').hidden=!can('menu.manage');
   $('#restaurant-jump-menu').hidden=!can('menu.manage');
   $('#import-menu').hidden=!can('menu.manage');
   $('#preview-menu').hidden=!can('menu.manage');
@@ -1840,6 +1842,15 @@ function refreshRestaurantGuestPicker(){
   if([...guest.options].some(x=>x.value===old))guest.value=old;
   updateManualRoomFields();
 }
+function renderRestaurantTablePicker(){
+  const picker=$('#restaurant-table'),before=picker.value;
+  picker.replaceChildren();
+  const walkin=label('option','Walk-in / no table');walkin.value='';picker.append(walkin);
+  for(const table of restaurantTables){
+    const option=label('option',table.label);option.value=String(table.id);picker.append(option);
+  }
+  if([...picker.options].some(x=>x.value===before))picker.value=before;
+}
 function renderMenu(){
   renderMenuCategories();
   const list=$('#menu-items');list.replaceChildren();
@@ -1878,7 +1889,9 @@ function restaurantBillDraft(){
       unit_price_paise:item.price_paise,tax_rate:item.tax_rate};
   });
   const manual=method==='room'&&$('#restaurant-guest').value==='manual';
+  const table_id=$('#restaurant-table').value;
   const body={payment_method:method,items,
+    ...(table_id?{table_id:Number(table_id)}:{}),
     booking_id:method==='room'&&!manual?Number($('#restaurant-guest').value):undefined};
   if(manual){
     body.manual_room=$('#manual-room-number').value.trim();
@@ -1925,7 +1938,8 @@ function renderRestaurantReview(){
     choice.selectedOptions[0]?.textContent||'No checked-in guest'):'Walk-in bill';
   $('#restaurant-review-payment').textContent=
     'Payment: '+(method==='room'?'Charge to room':'Record '+method.toUpperCase()+' received')+
-    ' · '+recipient;
+    ' · '+recipient+
+    ($('#restaurant-table').value?' · Table '+($('#restaurant-table').selectedOptions[0]?.textContent||''):'');
   $('#restaurant-review-total').textContent=
     'Bill total '+money(total)+' · Inclusive tax '+money(tax)+
     ' · '+cart.reduce((n,x)=>n+x.quantity,0)+' items';
@@ -2027,7 +2041,7 @@ function renderRestaurantHistory(){
     if(restaurantBillFilter==='unpaid'&&status!=='unpaid')return false;
     if(restaurantBillFilter==='paid'&&status!=='paid')return false;
     if(restaurantBillFilter==='unmatched'&&status!=='unmatched')return false;
-    return [String(bill.id),bill.payment_method,bill.manual_room||'',bill.manual_guest||'',
+    return [String(bill.id),bill.payment_method,bill.table_label||'',bill.manual_room||'',bill.manual_guest||'',
       bill.booking_id==null?'':String(bill.booking_id),
       ...(bill.items||[]).map(x=>x.name)]
       .some(value=>String(value).toLocaleLowerCase().includes(query));
@@ -2049,6 +2063,7 @@ function renderRestaurantHistory(){
     const amount=label('strong',money(bill.total_paise),'restaurant-history-amount');
     top.append(identity,badge,amount);
     article.append(top);
+    if(bill.table_label)article.append(label('p','Dining table: '+bill.table_label,'restaurant-history-target'));
     if(bill.payment_method==='room'){
       const target=label('p',bill.booking_id==null?
         'Guest / room: '+(bill.manual_guest||'Unverified')+' · '+(bill.manual_room||'Unknown'):
@@ -2233,13 +2248,14 @@ $('#restaurant-method').onchange=()=>{
   renderRestaurantReview();
 };
 $('#restaurant-guest').onchange=()=>{updateManualRoomFields();renderRestaurantReview();};
+$('#restaurant-table').onchange=()=>renderRestaurantReview();
 $('#manual-room-number').oninput=renderRestaurantReview;
 $('#manual-room-guest').oninput=renderRestaurantReview;
 // Keep the same immutable intent and UUID after an uncertain response. Never
 // create a second financial record while the original attempt is unresolved.
 let pendingRestaurantBill=null,restaurantBillSubmitting=false;
 function lockPendingRestaurantInputs(locked){
-  for(const selector of ['#restaurant-method','#restaurant-guest',
+  for(const selector of ['#restaurant-method','#restaurant-table','#restaurant-guest',
     '#manual-room-number','#manual-room-guest']){
     $(selector).disabled=locked;
   }
@@ -2296,6 +2312,7 @@ $('#save-restaurant-bill').onclick=async()=>{
     lockPendingRestaurantInputs(false);
     restaurantReviewOpen=false;
     cart=[];
+    $('#restaurant-table').value='';
     renderCart();
     message.replaceChildren();
     message.append(document.createTextNode('Bill #'+saved.id+' saved once. Payment was recorded manually; FortLedger did not verify a bank transfer. '));
@@ -2313,6 +2330,61 @@ $('#save-restaurant-bill').onclick=async()=>{
   }catch(error){message.textContent='Bill was not saved: '+error.message;
     message.focus({preventScroll:true});}
   finally{restaurantBillSubmitting=false;button.disabled=false;}
+};
+
+let tablesAdmin=[],tablesAdminBusy=false;
+function renderRestaurantTableManagement(){
+  const list=$('#restaurant-table-admin-list');list.replaceChildren();
+  for(const item of tablesAdmin){
+    const row=label('div',undefined,'restaurant-table-admin-row');
+    const name=label('span',item.label+' · '+(item.active?'Available':'Hidden'));
+    const toggle=label('button',item.active?'Hide':'Make available','secondary');
+    toggle.type='button';toggle.disabled=tablesAdminBusy;
+    toggle.onclick=async()=>{
+      if(tablesAdminBusy||!can('menu.manage'))return;
+      if(!await confirmAction({title:(item.active?'Hide ':'Show ')+item.label+'?',
+        detail:'Existing food receipts retain the original table name. Current unsaved bills must be re-reviewed if a table is hidden.',
+        confirmLabel:item.active?'Hide table':'Show table'}))return;
+      tablesAdminBusy=true;toggle.disabled=true;
+      try{
+        await api('/api/restaurant/tables/'+item.id+'/visibility',{
+          method:'PATCH',body:JSON.stringify({active:!Boolean(item.active),expected_active:Boolean(item.active)})
+        });
+        await load();await refreshRestaurantTablesManagement();
+        $('#restaurant-table-admin-message').textContent='Table visibility updated; saved receipts unchanged.';
+      }catch(error){
+        $('#restaurant-table-admin-message').textContent='Change not confirmed: '+error.message;
+        try{await refreshRestaurantTablesManagement();}catch{}
+      }finally{tablesAdminBusy=false;}
+    };
+    row.append(name,toggle);list.append(row);
+  }
+  if(!tablesAdmin.length)list.append(label('p','No dining tables yet. Add only the physical table names you actually use.','muted'));
+}
+async function refreshRestaurantTablesManagement(){
+  if(!can('menu.manage'))return;
+  tablesAdmin=await api('/api/restaurant/tables/all');
+  renderRestaurantTableManagement();
+}
+$('#restaurant-table-management').addEventListener('toggle',()=>{
+  if($('#restaurant-table-management').open)void refreshRestaurantTablesManagement().catch(error=>{
+    $('#restaurant-table-admin-message').textContent='Could not read table names: '+error.message;
+  });
+});
+$('#restaurant-table-create').onsubmit=async event=>{
+  event.preventDefault();
+  if(tablesAdminBusy||!can('menu.manage'))return;
+  const form=event.currentTarget,message=$('#restaurant-table-admin-message');
+  const name=form.elements.namedItem('label').value.trim();
+  if(!name)return;
+  tablesAdminBusy=true;form.querySelector('button').disabled=true;
+  try{
+    await api('/api/restaurant/tables',{method:'POST',body:JSON.stringify({label:name})});
+    form.reset();
+    await load();await refreshRestaurantTablesManagement();
+    message.textContent='Dining table '+name+' added. Staff may now select it on a new bill.';
+  }catch(error){message.textContent='Table not created: '+error.message;}
+  finally{tablesAdminBusy=false;form.querySelector('button').disabled=false;}
 };
 let validatedMenuCsv=null,menuImportGeneration=0,menuImportRows=[],menuImportInFlight=false;
 // Menu availability is separate from CSV price changes. It never edits a bill
