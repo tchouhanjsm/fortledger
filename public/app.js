@@ -1346,6 +1346,95 @@ $('#external-doc-files').addEventListener('change',()=>{
     'No files selected. Nothing has been copied.';
   $('#external-doc-import').disabled=!files.length||Boolean(invalid.length)||externalOriginalBusy;
 });
+// One owner-entered claim per request. Every subsequent correction is a new
+// immutable history row, not a rewrite of the external original PDF.
+function historicalPdfIdentificationPanel(item){
+  const details=label('details',undefined,'external-original-identification');
+  details.append(label('summary',item.identification?.latest?
+    'Review / correct reported number and date':'Record printed number and date'));
+  const current=item.identification?.latest;
+  const form=label('form',undefined,'external-original-identification-form');
+  const numberLabel=label('label','Invoice number printed on PDF');
+  const numberInput=label('input');numberInput.type='text';numberInput.maxLength=64;
+  numberInput.required=true;numberInput.placeholder='e.g. invoice-123';
+  numberInput.value=current?.reported_invoice_number||'';
+  numberLabel.append(numberInput);
+  const dateLabel=label('label','Issue date printed on PDF');
+  const dateInput=label('input');dateInput.type='date';dateInput.required=true;
+  dateInput.value=current?.reported_issue_date||'';
+  dateLabel.append(dateInput);
+  const bookingLabel=label('label','Booking # (optional, unverified association)');
+  const bookingInput=label('input');bookingInput.type='number';
+  bookingInput.min='1';bookingInput.max='999999999';bookingInput.step='1';
+  bookingInput.placeholder='Leave empty if not known';
+  bookingInput.value=current?.booking_candidate_id||'';
+  bookingLabel.append(bookingInput);
+  const noteLabel=label('label','Review / correction reason');
+  const noteInput=label('textarea');noteInput.rows=2;noteInput.maxLength=300;
+  noteInput.placeholder='Where you read this number/date, or why the prior entry needs correcting (10+ characters)';
+  noteInput.required=true;noteLabel.append(noteInput);
+  const submit=label('button',current?'Save corrected transcription':'Save reported details','secondary');
+  submit.type='submit';
+  const message=label('p',undefined,'muted');message.setAttribute('role','status');
+  form.append(numberLabel,dateLabel,bookingLabel,noteLabel,submit,message);
+  details.append(form);
+  const history=label('div',undefined,'external-original-identification-history');
+  details.append(history);
+  let intent=null;
+  const invalidate=()=>{intent=null;message.textContent='';};
+  for(const field of [numberInput,dateInput,bookingInput,noteInput]){
+    field.addEventListener('input',invalidate);
+  }
+  const showHistory=async()=>{
+    history.replaceChildren(label('p','Loading saved transcription history…','muted'));
+    try{
+      const result=await api('/api/external-invoice-originals/'+item.id+'/identifications');
+      history.replaceChildren();
+      if(result.possible_duplicate_count)
+        history.append(label('p','Review: '+result.possible_duplicate_count+
+          ' other archived PDF(s) currently report this number in the same financial year. This may be a duplicate.','error'));
+      if(!result.history.length)history.append(label('p','No details have been recorded for this original.','muted'));
+      for(const entry of result.history){
+        history.append(label('p','Entry #'+entry.id+' · '+entry.reported_invoice_number+
+          ' · '+entry.reported_issue_date+' · FY '+entry.reported_financial_year+
+          (entry.booking_candidate_id?' · possible booking #'+entry.booking_candidate_id:'')+
+          ' · '+entry.actor_username+' · '+entry.created_at+' UTC. '+entry.note,'muted'));
+      }
+    }catch(error){history.replaceChildren(label('p','Cannot load history: '+error.message,'error'));}
+  };
+  details.addEventListener('toggle',()=>{if(details.open)void showHistory();});
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    if(!intent)intent={request_id:crypto.randomUUID(),
+      invoice_number:numberInput.value,issue_date:dateInput.value,
+      booking_id:bookingInput.value?Number(bookingInput.value):null,
+      note:noteInput.value};
+    submit.disabled=true;message.textContent='';
+    try{
+      let saved;
+      try{
+        saved=await api('/api/external-invoice-originals/'+item.id+'/identifications',
+          {method:'POST',body:JSON.stringify(intent)});
+      }catch(error){
+        if(!(error instanceof TypeError))throw error;
+        const found=await api('/api/external-invoice-originals/identifications/request/'+intent.request_id);
+        if(!found.recorded)throw error;
+        saved={...found.entry,already_recorded:true};
+      }
+      $('#external-ident-status').textContent='Archive #'+item.id+' transcription saved as entry #'+saved.id+
+        '. This does not validate the GST invoice or reserve a legal invoice number.';
+      if(saved.possible_duplicate_count)
+        $('#external-ident-status').textContent+=' Warning: possible repeated FY invoice number on '+
+          saved.possible_duplicate_count+' other archived PDF(s).';
+      intent=null;
+      await refreshExternalOriginals();
+    }catch(error){
+      message.textContent='Entry not confirmed: '+error.message+
+        '. Retry without changing fields to keep the original request ID.';
+    }finally{submit.disabled=false;}
+  });
+  return details;
+}
 async function refreshExternalOriginals(reset=true){
   if(currentUser?.role!=='owner')return;
   const query=$('#external-doc-search').value.trim();
@@ -1369,7 +1458,20 @@ async function refreshExternalOriginals(reset=true){
       const link=label('a','Download saved original','secondary');
       link.href='/api/external-invoice-originals/'+documentEntry.id+'/original';
       link.setAttribute('download',documentEntry.original_filename);
-      row.append(text,link);list.append(row);
+      const annotation=documentEntry.identification?.latest;
+      if(annotation){
+        text.append(label('small','Owner-reported (unverified): '+annotation.reported_invoice_number+
+          ' · printed '+annotation.reported_issue_date+' · FY '+annotation.reported_financial_year+
+          (annotation.booking_candidate_id?' · candidate booking #'+annotation.booking_candidate_id:'')));
+        if(documentEntry.identification.possible_duplicate_count)
+          text.append(label('small','Possible duplicate number in '+documentEntry.identification.possible_duplicate_count+
+            ' other archived PDF(s) · accountant review needed'));
+        if(annotation.length_over_16||annotation.possible_unpermitted_characters)
+          text.append(label('small','Reported serial may not match GST Rule 46 formatting · review required'));
+      }else text.append(label('small','Printed number/date not yet recorded · legal issuance remains blocked'));
+      const controls=label('div',undefined,'external-original-actions');
+      controls.append(link,historicalPdfIdentificationPanel(documentEntry));
+      row.append(text,controls);list.append(row);
     }
     externalOriginalOffset+=data.items.length;
     more.hidden=externalOriginalOffset>=data.total;
