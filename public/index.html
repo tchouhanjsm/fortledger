@@ -147,7 +147,27 @@
       <label>Recorded from <input id="billing-register-from" type="date"></label>
       <label>Recorded to <input id="billing-register-to" type="date"></label>
       <button id="billing-register-search" type="button" class="secondary">Find documents</button>
+      <button id="billing-register-clear" type="button" class="secondary">Clear filters</button>
     </div>
+    <details id="billing-register-advanced">
+      <summary>More filters · booking, guest, company, number and status</summary>
+      <div class="billing-register-controls">
+        <label>Booking ID <input id="billing-register-booking" type="number" min="1" step="1" placeholder="Exact ID"></label>
+        <label>Guest <input id="billing-register-guest" type="search" maxlength="100"></label>
+        <label>Company <input id="billing-register-company" type="search" maxlength="100"></label>
+        <label>Document / reported number <input id="billing-register-number" type="search" maxlength="100"></label>
+        <label>Document status <select id="billing-register-status">
+          <option value="all">All nonstatutory statuses</option>
+          <option value="saved_proforma">Saved proforma</option>
+          <option value="held_for_review">Checkout held</option>
+          <option value="needs_source_review">Checkout source review needed</option>
+          <option value="reviewed_for_accountant">Checkout reviewed for accountant</option>
+          <option value="saved_restaurant_receipt">Restaurant saved receipt</option>
+          <option value="unverified_historical_original">Historical original unverified</option>
+        </select></label>
+      </div>
+      <p class="muted">Recorded date filters use IST saved/imported timestamps; printed historical issue dates and supply dates remain distinct.</p>
+    </details>
     <div id="billing-register-list" role="status" aria-live="polite"><p class="muted">Search the register to view saved documents.</p></div>
     <button id="billing-register-more" type="button" class="secondary" hidden>Show more documents</button>
   </section>

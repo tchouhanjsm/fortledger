@@ -537,6 +537,9 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
       res.json(searchBillingDocuments(db,req.actor,{
         q:req.query.q??'',kind:req.query.kind??'all',
         from:req.query.from??'',to:req.query.to??'',
+        booking_id:req.query.booking_id?Number(req.query.booking_id):null,
+        guest:req.query.guest??'',company:req.query.company??'',
+        number:req.query.number??'',status:req.query.status??'all',
         offset:Number(req.query.offset??0),limit:30
       }));
     }catch(error){next(error);}

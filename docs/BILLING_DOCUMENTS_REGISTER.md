@@ -29,3 +29,6 @@ Open **Invoices → Billing & Documents**. Search by saved number, guest, compan
 ## Follow-up
 
 Prioritize actual staff search-speed measurements, recent/error states, verified archive restoration and accountant CSV exports after physical testing. Statutory final issuance is blocked by [#147](https://github.com/tchouhanjsm/fortledger/issues/147) until registered identity, historical numbering, dates/rates/IRN and signoff are established; physical acceptance [#135](https://github.com/tchouhanjsm/fortledger/issues/135) remains open. No automatic GST-portal or email integration.
+
+## V8 search refinement
+The existing register adds optional server-side filters: exact booking ID, guest, company, number/title and nonstatutory review state. The existing broad search, type and recorded/imported IST date filters remain. New filters are grouped behind **More filters**, with a one-click clear action. Historical owner-reported identifiers are not treated as verified statutory serials or automatically associated with booking IDs. Owners alone see protected historical sources even if other roles forge type/status filters. No financial sum or invoice issue path is added.
