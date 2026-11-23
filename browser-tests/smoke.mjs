@@ -76,6 +76,7 @@ try{
       assert.equal(await toggle.isVisible(),true);
       await toggle.click();
       assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+      await page.waitForFunction(()=>document.querySelector('.sidebar')?.getBoundingClientRect().width<=79);
       const narrow=await rail.evaluate(el=>Math.round(el.getBoundingClientRect().width));
       assert.ok(narrow<=79,'Minimised nav should free workspace width; actual '+narrow);
       assert.equal(await page.getByRole('navigation',{name:'Primary'}).getByRole('link',{name:'Restaurant'}).count(),1);
@@ -85,6 +86,7 @@ try{
         'Compact sidebar must survive a page reload in the same browser');
       await toggle.click();
       assert.equal(await toggle.getAttribute('aria-expanded'),'true');
+      await page.waitForFunction(()=>document.querySelector('.sidebar')?.getBoundingClientRect().width>200);
       assert.ok(await rail.evaluate(el=>el.getBoundingClientRect().width)>200);
     }
     if(width===1440){
