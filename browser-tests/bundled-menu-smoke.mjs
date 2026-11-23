@@ -23,8 +23,8 @@ export async function runBundledMenuSmoke(browser){
     await page.locator('input[name=password]').fill(ownerPassword);
     await page.getByRole('button',{name:'Sign in'}).click();
     await page.waitForURL(base+'/');
-    await page.goto(base+'/#restaurant');
-    await page.locator('#restaurant').waitFor({state:'visible'});
+    await page.goto(base+'/#restaurant-admin');
+    await page.locator('#restaurant-admin').waitFor({state:'visible'});
     await page.waitForFunction(()=>document.querySelector('#menu-import-section')?.open &&
       document.querySelector('#bundled-menu-section')?.open);
     assert.equal(await page.locator('#menu-import-section').getAttribute('open'),'');
