@@ -305,6 +305,29 @@
       </form>
       <p id="profile-password-message" role="alert"></p>
     </details>
+    <section id="profile-quick-pin" class="update-center" hidden>
+      <h3>Quick staff sign-in (registered local computer)</h3>
+      <p class="muted">Optional: use your username and six-digit PIN on this trusted computer after enrolling with your full password. Your password always remains valid. PIN mode is not offered on staff phones or public networks.</p>
+      <p id="profile-quick-pin-state" role="status"></p>
+      <form id="profile-quick-pin-form" class="staff-create">
+        <label>Current full password<input name="current_password" type="password" autocomplete="current-password" required></label>
+        <label>New 6-digit PIN<input name="pin" type="password" inputmode="numeric" autocomplete="off" minlength="6" maxlength="6" pattern="[0-9]{6}" required></label>
+        <label>Confirm PIN<input name="confirm_pin" type="password" inputmode="numeric" autocomplete="off" minlength="6" maxlength="6" pattern="[0-9]{6}" required></label>
+        <button class="primary" type="submit">Save quick sign-in on this computer</button>
+      </form>
+      <button id="profile-quick-pin-revoke" class="secondary" type="button">Revoke my registered PINs</button>
+      <p id="profile-quick-pin-message" role="status" aria-live="polite"></p>
+    </section>
+    <section id="owner-staff-pin" class="update-center" hidden>
+      <h3>Staff quick PIN sign-in policy</h3>
+      <p class="muted">Owner-only control for this local computer. Disabled by default. Only front-desk and cashier accounts can enroll their own PIN using their current password. A registered browser credential and persistent lockout are required. Disabling revokes all PINs and active PIN sessions.</p>
+      <p id="owner-staff-pin-state" role="status"></p>
+      <form id="owner-staff-pin-form" class="staff-create">
+        <label>Confirm current owner password<input name="current_password" type="password" autocomplete="current-password" required></label>
+        <button type="submit" class="secondary" id="owner-staff-pin-toggle">Enable staff quick PIN</button>
+      </form>
+      <p id="owner-staff-pin-message" role="status" aria-live="polite"></p>
+    </section>
     <section id="release-status-panel" class="update-center" aria-labelledby="release-status-title" hidden>
       <h3 id="release-status-title">Release readiness · NOT RELEASED</h3>
       <p class="muted">This local alpha cannot certify itself. View machine diagnostics and the six real-world checks required before operational release.</p>
