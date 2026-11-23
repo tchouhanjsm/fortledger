@@ -56,7 +56,7 @@ export async function runBundledMenuSmoke(browser){
     await page.locator('#restaurant').waitFor({state:'visible'});
     assert.equal(await page.locator('#menu-import-section').isVisible(),false);
     assert.equal(await page.locator('#menu-search').isVisible(),true);
-    assert.equal(await page.locator('#restaurant-menu-items').locator('button').count()>0,true);
+    assert.equal(await page.locator('#menu-items').locator('button').count()>0,true);
     assert.deepEqual(errors,[],'No JavaScript errors during prebuilt menu review and sync');
     console.log('PASS: prebuilt Garh Jaisal 142 dish menu preview, GST acknowledgement, safe sync and cashier access');
   }finally{await context.close();await new Promise(r=>server.close(r));db.close();}
