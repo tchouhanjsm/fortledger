@@ -13,6 +13,16 @@ export function may(role,permission){
   return allowed.includes('*')||allowed.includes(permission);
 }
 export function requiredPermission(method,path){
+  if(path==='/network/staff-access')
+    return method==='GET'?'network.staff_access.read':null;
+  if(path==='/printer/config')
+    return method==='GET'||method==='POST'?'printer.configure':null;
+  if(path==='/printer/test')
+    return method==='POST'?'printer.configure':null;
+  if(/^\/printer\/test\/request\/[A-Za-z0-9_-]+$/.test(path))
+    return method==='GET'?'printer.configure':null;
+  if(path==='/printer/status')
+    return method==='GET'?'restaurant.pos':null;
   if(path==='/health')return 'profile.read';
   if(path==='/system/backup-status')return method==='GET'?'system.health.read':null;
   if(path==='/system/release-readiness')return method==='GET'?'system.update':null;

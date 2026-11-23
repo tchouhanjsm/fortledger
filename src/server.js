@@ -27,6 +27,9 @@ import {streamTaxDraftPdf} from './tax-draft-pdf.js';
 import {setHotelLogo,getCurrentLogo,getActiveLogoId,getLogoAsset} from './hotel-logo.js';
 import {scheduleEncryptedBackups} from './encrypted-backups.js';
 import {printSavedBill,getPrintStatus} from './printer.js';
+import {configuredLanPrinter,saveLanPrinterSettings,printerDiagnosticRequest,
+  runConfiguredLanPrinterTest} from './lan-printer-settings.js';
+import {runPrinterSelfTest} from './epson-diagnostic-slip.js';
 import { openDatabase, assertAvailability } from './database.js';
 import { bookingTotals, nightsBetween, toPaise } from './finance.js';
 import { createProforma,getInvoice,listInvoices } from './invoices.js';
@@ -73,7 +76,8 @@ function requireFinancialRequestId(body){
     throw new Error('Unique request_id (16–80 safe characters) required for financial POST; reuse unchanged ID on retry');
 }
 export function createApp(db,{authRecord=null,authFile=null,network=null,businessDate=null,checkUpdates=updateStatus,updateService=null,checkBackupHealth=verifyLocalBackupHealth,
-  prepareUpgradeBackup=prepareVerifiedUpgradeBackup,getReleaseReadiness=lightweightReleaseReadiness}={}) {
+  prepareUpgradeBackup=prepareVerifiedUpgradeBackup,getReleaseReadiness=lightweightReleaseReadiness,
+  runPrinterDiagnostic=runPrinterSelfTest}={}) {
   if(network?.mode==='lan'&&!authRecord)throw new Error('LAN access requires configured authentication');
   const app = express();
   const menuPreviewKey=randomBytes(32); // invalidated safely on every server restart
@@ -117,6 +121,45 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.delete('/api/me/quick-pin',gate.pinRevoke);
   app.get('/api/system/staff-pin',gate.pinPolicyGet);
   app.post('/api/system/staff-pin',gate.pinPolicyUpdate);
+  // Owner sees only a staff HTTPS URL, never a TLS key path or private key.
+  app.get('/api/network/staff-access',(req,res)=>{
+    if(req.actor?.role!=='owner')return res.status(403).json({error:'Owner required'});
+    const lan=network?.mode==='lan';
+    res.json({mode:lan?'staff_https':'localhost_only',
+      phone_url:lan?'https://'+network.host+':'+network.port:null,
+      needs_trusted_https_cert:lan,guest_wifi_isolation_physically_verified:false,
+      phone_acceptance_physically_verified:false,service_requires_running_pc:true,
+      note:lan?'URL configured. Verify phone certificate trust and guest-network denial onsite.':
+        'Use the existing owner/IT Windows tray staff Wi-Fi HTTPS wizard; no network listener is enabled.'});
+  });
+  app.get('/api/printer/config',(req,res,next)=>{
+    if(req.actor?.role!=='owner')return res.status(403).json({error:'Owner required'});
+    try{res.json(configuredLanPrinter(db));}catch(error){next(error);}
+  });
+  app.post('/api/printer/config',(req,res,next)=>{
+    if(req.actor?.role!=='owner')return res.status(403).json({error:'Owner required'});
+    try{res.json(saveLanPrinterSettings(db,req.body,req.actor));}catch(error){next(error);}
+  });
+  app.get('/api/printer/status',(req,res,next)=>{
+    if(authRecord&&req.actor?.role!=='cashier'&&req.actor?.role!=='owner')
+      return res.status(403).json({error:'POS printer status is restricted'});
+    try{
+      const printer=configuredLanPrinter(db);
+      res.json({configured:printer.enabled,transport:'wired_ethernet_raw_escpos',
+        physical_paper_verified:false,requires_owner_setup:!printer.enabled});
+    }catch(error){next(error);}
+  });
+  app.get('/api/printer/test/request/:requestId',(req,res,next)=>{
+    if(req.actor?.role!=='owner')return res.status(403).json({error:'Owner required'});
+    try{res.json(printerDiagnosticRequest(db,req.params.requestId));}catch(error){next(error);}
+  });
+  app.post('/api/printer/test',async(req,res,next)=>{
+    if(req.actor?.role!=='owner')return res.status(403).json({error:'Owner required'});
+    try{
+      res.json(await runConfiguredLanPrinterTest(db,req.body,req.actor,
+        {run:runPrinterDiagnostic}));
+    }catch(error){next(error);}
+  });
   app.get('/api/system/backup-status',(_req,res)=>res.json(backupFreshness()));
   // Explicit owner command: decrypt the latest off-device snapshot into a
   // private scratch folder. Never expose paths, passphrases or guest details.
@@ -384,10 +427,10 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
     if(authRecord&&req.actor?.role!=='cashier')
       return res.status(403).json({error:'Only restaurant staff can send POS print jobs'});
     try{
-      const host=process.env.FORTLEDGER_PRINTER_HOST;
-      if(!host)throw new Error('Set FORTLEDGER_PRINTER_HOST before LAN printing');
-      const port=Number(process.env.FORTLEDGER_PRINTER_PORT||9100);
-      res.json(await printSavedBill(db,Number(req.params.id),{host,port},{reprint:req.body?.reprint===true}));
+      const printer=configuredLanPrinter(db);
+      if(!printer.enabled)throw new Error('Owner must configure the LAN ESC/POS printer before printing');
+      res.json(await printSavedBill(db,Number(req.params.id),
+        {host:printer.host,port:printer.port},{reprint:req.body?.reprint===true}));
     }catch(error){next(error);}
   });
   app.get('/api/restaurant/bills/:id/receipt',(req,res,next)=>{

@@ -1673,6 +1673,104 @@ $('#tax-draft-form').onsubmit=async event=>{
   finally{button.disabled=false;}
 };
 
+let ownerStaffPhoneUrl=null;
+async function refreshOwnerStaffNetwork(){
+  if(currentUser?.role!=='owner')return;
+  const target=$('#owner-staff-network-status'),copy=$('#owner-staff-network-copy');
+  try{
+    const data=await api('/api/network/staff-access');
+    ownerStaffPhoneUrl=data.phone_url;
+    copy.disabled=!ownerStaffPhoneUrl;
+    target.textContent=data.mode==='staff_https'?
+      'Configured staff HTTPS phone URL: '+data.phone_url+
+      '. Still requires trusted certificates and real guest-Wi-Fi isolation tests.':
+      'FortLedger currently runs on this PC only. From the Windows tray choose Private hotel Wi-Fi HTTPS (owner/IT); configure a reserved private IP, valid certificate and restricted staff subnet, then restart.';
+  }catch(error){ownerStaffPhoneUrl=null;copy.disabled=true;target.textContent='Network check unavailable: '+error.message;}
+}
+$('#owner-staff-network-refresh').onclick=refreshOwnerStaffNetwork;
+$('#owner-staff-network-copy').onclick=async()=>{
+  if(!ownerStaffPhoneUrl)return;
+  try{
+    await navigator.clipboard.writeText(ownerStaffPhoneUrl);
+    $('#owner-staff-network-status').textContent='Staff HTTPS phone address copied. Do not share it with hotel guests. Verify phone certificate trust before login.';
+  }catch{
+    $('#owner-staff-network-status').textContent='Copy unavailable. Use this address on authorized staff Wi-Fi: '+ownerStaffPhoneUrl;
+  }
+};
+async function refreshOwnerLanPrinter(){
+  if(currentUser?.role!=='owner')return;
+  const form=$('#owner-printer-form'),message=$('#owner-printer-message');
+  try{
+    const settings=await api('/api/printer/config');
+    form.elements.namedItem('enabled').checked=settings.enabled;
+    form.elements.namedItem('host').value=settings.host||'';
+    form.elements.namedItem('port').value=String(settings.port||9100);
+    $('#owner-printer-test').disabled=!settings.enabled;
+    message.textContent=settings.enabled?
+      'Saved Ethernet ESC/POS printer '+settings.host+':'+settings.port+
+      ' ('+settings.source+'). Real paper is NOT verified; use the test-only slip.':
+      'No printer enabled. Save a reserved private printer IPv4 to enable saved-receipt LAN printing.';
+  }catch(error){
+    $('#owner-printer-test').disabled=true;
+    message.textContent='Printer setup could not be checked: '+error.message;
+  }
+}
+$('#owner-printer-refresh').onclick=refreshOwnerLanPrinter;
+$('#owner-printer-form').onsubmit=async event=>{
+  event.preventDefault();
+  if(currentUser?.role!=='owner')return;
+  const form=event.currentTarget,enabled=form.elements.namedItem('enabled').checked,
+    host=form.elements.namedItem('host').value.trim(),
+    port=Number(form.elements.namedItem('port').value),
+    message=$('#owner-printer-message'),button=$('#owner-printer-save');
+  const description=enabled?'enable printing at '+host+':'+port:
+    'disable future network receipt printing';
+  if(!confirm('Save printer configuration to '+description+'? Existing bills and prior print history will not change.'))return;
+  button.disabled=true;
+  try{
+    const data=await api('/api/printer/config',{
+      method:'POST',body:JSON.stringify({enabled,host,port})
+    });
+    message.textContent=data.unchanged?'Printer setup was already saved.':
+      'Printer setup saved. No printer connection or paper was tested. '+(enabled?
+      'Use the TEST ONLY slip to check the cable and device.':'Receipt printing is disabled.');
+    printerTestRequestId=null;
+    await refreshOwnerLanPrinter();
+  }catch(error){message.textContent='Printer setup not saved: '+error.message;}
+  finally{button.disabled=false;}
+};
+let printerTestRequestId=null;
+$('#owner-printer-test').onclick=async()=>{
+  if(currentUser?.role!=='owner')return;
+  if(!confirm('Send exactly one printer TEST ONLY slip? This is not a sale, invoice or payment. You must inspect physical paper.'))return;
+  const button=$('#owner-printer-test'),message=$('#owner-printer-message');
+  if(!printerTestRequestId)printerTestRequestId=crypto.randomUUID();
+  button.disabled=true;
+  try{
+    let result;
+    try{
+      result=await api('/api/printer/test',{method:'POST',
+        body:JSON.stringify({request_id:printerTestRequestId,confirm:true})});
+    }catch(error){
+      if(!(error instanceof TypeError))throw error;
+      const prior=await api('/api/printer/test/request/'+printerTestRequestId);
+      if(!prior.recorded)throw error;
+      result=prior.status;
+    }
+    message.textContent=result.notice+' Test request #'+result.id+
+      '. Same request is never printed twice.';
+    printerTestRequestId=null;
+  }catch(error){
+    message.textContent='Test outcome uncertain: '+error.message+
+      '. Do not blindly retry; inspect the printer. Retrying this same action keeps the prior request ID.';
+  }finally{button.disabled=false;}
+};
+async function refreshOwnerConnections(){
+  const owner=currentUser?.role==='owner';
+  $('#owner-staff-network').hidden=!owner;
+  $('#owner-printer-setup').hidden=!owner;
+  if(owner)await Promise.all([refreshOwnerStaffNetwork(),refreshOwnerLanPrinter()]);
+}
 let staffPinOwnerEnabled=false;
 async function refreshStaffPinPanels(){
   const local=['127.0.0.1','localhost'].includes(window.location.hostname);
@@ -1766,6 +1864,7 @@ async function renderProfile(){
   const labels=currentUser.permissions.includes('*')?['Full owner access']:currentUser.permissions.map(p=>p.replaceAll('.',' · '));
   for(const perm of labels)perms.append(label('span',perm,'permission-pill'));
   await refreshStaffPinPanels();
+  await refreshOwnerConnections();
   if(currentUser.role==='owner'){
     const staff=await api('/api/staff');
     const list=$('#staff-list');list.replaceChildren();
@@ -2799,6 +2898,13 @@ function renderRestaurantHistory(){
       check.onclick=refreshPrintStatus;
       const lan=label('button','LAN Print','secondary');lan.type='button';
       lan.onclick=async()=>{
+        try{
+          const status=await api('/api/printer/status');
+          if(!status.configured){
+            alert('Ethernet receipt printer is not configured. Ask the owner to set its LAN IP under My profile → Ethernet receipt printer.');
+            return;
+          }
+        }catch(error){alert('Cannot confirm LAN printer setup: '+error.message);return;}
         if(!confirm('Send existing saved receipt #'+bill.id+' to configured Epson LAN printer?'))return;
         try{
           const sent=await api('/api/restaurant/bills/'+bill.id+'/print',

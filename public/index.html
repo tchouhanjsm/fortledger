@@ -411,6 +411,32 @@
       </form>
       <p id="owner-staff-pin-message" role="status" aria-live="polite"></p>
     </section>
+    <section id="owner-staff-network" class="update-center" aria-labelledby="owner-staff-network-title" hidden>
+      <h3 id="owner-staff-network-title">Staff phones · private hotel Wi-Fi</h3>
+      <p class="muted">Phones share this one Windows computer and its SQLite database. For staff Wi-Fi access, the owner/technician must enable the existing HTTPS tray wizard, install trusted certificate profiles, and verify guest Wi-Fi isolation. The PC must stay powered on.</p>
+      <p id="owner-staff-network-status" role="status" aria-live="polite">Network status not checked.</p>
+      <div class="update-center-actions">
+        <button id="owner-staff-network-refresh" type="button" class="secondary">Check staff phone address</button>
+        <button id="owner-staff-network-copy" type="button" class="secondary" disabled>Copy phone address</button>
+      </div>
+      <p class="muted">Never use a browser certificate-warning bypass or expose FortLedger port 3000 through your router. Phone readiness is not verified until actual staff/guest Wi-Fi tests pass.</p>
+    </section>
+    <section id="owner-printer-setup" class="update-center" aria-labelledby="owner-printer-title" hidden>
+      <h3 id="owner-printer-title">Ethernet receipt printer · owner setup</h3>
+      <p class="muted">For a compatible Epson ESC/POS printer connected by LAN cable to the router/switch. The Windows PC communicates directly to its reserved printer IPv4 using raw TCP (usually 9100). No Bluetooth, printer cloud or separate phone printing driver is needed. IPP/LPR-only devices require a different integration.</p>
+      <form id="owner-printer-form" class="staff-create">
+        <label><input type="checkbox" name="enabled"> Enable wired Ethernet receipt printer</label>
+        <label>Printer private IPv4<input name="host" inputmode="decimal" placeholder="e.g. 192.168.1.50" autocomplete="off"></label>
+        <label>ESC/POS raw TCP port<select name="port"><option value="9100">9100 (default)</option><option value="9101">9101</option><option value="9102">9102</option></select></label>
+        <button type="submit" class="secondary" id="owner-printer-save">Save local printer setup</button>
+      </form>
+      <p id="owner-printer-message" role="status" aria-live="polite">Printer configuration not checked.</p>
+      <div class="update-center-actions">
+        <button id="owner-printer-refresh" type="button" class="secondary">Check saved printer setup</button>
+        <button id="owner-printer-test" type="button" class="secondary" disabled>Send one TEST ONLY slip</button>
+      </div>
+      <p class="muted">A successful network send does not verify physical paper. Inspect the printer before reprinting. Cashiers can print only previously saved food bills; the test slip never creates a bill or payment.</p>
+    </section>
     <section id="release-status-panel" class="update-center" aria-labelledby="release-status-title" hidden>
       <h3 id="release-status-title">Release readiness · NOT RELEASED</h3>
       <p class="muted">This local alpha cannot certify itself. View machine diagnostics and the six real-world checks required before operational release.</p>
