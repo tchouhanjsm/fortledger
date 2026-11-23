@@ -19,6 +19,7 @@ import {listRestaurantCorrectionCases,restaurantCorrectionRequest,submitRestaura
 import {prepareTaxDraft,getTaxDraft} from './tax-draft.js';
 import {gstReadiness} from './gst-readiness.js';
 import {checkoutInvoicePreflight} from './checkout-invoice-preflight.js';
+import {importExternalInvoiceOriginal,listExternalInvoiceOriginals,lookupExternalInvoiceOriginal,getExternalInvoiceOriginal} from './external-invoice-originals.js';
 import {streamTaxDraftPdf} from './tax-draft-pdf.js';
 import {setHotelLogo,getCurrentLogo,getActiveLogoId,getLogoAsset} from './hotel-logo.js';
 import {scheduleEncryptedBackups} from './encrypted-backups.js';
@@ -479,6 +480,37 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
       const draft=getTaxDraft(db,Number(req.params.id));
       if(!draft)return res.status(404).json({error:'Tax draft not found'});
       streamTaxDraftPdf(draft.snapshot,res,getLogoAsset(db,draft.snapshot.logo_asset_id));
+    }catch(error){next(error);}
+  });
+  app.get('/api/external-invoice-originals',(req,res,next)=>{
+    try{
+      const result=listExternalInvoiceOriginals(db,{q:req.query.q??'',
+        offset:Number(req.query.offset??0),limit:30});
+      res.json(result);
+    }catch(error){next(error);}
+  });
+  app.post('/api/external-invoice-originals/import',
+    express.raw({type:'application/pdf',limit:'8mb'}),(req,res,next)=>{
+      try{
+        if(!Buffer.isBuffer(req.body))throw new Error('Upload a PDF with application/pdf content type');
+        const record=importExternalInvoiceOriginal(db,req.body,req.headers['x-fl-original-filename'],req.actor);
+        res.status(record.already_recorded?200:201).json(record);
+      }catch(error){next(error);}
+    });
+  app.get('/api/external-invoice-originals/by-digest/:sha',(req,res,next)=>{
+    try{res.json(lookupExternalInvoiceOriginal(db,req.params.sha));}
+    catch(error){next(error);}
+  });
+  app.get('/api/external-invoice-originals/:id/original',(req,res,next)=>{
+    try{
+      const original=getExternalInvoiceOriginal(db,Number(req.params.id));
+      if(!original)return res.status(404).json({error:'Saved original PDF not found'});
+      res.setHeader('Content-Type','application/pdf');
+      res.setHeader('Content-Security-Policy',"sandbox");
+      res.setHeader('Content-Disposition','attachment; filename="external-original-'+original.metadata.id+
+        '.pdf"; filename*=UTF-8\'\''+encodeURIComponent(original.metadata.original_filename));
+      res.setHeader('Content-Length',String(original.bytes.length));
+      res.send(original.bytes);
     }catch(error){next(error);}
   });
   app.get('/api/invoices',(_req,res)=>res.json(listInvoices(db)));
