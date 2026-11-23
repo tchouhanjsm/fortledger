@@ -1,5 +1,6 @@
 import {checkoutInvoicePreflight} from './checkout-invoice-preflight.js';
 import {recordAudit} from './financial-audit.js';
+import {checkoutCaseReviewSummary} from './checkout-case-review.js';
 
 // One durable *review work item* per successful physical checkout.
 // It is not a statutory invoice, receivable, email, booked tax, refund, or PDF.
@@ -33,7 +34,7 @@ function materialize(row){
 export function getCheckoutDocumentCase(db,bookingId){
  if(!Number.isSafeInteger(bookingId)||bookingId<1)throw new Error('Invalid booking ID');
  const row=db.prepare('SELECT * FROM checkout_document_cases WHERE booking_id=?').get(bookingId);
- return materialize(row);
+ return row?{...materialize(row),...checkoutCaseReviewSummary(db,row.id)}:null;
 }
 export function listCheckoutDocumentCases(db,{q='',offset=0,limit=30}={}){
  if(typeof q!=='string'||q.length>100||!Number.isSafeInteger(offset)||
@@ -47,7 +48,7 @@ export function listCheckoutDocumentCases(db,{q='',offset=0,limit=30}={}){
    FROM checkout_document_cases c JOIN bookings b ON b.id=c.booking_id
    WHERE instr(lower(b.guest_name),lower(?))>0
    ORDER BY c.id DESC LIMIT ? OFFSET ?`).all(query,limit,offset);
- return {total:count,offset,limit,items:rows.map(materialize)};
+ return {total:count,offset,limit,items:rows.map(row=>({...materialize(row),...checkoutCaseReviewSummary(db,row.id)}))};
 }
 export function recordCheckoutDocumentCase(db,bookingId,actor,hotelBusinessDate){
  if(!Number.isSafeInteger(bookingId)||bookingId<1)

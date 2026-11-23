@@ -20,6 +20,7 @@ import {prepareTaxDraft,getTaxDraft} from './tax-draft.js';
 import {gstReadiness} from './gst-readiness.js';
 import {checkoutInvoicePreflight} from './checkout-invoice-preflight.js';
 import {getCheckoutDocumentCase,listCheckoutDocumentCases} from './checkout-document-case.js';
+import {listCheckoutCaseReviewEvents,recordCheckoutCaseReview} from './checkout-case-review.js';
 import {searchBillingDocuments} from './billing-documents-register.js';
 import {importExternalInvoiceOriginal,listExternalInvoiceOriginals,lookupExternalInvoiceOriginal,getExternalInvoiceOriginal} from './external-invoice-originals.js';
 import {historicalPdfIdentificationHistory,historicalPdfIdentificationRequest,latestHistoricalPdfIdentification,recordHistoricalPdfIdentification} from './historical-pdf-identifications.js';
@@ -543,6 +544,16 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
     try{res.json(listCheckoutDocumentCases(db,{q:req.query.q??'',
       offset:Number(req.query.offset??0),limit:30}));}
     catch(error){next(error);}
+  });
+  app.get('/api/checkout-document-cases/:caseId/reviews',(req,res,next)=>{
+    try{res.json(listCheckoutCaseReviewEvents(db,Number(req.params.caseId)));}
+    catch(error){next(error);}
+  });
+  app.post('/api/checkout-document-cases/:caseId/reviews',(req,res,next)=>{
+    try{
+      const result=recordCheckoutCaseReview(db,Number(req.params.caseId),req.body,req.actor);
+      res.status(result.already_recorded?200:201).json(result);
+    }catch(error){next(error);}
   });
   app.get('/api/bookings/:id/checkout-document-case',(req,res,next)=>{
     try{res.json({case:getCheckoutDocumentCase(db,Number(req.params.id))});}

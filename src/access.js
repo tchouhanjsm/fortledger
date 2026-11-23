@@ -1,7 +1,7 @@
 export const ROLE_PERMISSIONS={
   owner:['*'],
   manager:['bookings.read','bookings.write','payments.write','refunds.write','rooms.read','rooms.write',
-    'invoices.read','invoices.write','tax.review','restaurant.read','restaurant.link','restaurant.correction.preview','restaurant.correction.request','menu.manage','folio.read','folio.write','folio.adjust',
+    'invoices.read','invoices.write','tax.review','checkout.review','restaurant.read','restaurant.link','restaurant.correction.preview','restaurant.correction.request','menu.manage','folio.read','folio.write','folio.adjust',
     'settings.read','audit.read','finance.read','finance.write','analytics.read','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','maintenance.manage','guests.read','guests.write','profile.read','profile.write','system.health.read'],
   frontdesk:['bookings.read','bookings.write','payments.write','rooms.read',
     'invoices.read','invoices.write','folio.read','folio.write','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','guests.read','guests.write',
@@ -108,6 +108,8 @@ export function requiredPermission(method,path){
     return method==='GET'?'external.documents.read':null;
   if(path==='/documents/register')return method==='GET'?'invoices.read':null;
   if(path==='/checkout-document-cases')return method==='GET'?'invoices.read':null;
+  if(/^\/checkout-document-cases\/\d+\/reviews$/.test(path))
+    return method==='GET'?'invoices.read':method==='POST'?'checkout.review':null;
   if(/^\/bookings\/\d+\/checkout-document-case$/.test(path))
     return method==='GET'?'invoices.read':null;
   if(/^\/external-invoice-originals\/\d+\/identifications$/.test(path))
