@@ -85,7 +85,7 @@ test('review-only draft supports a separately selected 18% accommodation illustr
     assert.equal(draft.snapshot.tax_breakdown[0].tax_rate,18);
     assert.equal(draft.snapshot.lines[0].tax_rate,18);
     assert.equal(draft.snapshot.readiness.ready,false);
-    assert.ok(draft.snapshot.readiness.blockers.some(x=>x.includes('REVIEW ONLY')));
+    assert.ok(draft.snapshot.readiness.blockers.some(x=>x.includes('hotel tax treatment')));
     assert.equal(getInvoice(db,proforma.id).snapshot.tax_rate,5,
       'Existing proforma presentation must not be rewritten by a tax review');
     assert.equal(db.prepare("SELECT count(*) n FROM sqlite_master WHERE name='tax_invoices'").get().n,0);
