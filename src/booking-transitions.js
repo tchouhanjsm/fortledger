@@ -1,6 +1,7 @@
 import {hotelBusinessDate} from './hotel-clock.js';
 import {NET_PAYMENTS_SQL} from './payment-ledger.js';
 import {getGuestFolio} from './folio.js';
+import {recordCheckoutDocumentCase} from './checkout-document-case.js';
 import {recordAudit} from './financial-audit.js';
 import {assertRoomsReady,dirtyRoomsAfterCheckout} from './housekeeping.js';
 import {assertNoMaintenanceDuringStay} from './maintenance.js';
@@ -59,11 +60,16 @@ export function transitionBooking(db,id,status,{actor,acknowledge_balance=false,
       warnings.push('Booking cancelled with a recorded advance; verify refund or credit separately');
     db.prepare('UPDATE bookings SET status=? WHERE id=?').run(status,id);
     if(status==='checked_out')dirtyRoomsAfterCheckout(db,id,actor);
+    // Status + mandatory nonstatutory document case share one SQLite commit:
+    // no successful physical checkout can silently lose its follow-up task.
+    const caseReview=status==='checked_out'?
+      recordCheckoutDocumentCase(db,id,actor,businessDate):null;
     recordAudit(db,actor,'booking.status_changed','booking',id,
       {from:current.status,to:status,reason:reason.trim(),hotel_business_date:businessDate,
        stay_checkin:current.checkin,stay_checkout:current.checkout,date_override:override===true,
        acknowledged_balance:status==='checked_out'&&acknowledge_balance===true});
-    return {ok:true,from:current.status,to:status,warnings};
+    return {ok:true,from:current.status,to:status,warnings,
+      ...(caseReview?{checkout_document_case_id:caseReview.id,invoice_issued:false}:{})};
   })();
 }
 export function assertBookingEditAllowed(db,id,current){

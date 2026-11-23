@@ -1268,6 +1268,57 @@ function renderInvoices(){
     row.append(name,sum,link,taxDraft);list.append(row);
   }
 }
+// One durable review case per completed physical checkout; no issued PDF.
+let checkoutCasesOffset=0,checkoutCasesQuery='';
+async function loadCheckoutCases(reset=true){
+  if(!can('invoices.read'))return;
+  const query=$('#checkout-case-search').value.trim();
+  if(reset||query!==checkoutCasesQuery){
+    checkoutCasesOffset=0;checkoutCasesQuery=query;
+    $('#checkout-case-list').replaceChildren();
+  }
+  const more=$('#checkout-case-more');more.disabled=true;
+  try{
+    const result=await api('/api/checkout-document-cases?q='+
+      encodeURIComponent(checkoutCasesQuery)+'&offset='+checkoutCasesOffset);
+    const list=$('#checkout-case-list');
+    if(!checkoutCasesOffset&&!result.items.length)
+      list.append(label('p','No saved checkout cases match this search. New cases appear here after guest checkout.','muted'));
+    for(const entry of result.items){
+      const row=label('div',undefined,'checkout-case-row');
+      const preflight=entry.snapshot?.preflight;
+      const detail=label('div');
+      detail.append(label('strong','Review #'+entry.id+' · Booking #'+entry.booking_id+' · '+entry.guest_name),
+        label('small','Checkout '+entry.hotel_business_date+
+          ' · held for review · saved '+entry.created_at+' UTC'));
+      if(preflight)detail.append(label('p','Recorded charges '+money(preflight.totals.charges_paise)+
+        ' · received (operator-recorded) '+money(preflight.totals.operator_recorded_paise)+
+        ' · still due '+money(preflight.totals.due_paise)+' · legal issuance blocked'));
+      else detail.append(label('p','Source reconciliation unavailable; manual folio inspection required.','muted'));
+      const booking=bookings.find(b=>b.id===entry.booking_id);
+      const action=label('button','View live guest folio','secondary');
+      action.disabled=!booking;
+      action.onclick=()=>{if(booking)void showFolio(booking);};
+      row.append(detail,action);
+      list.append(row);
+    }
+    checkoutCasesOffset+=result.items.length;
+    more.hidden=checkoutCasesOffset>=result.total;
+    more.textContent='Show more review cases ('+(result.total-checkoutCasesOffset)+' left)';
+  }catch(error){
+    $('#checkout-case-list').append(label('p','Checkout review register unavailable: '+error.message,'error'));
+    more.hidden=true;
+  }finally{more.disabled=false;}
+}
+$('#checkout-document-cases').addEventListener('toggle',event=>{
+  if(event.target.open&&can('invoices.read'))void loadCheckoutCases();
+});
+$('#checkout-case-refresh').onclick=()=>loadCheckoutCases();
+$('#checkout-case-more').onclick=()=>loadCheckoutCases(false);
+$('#checkout-case-search').addEventListener('keydown',event=>{
+  if(event.key==='Enter'){event.preventDefault();void loadCheckoutCases();}
+});
+
 // Historical online-generator originals. The browser sees local PDFs only
 // after the owner selects them. The server never browses arbitrary directories.
 const MAX_ORIGINAL_PDF=8*1024*1024;

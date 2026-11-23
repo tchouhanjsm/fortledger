@@ -1,5 +1,11 @@
 # FortLedger — Development log
 
+## 2026-11-23 — Checkout-generated held document cases (Phase 2)
+- The successful authoritative checked-in→checked-out transition now writes an immutable versioned invoice-*review case* inside the same SQLite transaction. No statutory invoice number, PDF, GST determination, email or money write occurs.
+- Each booking has exactly one case, with frozen original folio source amounts and actor/business date; later payments do not overwrite it. Unavailable source preflight saves an actionable blocked case; critical case write failure rolls checkout back.
+- Invoice workspace shows a searchable held-review list and live guest folio action to permitted staff, not restaurant-only cashiers. Source-only/update-compatible tables; tests for exactly-once, restart, rollback, RBAC and browser widths. See `docs/CHECKOUT_DOCUMENT_CASES_PHASE2.md`.
+
+
 ## 2026-11-23 — Local historical invoice originals register
 - Owner-only batch selection and explicit import of external online-generator PDFs from local file picker. Original folder untouched, no automatic folder scanning.
 - Exact PDF bytes stored in the existing encrypted-backup SQLite ledger, immutable update/delete triggers, SHA-256 replay/damage detection and saved-original retrieval. Search by filename, not inferred invoice number.
