@@ -301,7 +301,8 @@ export function createRestaurantBill(db,input,actor=null,{requireReviewedPrices=
       ...(hasTax?{tax_rate:line.tax_rate}:{})};
   });
   const fingerprint=requestId?createHash('sha256').update(JSON.stringify({
-    payment_method,booking_id,manual_room,manual_guest,table_id,items:normalizedItems
+    payment_method,booking_id,manual_room,manual_guest,
+    ...(table_id!==null?{table_id}:{}),items:normalizedItems
   })).digest('hex'):null;
   return db.transaction(()=>{
     if(requestId){
