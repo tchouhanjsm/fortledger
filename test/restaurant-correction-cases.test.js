@@ -150,3 +150,47 @@ test('authenticated HTTP: manager submits cases, owner reviews, cashier and fron
     assert.equal(db.prepare('SELECT COUNT(*) n FROM restaurant_correction_case_reviews').get().n,1);
   }finally{await new Promise(resolve=>server.close(resolve));db.close();}
 });
+
+test('append-only SQLite triggers protect correction requests and owner decisions across restart',()=>{
+  const dir=mkdtempSync(path.join(tmpdir(),'fortledger-correction-guards-'));
+  const file=path.join(dir,'ledger.sqlite');
+  let db;
+  try{
+    db=openDatabase(file);
+    const {bill}=setup(db);
+    const item=submitRestaurantCorrectionCase(db,bill.id,{
+      request_id:randomUUID(),reason:'Guest rejected one incorrect menu item',
+      lines:[{line_index:0,quantity:1}]
+    },manager);
+    const decision=reviewRestaurantCorrectionCase(db,item.id,{
+      request_id:randomUUID(),disposition:'needs_accountant',
+      note:'Confirm refund and GST treatment with accountant'
+    },owner);
+    const originalCase=db.prepare('SELECT * FROM restaurant_correction_cases WHERE id=?').get(item.id);
+    const originalReview=db.prepare('SELECT * FROM restaurant_correction_case_reviews WHERE case_id=?').get(item.id);
+    function assertGuards(){
+      assert.throws(()=>db.prepare(
+        'UPDATE restaurant_correction_cases SET actor_username=? WHERE id=?'
+      ).run('tampered',item.id),/Restaurant correction cases cannot be updated/);
+      assert.throws(()=>db.prepare(
+        'DELETE FROM restaurant_correction_cases WHERE id=?'
+      ).run(item.id),/Restaurant correction cases cannot be deleted/);
+      assert.throws(()=>db.prepare(
+        'UPDATE restaurant_correction_case_reviews SET disposition=? WHERE case_id=?'
+      ).run('dismissed',item.id),/Restaurant correction reviews cannot be updated/);
+      assert.throws(()=>db.prepare(
+        'DELETE FROM restaurant_correction_case_reviews WHERE case_id=?'
+      ).run(item.id),/Restaurant correction reviews cannot be deleted/);
+      assert.deepEqual(db.prepare('SELECT * FROM restaurant_correction_cases WHERE id=?').get(item.id),originalCase);
+      assert.deepEqual(db.prepare('SELECT * FROM restaurant_correction_case_reviews WHERE case_id=?').get(item.id),originalReview);
+      assert.equal(listRestaurantCorrectionCases(db,bill.id)[0].status,'needs_accountant');
+      assert.equal(db.pragma('user_version',{simple:true}),13);
+    }
+    assertGuards();
+    db.close();db=null;
+    db=openDatabase(file);
+    assertGuards();
+    assert.equal(decision.financial_adjustment_posted,false);
+    assert.equal(decision.gst_credit_note_issued,false);
+  }finally{db?.close();rmSync(dir,{recursive:true,force:true});}
+});
