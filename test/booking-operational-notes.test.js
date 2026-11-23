@@ -47,7 +47,7 @@ test('SQLite v11→v12 adds only optional note columns and preserves historic bo
     legacy.pragma('user_version = 11');
     legacy.close();
     db=openDatabase(file);
-    assert.equal(db.pragma('user_version',{simple:true}),12);
+    assert.equal(db.pragma('user_version',{simple:true}),13);
     const booking=db.prepare('SELECT id,guest_name,nightly_rate_paise,pickup_notes,stay_notes FROM bookings WHERE id=?').get(bookingId);
     assert.deepEqual(booking,{id:bookingId,guest_name:'Synthetic history',nightly_rate_paise:550000,
       pickup_notes:'',stay_notes:''});
@@ -55,7 +55,7 @@ test('SQLite v11→v12 adds only optional note columns and preserves historic bo
     assert.deepEqual(db.prepare('SELECT number,snapshot FROM invoices WHERE booking_id=?').get(bookingId),before);
     assert.equal(db.pragma('foreign_key_check').length,0);
     db.close();db=openDatabase(file);
-    assert.equal(db.pragma('user_version',{simple:true}),12);
+    assert.equal(db.pragma('user_version',{simple:true}),13);
   }finally{db?.close();fs.rmSync(root,{recursive:true,force:true});}
 });
 test('create retry signs nonempty notes, but blank notes preserve old fingerprint compatibility',async()=>{

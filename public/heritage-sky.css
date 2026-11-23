@@ -305,3 +305,33 @@ dialog::backdrop{background:rgba(23,38,62,.72)}
     border-radius:14px;
   }
 }
+
+
+/* V5: user-controlled compact rail; preserve readable expanded default and
+ * same authorized anchors. Only >=701px; mobile bottom actions stay unchanged. */
+.sidebar .brand{position:relative}
+.sidebar-toggle{
+  display:none;align-items:center;justify-content:center;flex:0 0 36px;
+  width:36px;height:36px;margin-left:auto;border:1px solid #71839b;
+  border-radius:11px;background:transparent;color:#fff;font:inherit;
+  font-size:25px;cursor:pointer;
+}
+.sidebar-toggle:hover{background:rgba(255,255,255,.12)}
+.sidebar-toggle:focus-visible{outline:3px solid #bdd6fb;outline-offset:2px}
+.sidebar .nav-label{min-width:0}
+@media(min-width:701px){
+  .sidebar-toggle{display:inline-flex}
+  .sidebar{transition:width .18s ease,padding .18s ease}
+  .sidebar.is-collapsed{width:76px;padding:16px 9px}
+  .sidebar.is-collapsed .brand{justify-content:center;gap:0;padding:8px 0 20px;flex-wrap:wrap}
+  .sidebar.is-collapsed .brandmark{width:43px;height:43px;font-size:31px}
+  .sidebar.is-collapsed .brand>div{display:none}
+  .sidebar.is-collapsed .sidebar-toggle{margin:10px 0 0;width:43px;height:35px}
+  .sidebar.is-collapsed nav a{justify-content:center;padding:12px 9px}
+  .sidebar.is-collapsed .nav-label{
+    position:absolute;overflow:hidden;clip:rect(0,0,0,0);
+    white-space:nowrap;width:1px;height:1px;padding:0;margin:-1px;border:0;
+  }
+  .sidebar.is-collapsed .sidebar-bottom{display:none}
+}
+@media(prefers-reduced-motion:reduce){.sidebar{transition:none}}

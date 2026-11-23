@@ -7,7 +7,7 @@ const css=readFileSync(new URL('../public/heritage-sky.css',import.meta.url),'ut
 const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 
 test('main sidebar follows reception task order, with all eight bookmarkable routes',()=>{
-  const begin=html.indexOf('<nav aria-label="Primary">'),end=html.indexOf('</nav>',begin);
+  const begin=html.indexOf('aria-label="Primary">'),end=html.indexOf('</nav>',begin);
   const destinations=[...html.slice(begin,end).matchAll(/<a href="#([^"]+)"/g)].map(x=>x[1]);
   assert.deepEqual(destinations,['dashboard','bookings','rooms','restaurant','guests',
     'invoices','business-settings','profile']);

@@ -23,7 +23,8 @@ import { bookingTotals, nightsBetween, toPaise } from './finance.js';
 import { createProforma,getInvoice,listInvoices } from './invoices.js';
 import { streamProformaPdf } from './invoice-pdf.js';
 import { getBusinessSettings,updateBusinessSettings } from './business-settings.js';
-import {importMenuCsv,planMenuImport,listMenu,listMenuForManagement,setMenuItemAvailability,createRestaurantBill,restaurantBillRequest,listRestaurantBills,linkManualRoomCharge} from './restaurant.js';
+import {importMenuCsv,planMenuImport,listMenu,listMenuForManagement,setMenuItemAvailability,updateMenuItemPrice,createRestaurantBill,restaurantBillRequest,listRestaurantBills,linkManualRoomCharge} from './restaurant.js';
+import {listRestaurantTables,createRestaurantTable,changeRestaurantTable} from './restaurant-tables.js';
 import {getGuestFolio,settleRoomBill,settleCombined} from './folio.js';
 import {adjustedAccommodation,recordAccommodationAdjustment} from './accommodation-adjustments.js';
 import { NET_PAYMENTS_SQL, paymentHistory,recordRefund } from './payment-ledger.js';
@@ -94,11 +95,18 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   const gate=authGate(authRecord,db,{authFile,network});
   app.use('/api',gate.checkRequest);
   app.post('/api/auth/login',gate.login);
+  app.post('/api/auth/pin',gate.pinLogin);
+  app.get('/api/auth/pin/status',gate.pinLoginStatus);
   app.get('/api/auth/status',(req,res)=>res.json(gate.status(req)));
   app.use('/api',gate.protect);
   app.post('/api/auth/logout',gate.logout);
   app.use('/api',gate.authorize);
-  app.get('/api/me',(req,res)=>res.json({...req.actor,permissions:ROLE_PERMISSIONS[req.actor.role]||[]}));
+  app.get('/api/me',(req,res)=>res.json({...req.actor,login_method:req.auth_method||'password',permissions:ROLE_PERMISSIONS[req.actor.role]||[]}));
+  app.get('/api/me/quick-pin',gate.pinProfile);
+  app.post('/api/me/quick-pin',gate.pinEnroll);
+  app.delete('/api/me/quick-pin',gate.pinRevoke);
+  app.get('/api/system/staff-pin',gate.pinPolicyGet);
+  app.post('/api/system/staff-pin',gate.pinPolicyUpdate);
   app.get('/api/system/backup-status',(_req,res)=>res.json(backupFreshness()));
   // Explicit owner command: decrypt the latest off-device snapshot into a
   // private scratch folder. Never expose paths, passphrases or guest details.
@@ -191,7 +199,10 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.patch('/api/staff/:id',(req,res,next)=>{
     try{
       const updated=updateStaff(db,Number(req.params.id),req.body);
-      if(req.body?.password!==undefined||updated.active===false)gate.revokeUserSessions(updated.id);
+      if(req.body?.password!==undefined||updated.active===false||req.body?.role!==undefined){
+        gate.revokeUserSessions(updated.id);
+        gate.revokeStaffPin(updated.id);
+      }
       res.json(updated);
     }catch(error){next(error);}
   });
@@ -313,8 +324,22 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.get('/api/restaurant/checked-in',(_req,res)=>{
     res.json(db.prepare("SELECT id,guest_name,category,status FROM bookings WHERE status='checked_in' ORDER BY guest_name").all());
   });
+  app.get('/api/restaurant/tables',(_req,res)=>res.json(listRestaurantTables(db)));
+  app.get('/api/restaurant/tables/all',(_req,res)=>res.json(listRestaurantTables(db,{includeInactive:true})));
+  app.post('/api/restaurant/tables',(req,res,next)=>{
+    try{res.status(201).json(createRestaurantTable(db,req.body,req.actor));}
+    catch(error){next(error);}
+  });
+  app.patch('/api/restaurant/tables/:id/visibility',(req,res,next)=>{
+    try{res.json(changeRestaurantTable(db,Number(req.params.id),req.body,req.actor));}
+    catch(error){next(error);}
+  });
   app.get('/api/restaurant/menu',(_req,res)=>res.json(listMenu(db)));
   app.get('/api/restaurant/menu/all',(_req,res)=>res.json(listMenuForManagement(db)));
+  app.patch('/api/restaurant/menu/:id/price',(req,res,next)=>{
+    try{res.json(updateMenuItemPrice(db,Number(req.params.id),req.body,req.actor));}
+    catch(error){next(error);}
+  });
   app.patch('/api/restaurant/menu/:id/availability',(req,res,next)=>{
     try{
       res.json(setMenuItemAvailability(db,Number(req.params.id),req.body,req.actor));
@@ -598,7 +623,7 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
     }catch(error){next(error);}
   });
   app.use((err,req,res,_next)=>{
-    const isConflict=/availability|capacity|already assigned|Not enough|^Room out of service|^Assigned room is out of service|Existing room assignment conflicts|reservations exceed|Menu price or GST rate changed since review|Menu availability changed since review|Menu item not found or unavailable/i.test(err.message);
+    const isConflict=/availability|capacity|already assigned|Not enough|^Room out of service|^Assigned room is out of service|Existing room assignment conflicts|reservations exceed|Menu price or GST rate changed since review|Menu availability changed since review|Restaurant table visibility changed since review|Dining table is no longer available|Menu item not found or unavailable/i.test(err.message);
     const isDuplicate=/UNIQUE constraint/.test(err.message);
     res.status(isConflict||isDuplicate?409:400).json({error:isDuplicate?'Room name already exists':err.message});
   });

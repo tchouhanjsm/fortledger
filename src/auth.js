@@ -4,6 +4,7 @@ import path from 'node:path';
 import {authPath} from './data-paths.js';
 import {getStaffById,getStaffLogin,getOwnerProfile} from './staff.js';
 import {may,requiredPermission} from './access.js';
+import {createStaffPinService,PIN_SESSION_MS} from './staff-pin.js';
 
 export const DEFAULT_AUTH_FILE=authPath();
 const SESSIONS_MS=8*60*60*1000;
@@ -52,12 +53,15 @@ export function authGate(record,db,{authFile=null,network=null}={}){
   const sessions=new Map(),failures=new Map();
   const name='fortledger_session';
   const lan=network?.mode==='lan';
+  const localRequest=req=>!lan&&['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
+  const pinService=createStaffPinService(db,{getOwnerHash:()=>record?.hash,localOnly:()=>!lan});
   const cookieAttributes=(req)=>'; HttpOnly; SameSite=Strict; Path=/'+(lan?'; Secure':'');
   function revokeUserSessions(id){
     for(const [token,item] of sessions)if(item.actor.id===id)sessions.delete(token);
   }
   function changePassword(req,res){
     if(!record)return res.status(400).json({error:'Authentication not configured'});
+    if(req.auth_method!=='password')return res.status(403).json({error:'Full password sign-in required to change credentials'});
     const previous=req.body?.current_password,next=req.body?.new_password;
     if(typeof previous!=='string'||typeof next!=='string')
       return res.status(400).json({error:'Current and new passwords are required'});
@@ -89,6 +93,11 @@ export function authGate(record,db,{authFile=null,network=null}={}){
         db.prepare('UPDATE staff_users SET password_json=? WHERE id=? AND active=1')
           .run(JSON.stringify(hashed),actor.id);
       }
+      if(actor.id===0){
+        db.prepare('DELETE FROM staff_pin_credentials').run();
+        db.prepare('DELETE FROM staff_pin_failures').run();
+        for(const [token,item] of sessions)if(item.method==='pin')sessions.delete(token);
+      }else pinService.revokeStaffId(actor.id);
       revokeUserSessions(actor.id);
       res.setHeader('Set-Cookie',name+'='+cookieAttributes(req)+'; Max-Age=0');
       res.json({ok:true,reauthenticate:true});
@@ -104,13 +113,17 @@ export function authGate(record,db,{authFile=null,network=null}={}){
     // Re-read staff status and role on every request: revocations apply immediately.
     const actor=item.actor.id===0?getOwnerProfile(db):getStaffById(db,item.actor.id);
     if(!actor?.active){sessions.delete(token);return null;}
-    return {token,actor};
+    if(item.method==='pin'&&!['frontdesk','cashier'].includes(actor.role)){
+      sessions.delete(token);return null;
+    }
+    return {token,actor,method:item.method||'password'};
   }
   function protect(req,res,next){
     if(!record){req.actor={id:0,username:'owner',display_name:'Owner',role:'owner',active:true};return next();}
     const found=session(req);
     if(!found)return res.status(401).json({error:'Login required'});
     req.actor=found.actor;
+    req.auth_method=found.method;
     next();
   }
   function authorize(req,res,next){
@@ -154,9 +167,96 @@ export function authGate(record,db,{authFile=null,network=null}={}){
     }
     failures.delete(key);
     const token=randomBytes(32).toString('hex');
-    sessions.set(token,{expires:now+SESSIONS_MS,actor:{id:actor.id}});
+    sessions.set(token,{expires:now+SESSIONS_MS,actor:{id:actor.id},method:'password'});
     res.setHeader('Set-Cookie',name+'='+token+cookieAttributes(req)+'; Max-Age=28800');
     res.json({ok:true,user:actor});
+  }
+  function pinLogin(req,res){
+    if(!record||!localRequest(req)||!pinService.enabled())
+      return res.status(403).json({error:'Quick sign-in is unavailable on this computer'});
+    try{
+      const actor=pinService.check(req.body?.username,req.body?.pin,req.headers.cookie||'');
+      if(!actor)return res.status(401).json({error:'PIN sign-in unavailable. Use your full password or ask the owner to reset quick sign-in'});
+      const token=randomBytes(32).toString('hex');
+      sessions.set(token,{expires:Date.now()+PIN_SESSION_MS,actor:{id:actor.id},method:'pin'});
+      res.setHeader('Set-Cookie',name+'='+token+cookieAttributes(req)+'; Max-Age=7200');
+      res.json({ok:true,user:actor});
+    }catch(error){res.status(401).json({error:'PIN sign-in unavailable. Use your full password'});}
+  }
+  function pinLoginStatus(req,res){
+    res.json({available:Boolean(record&&localRequest(req)&&pinService.enabled())});
+  }
+  function pinProfile(req,res){
+    const staff=['frontdesk','cashier'].includes(req.actor?.role);
+    res.json({available:Boolean(staff&&record&&localRequest(req)&&pinService.enabled()),
+      enrolled:Boolean(staff&&localRequest(req)&&pinService.enrolled(req.actor,req.headers.cookie||''))});
+  }
+  function pinEnroll(req,res){
+    if(!localRequest(req)||!record||!pinService.enabled())
+      return res.status(403).json({error:'Local trusted-device sign-in is unavailable'});
+    if(req.auth_method!=='password')
+      return res.status(403).json({error:'Sign in using your full password to enroll or reset a PIN'});
+    if(!['frontdesk','cashier'].includes(req.actor?.role))
+      return res.status(403).json({error:'Only front desk or cashier accounts can use quick PIN'});
+    const key='pin-enroll:'+req.actor.id,now=Date.now();
+    const entry=failures.get(key)||{count:0,until:0};
+    if(entry.until>now)return res.status(429).json({error:'Too many attempts; sign in later using your password'});
+    let passwordValid=false;
+    try{
+      const row=db.prepare('SELECT password_json FROM staff_users WHERE id=? AND active=1').get(req.actor.id);
+      passwordValid=Boolean(row&&verifyPassword(req.body?.current_password,JSON.parse(row.password_json)));
+    }catch{}
+    if(!passwordValid){
+      entry.count++;
+      if(entry.count>=5){entry.count=0;entry.until=now+15*60*1000;}
+      failures.set(key,entry);
+      return res.status(401).json({error:'Current password incorrect'});
+    }
+    failures.delete(key);
+    try{
+      const result=pinService.enroll(req.actor,req.body?.pin,req.body?.confirm_pin,req.headers.cookie||'');
+      res.setHeader('Set-Cookie',pinService.deviceCookieName+'='+result.device+
+        '; HttpOnly; SameSite=Strict; Path=/; Max-Age=7776000');
+      res.json({enrolled:true,notice:'This browser is registered. PIN sign-in is available only here on this computer.'});
+    }catch(error){res.status(400).json({error:error.message});}
+  }
+  function pinRevoke(req,res){
+    if(!localRequest(req)||req.auth_method!=='password')
+      return res.status(403).json({error:'Full password sign-in on this computer required'});
+    let verified=false;
+    try{
+      const row=db.prepare('SELECT password_json FROM staff_users WHERE id=? AND active=1').get(req.actor.id);
+      verified=Boolean(row&&verifyPassword(req.body?.current_password,JSON.parse(row.password_json)));
+    }catch{}
+    if(!verified)return res.status(401).json({error:'Current password incorrect'});
+    try{
+      const result=pinService.revoke(req.actor);
+      for(const [token,item] of sessions)if(item.actor.id===req.actor.id&&item.method==='pin')sessions.delete(token);
+      res.json(result);
+    }catch(error){res.status(400).json({error:error.message});}
+  }
+  function pinPolicyGet(req,res){
+    if(req.actor?.role!=='owner'||req.auth_method!=='password'||!localRequest(req))
+      return res.status(403).json({error:'Owner password session on this computer required'});
+    res.json({enabled:pinService.enabled()});
+  }
+  function pinPolicyUpdate(req,res){
+    if(req.actor?.role!=='owner'||req.auth_method!=='password'||!localRequest(req))
+      return res.status(403).json({error:'Owner password session on this computer required'});
+    const key='pin-policy:'+req.ip,now=Date.now(),entry=failures.get(key)||{count:0,until:0};
+    if(entry.until>now)return res.status(429).json({error:'Too many attempts; try again later'});
+    if(!verifyPassword(req.body?.current_password,record)){
+      entry.count++;
+      if(entry.count>=5){entry.count=0;entry.until=now+15*60*1000;}
+      failures.set(key,entry);
+      return res.status(401).json({error:'Current owner password incorrect'});
+    }
+    failures.delete(key);
+    try{
+      const result=pinService.setEnabled(req.actor,req.body?.enabled);
+      if(!result.enabled)for(const [token,item] of sessions)if(item.method==='pin')sessions.delete(token);
+      res.json(result);
+    }catch(error){res.status(400).json({error:error.message});}
   }
   function logout(req,res){
     const found=session(req);
@@ -164,7 +264,9 @@ export function authGate(record,db,{authFile=null,network=null}={}){
     res.setHeader('Set-Cookie',name+'='+cookieAttributes(req)+'; Max-Age=0');
     res.json({ok:true});
   }
-  return {protect,authorize,checkRequest,login,logout,changePassword,revokeUserSessions,status:req=>({
+  return {protect,authorize,checkRequest,login,pinLogin,pinLoginStatus,pinProfile,pinEnroll,pinRevoke,
+    pinPolicyGet,pinPolicyUpdate,logout,changePassword,revokeUserSessions,
+    revokeStaffPin:id=>pinService.revokeStaffId(id),status:req=>({
     enabled:Boolean(record),authenticated:!record||Boolean(session(req))
   })};
 }

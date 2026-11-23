@@ -126,7 +126,7 @@ test('v10 disk hotel upgrades to v11 without rewriting historical payments, invo
     db.pragma('user_version = 10');
     db.close();db=null;
     db=openDatabase(file);
-    assert.equal(db.pragma('user_version',{simple:true}),12);
+    assert.equal(db.pragma('user_version',{simple:true}),13);
     assert.equal(db.prepare('SELECT snapshot FROM invoices WHERE id=?').get(invoice.id).snapshot,original);
     assert.equal(getGuestFolio(db,id).accommodation.total_paise,450000);
     assert.equal(db.pragma('foreign_key_check').length,0);

@@ -5,8 +5,8 @@
 <body>
 <button type="button" class="skip-link" id="skip-to-main">Skip to main content</button>
 <aside class="sidebar">
-  <div class="brand"><span class="brandmark">F</span><div><strong>FortLedger</strong><small>GARH JAISAL · OPERATIONS</small></div></div>
-  <nav aria-label="Primary"><a href="#dashboard"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#layout-dashboard"></use></svg>Dashboard</a><a href="#bookings"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#calendar-days"></use></svg>Booking Calendar</a><a href="#rooms"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#bed-double"></use></svg>Room Inventory</a><a href="#restaurant"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#utensils"></use></svg>Restaurant</a><a href="#guests"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#users"></use></svg>Guests</a><a href="#invoices"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#receipt-text"></use></svg>Invoices</a><a href="#business-settings"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#settings-2"></use></svg>Hotel Settings</a><a href="#profile"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#circle-user-round"></use></svg>My Profile</a></nav>
+  <div class="brand"><span class="brandmark">F</span><div><strong>FortLedger</strong><small>GARH JAISAL · OPERATIONS</small></div><button id="sidebar-toggle" type="button" class="sidebar-toggle" aria-controls="primary-navigation" aria-expanded="true" aria-label="Minimise sidebar" title="Minimise sidebar"><span aria-hidden="true">‹</span></button></div>
+  <nav id="primary-navigation" aria-label="Primary"><a href="#dashboard"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#layout-dashboard"></use></svg><span class="nav-label">Dashboard</span></a><a href="#bookings"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#calendar-days"></use></svg><span class="nav-label">Booking Calendar</span></a><a href="#rooms"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#bed-double"></use></svg><span class="nav-label">Room Inventory</span></a><a href="#restaurant"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#utensils"></use></svg><span class="nav-label">Restaurant</span></a><a href="#guests"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#users"></use></svg><span class="nav-label">Guests</span></a><a href="#invoices"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#receipt-text"></use></svg><span class="nav-label">Invoices</span></a><a href="#business-settings"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#settings-2"></use></svg><span class="nav-label">Hotel Settings</span></a><a href="#profile"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="/shizuka-icons.svg#circle-user-round"></use></svg><span class="nav-label">My Profile</span></a></nav>
   <div class="sidebar-bottom"><span class="status-dot"></span> Local-first workspace <small>Local alpha · Modules in development</small></div>
 </aside>
 <main id="workspace-main" tabindex="-1">
@@ -198,6 +198,10 @@
   <div class="restaurant-flex">
     <div class="pos-menu-panel"><div class="restaurant-pane-heading"><h3>Menu</h3><span class="muted">Tap + Add</span></div><input id="menu-search" type="search" placeholder="Search all menu items" aria-label="Search menu"><div id="menu-categories" class="pos-categories" role="group" aria-label="Filter menu by category"></div><p id="menu-result-count" class="muted" aria-live="polite"></p><div id="menu-items"></div></div>
     <div class="pos-bill-panel"><div class="pos-cart-heading"><h3>Draft bill <span id="cart-count" class="pos-count" aria-live="polite">0 items</span></h3><button id="clear-restaurant-cart" type="button" class="secondary" disabled>Clear</button></div><div id="cart-items" class="cart-items"></div><div id="cart-total" class="form-preview" aria-live="polite">₹0.00</div>
+      <label class="restaurant-field" for="restaurant-table">Dining table (optional)
+        <select id="restaurant-table"><option value="">Walk-in / no table</option></select>
+      </label>
+      <p class="muted" id="restaurant-table-help">Table names are optional receipt labels, not open orders or reserved seats.</p>
       <label class="restaurant-field">Payment handling<select id="restaurant-method"><optgroup label="Payment received now"><option value="cash">Cash received</option><option value="upi">UPI received</option><option value="card">Card received</option></optgroup><optgroup label="Unpaid guest charge"><option value="room">Charge to room — settle later</option></optgroup></select></label>
       <p id="restaurant-payment-hint" class="muted" role="status">Cash / UPI / card: only select after the payment has actually been received and verified by staff.</p>
       <div id="room-charge-choice" hidden>
@@ -243,6 +247,17 @@
     </div>
     <p id="restaurant-reconciliation-message" role="status" aria-live="polite"></p>
   </details>
+  <details id="restaurant-table-management" class="menu-import" hidden>
+    <summary>Dining table names — owner / manager</summary>
+    <p class="muted">Create names such as T1, Courtyard 2 or Rooftop 1. Staff can attach a table to a saved bill; this does not start an open order or kitchen ticket. Old receipts always retain the original table name.</p>
+    <form id="restaurant-table-create" class="restaurant-table-create">
+      <label for="restaurant-table-new">New table name</label>
+      <input id="restaurant-table-new" name="label" maxlength="30" required placeholder="e.g. Rooftop 1" autocomplete="off">
+      <button type="submit" class="secondary">Add table</button>
+    </form>
+    <p id="restaurant-table-admin-message" role="status" aria-live="polite"></p>
+    <div id="restaurant-table-admin-list"></div>
+  </details>
   <details class="menu-import" id="menu-import-section"><summary>3. Menu management — import or update prices (CSV)</summary>
     <details id="menu-availability-section" class="menu-availability-section">
       <summary>Temporarily hide or restore individual dishes</summary>
@@ -254,6 +269,7 @@
       <p id="menu-availability-message" role="status" aria-live="polite"></p>
       <p id="menu-availability-count" class="muted"></p>
       <div id="menu-availability-items"></div>
+      <p class="muted">Need to correct just one current menu price or tax? Use Edit price in the list; old receipts remain unchanged.</p>
     </details>
     <p class="muted">Choose a CSV exported from Excel or Numbers. We recognise Item Name, Category, Price and GST/Tax Rate columns in any order. Prices must include tax.</p>
     <p><a href="/menu-template.csv" download>Download a sample CSV template</a></p>
@@ -289,6 +305,29 @@
       </form>
       <p id="profile-password-message" role="alert"></p>
     </details>
+    <section id="profile-quick-pin" class="update-center" hidden>
+      <h3>Quick staff sign-in (registered local computer)</h3>
+      <p class="muted">Optional: use your username and six-digit PIN on this trusted computer after enrolling with your full password. Your password always remains valid. PIN mode is not offered on staff phones or public networks.</p>
+      <p id="profile-quick-pin-state" role="status"></p>
+      <form id="profile-quick-pin-form" class="staff-create">
+        <label>Current full password<input name="current_password" type="password" autocomplete="current-password" required></label>
+        <label>New 6-digit PIN<input name="pin" type="password" inputmode="numeric" autocomplete="off" minlength="6" maxlength="6" pattern="[0-9]{6}" required></label>
+        <label>Confirm PIN<input name="confirm_pin" type="password" inputmode="numeric" autocomplete="off" minlength="6" maxlength="6" pattern="[0-9]{6}" required></label>
+        <button class="primary" type="submit">Save quick sign-in on this computer</button>
+      </form>
+      <button id="profile-quick-pin-revoke" class="secondary" type="button">Revoke my registered PINs</button>
+      <p id="profile-quick-pin-message" role="status" aria-live="polite"></p>
+    </section>
+    <section id="owner-staff-pin" class="update-center" hidden>
+      <h3>Staff quick PIN sign-in policy</h3>
+      <p class="muted">Owner-only control for this local computer. Disabled by default. Only front-desk and cashier accounts can enroll their own PIN using their current password. A registered browser credential and persistent lockout are required. Disabling revokes all PINs and active PIN sessions.</p>
+      <p id="owner-staff-pin-state" role="status"></p>
+      <form id="owner-staff-pin-form" class="staff-create">
+        <label>Confirm current owner password<input name="current_password" type="password" autocomplete="current-password" required></label>
+        <button type="submit" class="secondary" id="owner-staff-pin-toggle">Enable staff quick PIN</button>
+      </form>
+      <p id="owner-staff-pin-message" role="status" aria-live="polite"></p>
+    </section>
     <section id="release-status-panel" class="update-center" aria-labelledby="release-status-title" hidden>
       <h3 id="release-status-title">Release readiness · NOT RELEASED</h3>
       <p class="muted">This local alpha cannot certify itself. View machine diagnostics and the six real-world checks required before operational release.</p>
@@ -485,6 +524,21 @@
   <p id="tax-draft-message" role="alert"></p>
   <div class="dialog-actions"><button type="button" class="secondary" id="cancel-tax-draft">Cancel</button><button type="submit" class="primary">Generate draft PDF</button></div>
 </form></dialog>
+<dialog id="menu-price-dialog" aria-labelledby="menu-price-heading">
+  <form id="menu-price-form">
+    <h2 id="menu-price-heading">Review item price &amp; GST</h2>
+    <p id="menu-price-item" class="muted"></p>
+    <p id="menu-price-previous" class="muted"></p>
+    <div class="form-grid">
+      <label>New GST-inclusive price (₹)<input name="price" type="number" min="0" max="100000000" step="0.01" inputmode="decimal" required></label>
+      <label>GST %<input name="tax_rate" type="number" min="0" max="28" step="1" inputmode="numeric" required></label>
+      <label class="wide">Reason for change<textarea name="reason" required minlength="10" maxlength="300" rows="2" placeholder="Record the approved price or tax review"></textarea></label>
+    </div>
+    <p id="menu-price-message" role="alert"></p>
+    <div class="dialog-actions"><button type="button" class="secondary" id="menu-price-cancel">Cancel</button>
+      <button type="submit" class="primary">Review &amp; save change</button></div>
+  </form>
+</dialog>
 <dialog id="shizuka-confirm-dialog" aria-labelledby="shizuka-confirm-title" aria-describedby="shizuka-confirm-detail">
   <h2 id="shizuka-confirm-title">Confirm action</h2>
   <p id="shizuka-confirm-detail"></p>

@@ -36,7 +36,9 @@ export function buildReceipt(bill,width=42,{hotel_name='Garh Jaisal'}={}){
   const entries=JSON.parse(bill.items_snapshot);
   const lines=[clean(hotel_name).slice(0,width)+'\n','RESTAURANT RECEIPT - NOT A TAX INVOICE\n',
     '-'.repeat(width)+'\n','Receipt #'+bill.id+'\n','Saved '+receiptLocalTime(bill.created_at)+'\n',
-    'Payment: '+clean(bill.payment_method).toUpperCase()+'\n','-'.repeat(width)+'\n'];
+    'Payment: '+clean(bill.payment_method).toUpperCase()+'\n',
+    ...(bill.table_label?['Table: '+clean(bill.table_label).slice(0,width)+'\n']:[]),
+    '-'.repeat(width)+'\n'];
   for(const item of entries){
     lines.push(clean(item.name).slice(0,width)+'\n');
     lines.push(aligned(item.quantity+' x '+money(item.unit_price_paise),money(item.total_paise),width));
@@ -74,7 +76,8 @@ export function getPrintStatus(db,id){
 export async function printSavedBill(db,id,options,{send=sendToPrinter,reprint=false}={}){
   if(!Number.isSafeInteger(id)||id<1)throw new Error('Invalid restaurant bill ID');
   validatePrinterAddress(options?.host,options?.port??9100);
-  const bill=db.prepare('SELECT * FROM restaurant_bills WHERE id=?').get(id);
+  const bill=db.prepare(`SELECT b.*,bt.table_label FROM restaurant_bills b
+    LEFT JOIN restaurant_bill_tables bt ON bt.bill_id=b.id WHERE b.id=?`).get(id);
   if(!bill)throw new Error('Restaurant bill not found');
   db.transaction(()=>{
     const existing=getPrintStatus(db,id);

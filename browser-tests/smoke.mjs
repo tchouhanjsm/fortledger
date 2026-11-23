@@ -9,6 +9,7 @@ import {runAuthenticatedBrowserSmoke} from './auth-smoke.mjs';
 import {runOwnerReleaseReadinessSmoke} from './release-readiness-smoke.mjs';
 import {runBookingCardPageSmoke} from './booking-card-page-smoke.mjs';
 import {runArrivalReadinessSmoke} from './arrival-readiness-smoke.mjs';
+import {runV5WorkflowSmoke} from './v5-workflow-smoke.mjs';
 
 const screenshots=process.env.FORTLEDGER_CAPTURE_SCREENSHOTS==='1';
 if(screenshots)mkdirSync('browser-artifacts',{recursive:true});
@@ -70,6 +71,23 @@ try{
       await page.keyboard.press('Enter');
       assert.equal(await page.evaluate(()=>document.activeElement?.id),'workspace-main');
       assert.equal(await page.locator('#bookings').isVisible(),true);
+      const toggle=page.locator('#sidebar-toggle');
+      const rail=page.locator('.sidebar');
+      assert.equal(await toggle.isVisible(),true);
+      await toggle.click();
+      assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+      await page.waitForFunction(()=>document.querySelector('.sidebar')?.getBoundingClientRect().width<=79);
+      const narrow=await rail.evaluate(el=>Math.round(el.getBoundingClientRect().width));
+      assert.ok(narrow<=79,'Minimised nav should free workspace width; actual '+narrow);
+      assert.equal(await page.getByRole('navigation',{name:'Primary'}).getByRole('link',{name:'Restaurant'}).count(),1);
+      await page.reload();
+      await page.waitForFunction(()=>document.querySelector('#sidebar-toggle')?.getAttribute('aria-expanded')==='false');
+      assert.ok(await rail.evaluate(el=>el.classList.contains('is-collapsed')),
+        'Compact sidebar must survive a page reload in the same browser');
+      await toggle.click();
+      assert.equal(await toggle.getAttribute('aria-expanded'),'true');
+      await page.waitForFunction(()=>document.querySelector('.sidebar')?.getBoundingClientRect().width>200);
+      assert.ok(await rail.evaluate(el=>el.getBoundingClientRect().width)>200);
     }
     if(width===1440){
       const layout=await page.evaluate(()=>{
@@ -474,6 +492,7 @@ try{
   await runOwnerReleaseReadinessSmoke(browser);
   await runBookingCardPageSmoke(browser);
   await runArrivalReadinessSmoke(browser);
+  await runV5WorkflowSmoke(browser);
   console.log('PASS: Chromium receipt-loss reconciliation, booking/payment flow, responsive 320(reflow proxy)/360/390/768/1024/1280/1440/1920 px.');
 }finally{
   await browser?.close();

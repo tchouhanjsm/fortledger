@@ -23,6 +23,9 @@ export function requiredPermission(method,path){
   if(path==='/system/updates/install')return method==='POST'?'system.update':null;
   if(path==='/me')return method==='GET'?'profile.read':'profile.write';
   if(path==='/me/password')return method==='POST'?'profile.write':null;
+  if(path==='/me/quick-pin')return method==='GET'?'profile.read':
+    method==='POST'||method==='DELETE'?'profile.write':null;
+  if(path==='/system/staff-pin')return ['GET','POST'].includes(method)?'system.update':null;
   if(path.startsWith('/staff'))return 'staff.admin';
   if(path.startsWith('/audit/'))return method==='GET'?'audit.read':null;
   if(path==='/analytics/rooms')return method==='GET'?'analytics.read':null;
@@ -38,6 +41,14 @@ export function requiredPermission(method,path){
     if(method==='GET')return 'settings.read';
     return 'settings.admin';
   }
+  if(path==='/restaurant/tables')
+    return method==='GET'?'restaurant.read':method==='POST'?'menu.manage':null;
+  if(path==='/restaurant/tables/all')
+    return method==='GET'?'menu.manage':null;
+  if(/^\/restaurant\/tables\/\d+\/visibility$/.test(path))
+    return method==='PATCH'?'menu.manage':null;
+  if(/^\/restaurant\/menu\/\d+\/price$/.test(path))
+    return method==='PATCH'?'menu.manage':null;
   if(path.startsWith('/restaurant/')){
     if(path==='/restaurant/menu/all')return method==='GET'?'menu.manage':null;
     if(/^\/restaurant\/menu\/\d+\/availability$/.test(path))
