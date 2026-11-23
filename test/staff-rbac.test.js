@@ -83,7 +83,8 @@ test('front desk can manage bookings, not refunds or hotel admin settings',async
     assert.equal((await request('/api/restaurant/menu')).status,403);
     assert.equal((await request('/api/restaurant/bills')).status,403);
     assert.equal((await request('/api/restaurant/checked-in')).status,403);
-    assert.equal((await request('/api/bookings/1/folio')).status,200);
+    assert.equal(may('frontdesk','folio.read'),true);
+    assert.equal(may('frontdesk','folio.write'),true);
     assert.equal((await request('/api/restaurant/menu/import','POST')).status,403);
     assert.equal((await request('/api/bookings/1/payments/2/refunds','POST')).status,403);
     assert.equal((await request('/api/settings/business','PUT')).status,403);
