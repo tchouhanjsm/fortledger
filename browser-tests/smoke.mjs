@@ -18,6 +18,7 @@ import {runExternalInvoiceOriginalsSmoke} from './external-invoice-originals-smo
 import {runCheckoutDocumentCaseSmoke} from './checkout-document-case-smoke.mjs';
 import {runBillingDocumentsRegisterSmoke} from './billing-documents-register-smoke.mjs';
 import {runHistoricalPdfIdentificationsSmoke} from './historical-pdf-identifications-smoke.mjs';
+import {runLanPrinterOwnerSetupSmoke} from './lan-printer-owner-setup-smoke.mjs';
 
 const screenshots=process.env.FORTLEDGER_CAPTURE_SCREENSHOTS==='1';
 if(screenshots)mkdirSync('browser-artifacts',{recursive:true});
@@ -509,6 +510,7 @@ try{
   await runCheckoutDocumentCaseSmoke(browser);
   await runBillingDocumentsRegisterSmoke(browser);
   await runHistoricalPdfIdentificationsSmoke(browser);
+  await runLanPrinterOwnerSetupSmoke(browser);
   console.log('PASS: Chromium receipt-loss reconciliation, booking/payment flow, responsive 320(reflow proxy)/360/390/768/1024/1280/1440/1920 px.');
 }finally{
   await browser?.close();
