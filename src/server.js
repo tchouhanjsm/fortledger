@@ -14,6 +14,7 @@ import {inspectDesktopCodeUpdate} from './desktop-code-update.js';
 import { fileURLToPath } from 'node:url';
 import {authGate,loadPasswordRecord,DEFAULT_AUTH_FILE} from './auth.js';
 import {renderRestaurantReceipt} from './restaurant-receipt.js';
+import {previewRestaurantCorrection} from './restaurant-correction-preview.js';
 import {prepareTaxDraft,getTaxDraft} from './tax-draft.js';
 import {streamTaxDraftPdf} from './tax-draft-pdf.js';
 import {setHotelLogo,getCurrentLogo,getActiveLogoId,getLogoAsset} from './hotel-logo.js';
@@ -391,6 +392,10 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
       res.setHeader('X-Content-Type-Options','nosniff');
       res.send(html);
     }catch(error){next(error);}
+  });
+  app.post('/api/restaurant/bills/:id/correction-preview',(req,res,next)=>{
+    try{res.json(previewRestaurantCorrection(db,Number(req.params.id),req.body));}
+    catch(error){next(error);}
   });
   app.post('/api/restaurant/bills/:id/link-booking',(req,res,next)=>{
     try{res.json(linkManualRoomCharge(db,Number(req.params.id),Number(req.body?.booking_id),
