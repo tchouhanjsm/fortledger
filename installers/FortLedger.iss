@@ -57,7 +57,7 @@ begin
   Result := '';
   ExtractTemporaryFile('windows-installer-guard.ps1');
   ExtractTemporaryFile('windows-verify-owner-companion.mjs');
-  DiagnosticPath := ExpandConstant('{tmp}\\fortledger-installer-blocker.txt');
+  DiagnosticPath := ExpandConstant('{tmp}\fortledger-installer-blocker.txt');
   Parameters := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' +
     ExpandConstant('{tmp}\windows-installer-guard.ps1') + '" -InstallDirectory "' +
     ExpandConstant('{app}') + '" -Verifier "' +
