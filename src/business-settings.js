@@ -1,6 +1,6 @@
 // Local operator-managed business details. Never store live credentials or secrets here.
 export const FIELDS = {
-  hotel_name:80, address:500, gstin:15, phone:40, email:120,
+  hotel_name:80, legal_name:160, address:500, gstin:15, phone:40, email:120,
   bank_name:120, account_holder:120, account_number:35, ifsc:11, upi_id:120
 };
 const defaults=Object.fromEntries(Object.keys(FIELDS).map(k=>[k,k==='hotel_name'?'Garh Jaisal':'']));

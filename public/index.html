@@ -128,6 +128,11 @@
     </div>
     <p id="invoice-quick-message" class="muted" role="status">Select a booking to prepare the proforma without switching pages, or add a new reservation here.</p>
   </div>
+  <details id="gst-readiness" hidden><summary>GST issuance readiness · owner / manager review</summary>
+    <p class="muted">Proformas and tax review drafts are NOT statutory GST invoices. This checklist verifies local settings only; an accountant must confirm applicable law, e-invoicing and credit notes before legal issuance.</p>
+    <button id="gst-readiness-refresh" type="button" class="secondary">Check GST readiness</button>
+    <div id="gst-readiness-results" role="status" aria-live="polite"></div>
+  </details>
   <div id="invoice-list"><p class="muted">Loading invoices…</p></div>
   <div id="invoice-empty-action" class="empty-action" hidden><p>No proformas created yet. Choose a booking above or create a new reservation here to prepare one. Saved proformas cannot be edited; tax drafts remain review-only.</p></div></section>
   <section id="guests" class="panel">
@@ -417,7 +422,8 @@
   </section>
 <section id="business-settings" class="panel"><div class="panel-head"><div><h2>Hotel & payment settings</h2><p>Saved locally and copied into new proforma invoices. Previously issued PDFs remain unchanged.</p></div></div>
   <form id="business-form" class="settings-grid">
-    <label>Hotel name<input name="hotel_name" required maxlength="80"></label>
+    <label>Hotel name / trade name<input name="hotel_name" required maxlength="80"></label>
+    <label>Registered legal GST supplier name<input name="legal_name" maxlength="160" placeholder="Exact name on GST certificate"></label>
     <label>GSTIN (optional)<input name="gstin" maxlength="15" placeholder="15-character GSTIN"></label>
     <label class="wide">Address<textarea name="address" maxlength="500" rows="2"></textarea></label>
     <label>Phone<input name="phone" maxlength="40"></label><label>Email<input name="email" maxlength="120"></label>
