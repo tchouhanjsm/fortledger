@@ -23,6 +23,7 @@ import {ensureFolioSettlementRequestSchema} from './folio.js';
 import {ensureAccommodationAdjustmentSchema} from './accommodation-adjustments.js';
 import {ensureRestaurantCorrectionCaseSchema} from './restaurant-correction-cases.js';
 import {ensureExternalInvoiceOriginalsSchema} from './external-invoice-originals.js';
+import {ensureCheckoutDocumentCaseSchema} from './checkout-document-case.js';
 
 export function openDatabase(filename = databasePath()) {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
@@ -243,6 +244,18 @@ export function openDatabase(filename = databasePath()) {
       }
       if(db.pragma('foreign_key_check').length)
         throw new Error('Historical PDF archive has foreign key violations');
+    })();
+    // Additive, v13-compatible nonstatutory checkout work queue; no historic
+    // checkout is backfilled or implicitly declared legally invoiced.
+    db.transaction(()=>{
+      ensureCheckoutDocumentCaseSchema(db);
+      try{
+        db.prepare('SELECT id,booking_id,version,state,snapshot_json,actor_username,hotel_business_date,created_at FROM checkout_document_cases LIMIT 0').all();
+      }catch{
+        throw new Error('Checkout document case table is incompatible; restore a verified backup');
+      }
+      if(db.pragma('foreign_key_check').length)
+        throw new Error('Checkout case schema has foreign key violations');
     })();
     // Fail on startup, not while accepting a guest's bill, if a later manual
     // schema change or damaged file removed the idempotency ledger after v8.
