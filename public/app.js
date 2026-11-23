@@ -65,23 +65,53 @@ $('#owner-update-notice').onclick=()=>{
   $('#update-center-check').click();
 };
 const can=permission=>Boolean(currentUser&&(currentUser.permissions.includes('*')||currentUser.permissions.includes(permission)));
-const VIEW_ACCESS={dashboard:'profile.read',bookings:'bookings.read',rooms:'rooms.read',guests:'guests.read',invoices:'invoices.read',restaurant:'restaurant.read','business-settings':'settings.read',profile:'profile.read'};
+const VIEW_ACCESS={dashboard:'profile.read',bookings:'bookings.read',rooms:'rooms.read',guests:'guests.read',invoices:'invoices.read',restaurant:'restaurant.pos','restaurant-admin':'menu.manage','business-settings':'settings.read',profile:'profile.read'};
+const isRestaurantCashier=()=>currentUser?.role==='cashier'||currentUser?.unsecured_fixture===true;
+function canVisitView(view){
+  if(!currentUser)return true;
+  if(view==='restaurant')return isRestaurantCashier();
+  if(view==='restaurant-admin')return currentUser.role==='owner'||
+    currentUser.role==='manager'||currentUser.unsecured_fixture===true;
+  if(view==='dashboard'&&currentUser.role==='cashier')return false;
+  return can(VIEW_ACCESS[view]);
+}
 const workspaceNavigator=createWorkspaceNavigator({win:window,doc:document,
-  render:applyWorkspaceView,views:VIEWS,
-  canVisit:view=>!currentUser||can(VIEW_ACCESS[view])});
+  render:applyWorkspaceView,views:VIEWS,canVisit:canVisitView});
+function routeRestaurantNavigation(){
+  const admin=currentUser&&['owner','manager'].includes(currentUser.role)&&!currentUser.unsecured_fixture;
+  const dest=admin?'restaurant-admin':'restaurant';
+  const links=[...document.querySelectorAll('.sidebar nav a[href^="#restaurant"], #mobile-shortcuts a[data-view^="restaurant"]')];
+  for(const link of links){
+    link.setAttribute('href','#'+dest);
+    if(link.dataset.view)link.dataset.view=dest;
+    const name=link.querySelector('.nav-label');
+    if(name)name.textContent=admin?'Restaurant management':'Restaurant';
+    else link.textContent=admin?'Restaurant admin':'Restaurant';
+  }
+}
 function applyWorkspaceView(){
+  routeRestaurantNavigation();
   let view=viewForHash(window.location.hash);
-  if(currentUser&&!can(VIEW_ACCESS[view]))view=can('bookings.read')?'bookings':can('restaurant.read')?'restaurant':'profile';
+  if(currentUser&&!canVisitView(view))
+    view=can('bookings.read')?'bookings':canVisitView('restaurant')?'restaurant':
+      canVisitView('restaurant-admin')?'restaurant-admin':'profile';
+  const history=$('#restaurant-history-section');
+  const admin=['owner','manager'].includes(currentUser?.role)&&!currentUser?.unsecured_fixture;
+  const host=admin?$('#restaurant-admin-history-slot'):$('#restaurant');
+  if(history.parentElement!==host)host.append(history);
   const config=VIEWS[view],shown=new Set(config.sections);
-  for(const id of ['dashboard','stats','calendar','bookings','guests','rooms','invoices','restaurant','business-settings','roadmap','profile']){
+  // Only the no-auth disposable test fixture shows both areas together.
+  if(currentUser?.unsecured_fixture&&view==='restaurant')shown.add('restaurant-admin');
+  for(const id of ['dashboard','stats','calendar','bookings','guests','rooms','invoices','restaurant','restaurant-admin','business-settings','roadmap','profile']){
     const panel=document.getElementById(id);
     if(panel)panel.hidden=!shown.has(id);
   }
+  renderRestaurantWorkspaceTab();
   $('#workspace-title').textContent=config.title;
   $('#workspace-subtitle').textContent=config.subtitle;
   $('#new-booking').hidden=view!=='bookings'||!can('bookings.write');
   for(const nav of document.querySelectorAll('.sidebar nav a')){
-    nav.hidden=Boolean(currentUser&&!can(VIEW_ACCESS[viewForHash(nav.getAttribute('href'))]));
+    nav.hidden=Boolean(currentUser&&!canVisitView(viewForHash(nav.getAttribute('href'))));
     const active=viewForHash(nav.getAttribute('href'))===view;
     nav.classList.toggle('active',active);
     if(active)nav.setAttribute('aria-current','page');
@@ -96,7 +126,7 @@ function updateMobileNavigation(view){
   if(!quick||!more||!toggle)return;
   for(const anchor of document.querySelectorAll('#mobile-shortcuts a, #mobile-more-panel a')){
     const target=anchor.dataset.view;
-    anchor.hidden=Boolean(!currentUser||!can(VIEW_ACCESS[target]));
+    anchor.hidden=Boolean(!currentUser||!canVisitView(target));
     const selected=view===target;
     anchor.classList.toggle('active',selected);
     if(selected)anchor.setAttribute('aria-current','page');
@@ -705,7 +735,7 @@ function renderTodayAttention(today){
       restaurantBillFilter='unmatched';
       restaurantHistoryLimit=15;
       renderRestaurantHistory();
-      workspaceNavigator.navigate('restaurant','restaurant-history-section');
+      workspaceNavigator.navigate(isRestaurantCashier()?'restaurant':'restaurant-admin','restaurant-history-section');
     }]
   ];
   const shown=tasks.filter(([,n,,permission])=>n>0&&can(permission));
@@ -792,7 +822,7 @@ function renderDashboard(){
   const actions=$('#home-actions');actions.replaceChildren();
   const options=[
     ['#bookings','Booking calendar','Manage stays and room allocations','bookings.read'],
-    ['#restaurant','Restaurant billing','Record food sales and print receipts','restaurant.read'],
+    [isRestaurantCashier()?'#restaurant':'#restaurant-admin',isRestaurantCashier()?'Restaurant POS':'Restaurant management',isRestaurantCashier()?'New bill and saved receipts':'Manage menu, receipts and tables',isRestaurantCashier()?'restaurant.pos':'menu.manage'],
     ['#invoices','Proforma invoices','Review and download hotel PDFs','invoices.read'],
     ['#rooms','Room inventory','See your seven accommodation units','rooms.read'],
     ['#guests','Returning guests','Profiles and linked stay history','guests.read'],
@@ -1181,13 +1211,13 @@ async function load(){
   if(can('invoices.read'))renderInvoices();
   if(can('settings.read'))await refreshHotelLogo();
   $('#backup-button').hidden=!can('settings.admin');
-  $('#save-restaurant-bill').hidden=!can('restaurant.write');
+  $('#save-restaurant-bill').hidden=!can('restaurant.pos')||!isRestaurantCashier();
   $('#restaurant-reconciliation-section').hidden=!can('finance.read');
   if(!$('#restaurant-reconciliation-date').value)
     $('#restaurant-reconciliation-date').value=hotelToday();
   $('#menu-import-section').hidden=!can('menu.manage');
   $('#restaurant-table-management').hidden=!can('menu.manage');
-  $('#restaurant-jump-menu').hidden=!can('menu.manage');
+  $('#restaurant-jump-menu').hidden=false;
   $('#import-menu').hidden=!can('menu.manage');
   $('#preview-menu').hidden=!can('menu.manage');
   $('#staff-admin').hidden=currentUser.role!=='owner';
