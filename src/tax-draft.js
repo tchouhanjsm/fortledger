@@ -92,7 +92,6 @@ export function prepareTaxDraft(db,proformaId,input={}){
      lines.reduce((sum,line)=>sum+line.gst_paise,0)!==gst_paise||
      taxable_paise+gst_paise!==total||cgst_paise+sgst_paise!==gst_paise)
     throw new Error('Tax draft rate-bucket reconciliation failed');
-  blockers.push('5%/18% selections are REVIEW ONLY; applicable rates depend on actual supply date, per-room value and accountant-approved policy');
   const snapshot={
     kind:'tax_draft',label:'DRAFT - NOT A GST TAX INVOICE',
     proforma_id:source.id,proforma_number:source.number,prepared_on:hotelBusinessDate(),
