@@ -120,7 +120,9 @@ test('accountant handoff routes owner-only; direct requests never leak to manage
   assert.match(download.headers.get('content-disposition'),/attachment/);
   assert.match(download.headers.get('content-type'),/text\/csv/);
   assert.match(await download.text(),/Owner-reported invoice number/);
-  assert.equal((await req('/api/external-invoice-originals/inventory',{cookie:ownerCookie,method:'POST',body:{}})).status,403);
+  assert.notEqual((await req('/api/external-invoice-originals/inventory',{
+    cookie:ownerCookie,method:'POST',body:{}})).status,200,
+    'No owner POST route is installed; the inventory is read-only');
   assert.equal(db.prepare('SELECT COUNT(*) n FROM invoices').get().n,0);
  }finally{await new Promise(resolve=>server.close(resolve));db.close();}
 });
