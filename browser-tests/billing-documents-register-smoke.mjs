@@ -52,7 +52,7 @@ export async function runBillingDocumentsRegisterSmoke(browser){
    assert.deepEqual(Buffer.from(await downloaded.body()),PDF);
    await page.locator('#billing-register-kind').selectOption('checkout_case');
    await page.locator('#billing-register-search').click();
-   await page.waitForFunction(()=>document.querySelectorAll('#billing-register-list .billing-register-row').length===1);
+   await page.waitForFunction(()=>document.querySelector('#billing-register-list')?.textContent?.includes('Checkout review #1'));
    await register.getByRole('button',{name:'View live folio'}).click();
    await page.locator('#folio-dialog').waitFor({state:'visible'});
    assert.equal(db.prepare('SELECT COUNT(*) n FROM invoices').get().n,1);
