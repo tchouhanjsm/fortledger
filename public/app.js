@@ -1639,12 +1639,17 @@ $('#external-doc-import').onclick=async()=>{
   }
 };
 // Read-only permission-filtered register; never add invoice/receipt values together.
-let billingRegisterState={query:'',kind:'all',from:'',to:''},billingRegisterOffset=0,
+let billingRegisterState={query:'',kind:'all',from:'',to:'',booking:'',guest:'',company:'',number:'',status:'all'},billingRegisterOffset=0,
   billingRegisterRevision=0;
 function billingFilters(){
   return {query:$('#billing-register-query').value.trim(),
     kind:$('#billing-register-kind').value,
-    from:$('#billing-register-from').value,to:$('#billing-register-to').value};
+    from:$('#billing-register-from').value,to:$('#billing-register-to').value,
+    booking:$('#billing-register-booking').value.trim(),
+    guest:$('#billing-register-guest').value.trim(),
+    company:$('#billing-register-company').value.trim(),
+    number:$('#billing-register-number').value.trim(),
+    status:$('#billing-register-status').value};
 }
 async function loadBillingRegister(reset=true){
   if(!can('invoices.read'))return;
@@ -1657,7 +1662,9 @@ async function loadBillingRegister(reset=true){
   button.disabled=true;more.disabled=true;
   try{
     const params=new URLSearchParams({q:filters.query,kind:filters.kind,
-      from:filters.from,to:filters.to,offset:String(billingRegisterOffset)});
+      from:filters.from,to:filters.to,booking_id:filters.booking,
+      guest:filters.guest,company:filters.company,number:filters.number,
+      status:filters.status,offset:String(billingRegisterOffset)});
     const result=await api('/api/documents/register?'+params);
     if(version!==billingRegisterRevision)return;
     const list=$('#billing-register-list');
@@ -1667,7 +1674,7 @@ async function loadBillingRegister(reset=true){
       const row=label('div',undefined,'billing-register-row'),info=label('div');
       const kindText={
         proforma:'Proforma · not a tax invoice',
-        checkout_case:'Checkout review · held, not issued',
+        checkout_case:'Checkout review · '+entry.document_status.replaceAll('_',' ')+' · not issued',
         restaurant_receipt:'Restaurant receipt · not a tax invoice',
         historical_original:'External original PDF · legal details unverified'
       }[entry.kind];
@@ -1709,7 +1716,16 @@ async function loadBillingRegister(reset=true){
 }
 $('#billing-register-search').onclick=()=>loadBillingRegister();
 $('#billing-register-more').onclick=()=>loadBillingRegister(false);
-for(const id of ['billing-register-query','billing-register-kind','billing-register-from','billing-register-to']){
+$('#billing-register-clear').onclick=()=>{
+  for(const id of ['query','from','to','booking','guest','company','number'])
+    $('#billing-register-'+id).value='';
+  $('#billing-register-kind').value='all';
+  $('#billing-register-status').value='all';
+  void loadBillingRegister();
+};
+for(const id of ['billing-register-query','billing-register-kind','billing-register-from','billing-register-to',
+  'billing-register-booking','billing-register-guest','billing-register-company',
+  'billing-register-number','billing-register-status']){
   $('#'+id).addEventListener('keydown',event=>{
     if(event.key==='Enter'){event.preventDefault();void loadBillingRegister();}
   });

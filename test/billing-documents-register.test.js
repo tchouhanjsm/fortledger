@@ -52,6 +52,18 @@ test('unified document search is read-only, distinguishes statuses and enforces 
   assert.equal(searchBillingDocuments(db,{role:'owner'},{q:'Sample Inc'}).total,3);
   assert.equal(searchBillingDocuments(db,{role:'frontdesk'},{q:String(id)}).total,2);
   assert.equal(searchBillingDocuments(db,{role:'owner'},{kind:'proforma'}).total,1);
+  assert.equal(searchBillingDocuments(db,{role:'owner'},{booking_id:id}).total,3,
+    'Booking filter never auto-links unverified original PDFs');
+  assert.equal(searchBillingDocuments(db,{role:'owner'},{guest:'synthetic'}).total,3);
+  assert.equal(searchBillingDocuments(db,{role:'owner'},{company:'sample inc'}).total,3);
+  assert.equal(searchBillingDocuments(db,{role:'owner'},{number:inv.number}).total,1);
+  assert.equal(searchBillingDocuments(db,{role:'owner'},{status:'saved_proforma'}).total,1);
+  assert.equal(searchBillingDocuments(db,{role:'owner'},{status:'held_for_review'}).total,1);
+  assert.equal(searchBillingDocuments(db,{role:'owner'},{status:'saved_restaurant_receipt'}).total,1);
+  assert.equal(searchBillingDocuments(db,{role:'owner'},{status:'unverified_historical_original'}).total,1);
+  assert.equal(searchBillingDocuments(db,{role:'frontdesk'},{status:'unverified_historical_original'}).total,0);
+  assert.throws(()=>searchBillingDocuments(db,{role:'owner'},{status:'legally_issued'}),/Invalid billing/);
+  assert.throws(()=>searchBillingDocuments(db,{role:'owner'},{booking_id:0}),/Invalid billing/);
   const page=searchBillingDocuments(db,{role:'owner'},{limit:2});
   assert.equal(page.items.length,2);
   const second=searchBillingDocuments(db,{role:'owner'},{offset:2,limit:2});
@@ -99,6 +111,11 @@ test('authenticated document-register API is permission filtered even for direct
   assert.equal((await (await request('/api/documents/register',{cookie:frontdesk})).json()).total,2);
   const forbidden=await request('/api/documents/register?kind=historical_original',{cookie:manager});
   assert.equal((await forbidden.json()).total,0);
+  const sourceFilter=await request('/api/documents/register?status=unverified_historical_original',{cookie:manager});
+  assert.equal((await sourceFilter.json()).total,0);
+  const ownerByBooking=await request('/api/documents/register?booking_id=1',{cookie:owner});
+  assert.equal((await ownerByBooking.json()).total,3);
+  assert.equal((await request('/api/documents/register?booking_id=0',{cookie:owner})).status,400);
   assert.equal((await request('/api/documents/register',{cookie:manager,method:'POST',body:{}})).status,403);
   assert.equal(db.prepare('SELECT COUNT(*) n FROM invoices').get().n,1);
  }finally{await new Promise(resolve=>server.close(resolve));db.close();}
