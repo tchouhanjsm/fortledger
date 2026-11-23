@@ -18,6 +18,7 @@ import {previewRestaurantCorrection} from './restaurant-correction-preview.js';
 import {listRestaurantCorrectionCases,restaurantCorrectionRequest,submitRestaurantCorrectionCase,reviewRestaurantCorrectionCase} from './restaurant-correction-cases.js';
 import {prepareTaxDraft,getTaxDraft} from './tax-draft.js';
 import {gstReadiness} from './gst-readiness.js';
+import {checkoutInvoicePreflight} from './checkout-invoice-preflight.js';
 import {streamTaxDraftPdf} from './tax-draft-pdf.js';
 import {setHotelLogo,getCurrentLogo,getActiveLogoId,getLogoAsset} from './hotel-logo.js';
 import {scheduleEncryptedBackups} from './encrypted-backups.js';
@@ -457,6 +458,10 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.get('/api/settings/business',(_req,res)=>res.json(getBusinessSettings(db)));
   app.put('/api/settings/business',(req,res,next)=>{
     try{res.json(updateBusinessSettings(db,req.body));}
+    catch(error){next(error);}
+  });
+  app.get('/api/bookings/:id/checkout-invoice-preflight',(req,res,next)=>{
+    try{res.json(checkoutInvoicePreflight(db,Number(req.params.id)));}
     catch(error){next(error);}
   });
   app.get('/api/tax/readiness',(_req,res)=>res.json(gstReadiness(getBusinessSettings(db))));
