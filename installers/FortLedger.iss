@@ -51,17 +51,29 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Code: Integer;
   Parameters: String;
+  DiagnosticPath: String;
+  Diagnostic: AnsiString;
 begin
   Result := '';
   ExtractTemporaryFile('windows-installer-guard.ps1');
   ExtractTemporaryFile('windows-verify-owner-companion.mjs');
+  DiagnosticPath := ExpandConstant('{tmp}\\fortledger-installer-blocker.txt');
   Parameters := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' +
     ExpandConstant('{tmp}\windows-installer-guard.ps1') + '" -InstallDirectory "' +
     ExpandConstant('{app}') + '" -Verifier "' +
-    ExpandConstant('{tmp}\windows-verify-owner-companion.mjs') + '"';
+    ExpandConstant('{tmp}\windows-verify-owner-companion.mjs') + '" -DiagnosticFile "' +
+    DiagnosticPath + '"';
   if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
               Parameters, '', SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
   begin
+    // Show the actual reason (live port/PID, missing independent encrypted
+    // backup, or missing original owner credential) instead of the same generic
+    // "app is running" message for unrelated refusal causes.
+    if LoadStringFromFile(DiagnosticPath, Diagnostic) and (Length(Diagnostic) > 0) then
+    begin
+      Result := String(Diagnostic);
+      Exit;
+    end;
     Result := 'Installation stopped safely before replacing program files.' + #13#10 +
       'If the app is reported running after Task Manager was used, its separate Node server ' +
       'may still be listening on port 3000.' + #13#10 +
