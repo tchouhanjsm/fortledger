@@ -1208,7 +1208,10 @@ async function load(){
   await renderCollections();
   if(can('finance.read')){await renderExpenseList();await renderDailyClose();}
   $('#invoice-empty-action').hidden=Boolean(invoices.length)||!can('bookings.read');
-  if(!menu.length&&can('menu.manage'))$('#menu-import-section').open=true;
+  if(!menu.length&&can('menu.manage')){
+    $('#menu-import-section').open=true;
+    $('#bundled-menu-section').open=true;
+  }
   applyWorkspaceView();
   return true;
 }
@@ -2469,6 +2472,94 @@ $('#restaurant-table-create').onsubmit=async event=>{
   }catch(error){message.textContent='Table not created: '+error.message;}
   finally{tablesAdminBusy=false;form.querySelector('button').disabled=false;}
 };
+
+let bundledMenuPreview=null,bundledMenuBusy=false,bundledMenuRevision=0;
+function renderBundledMenuPreview(){
+  const box=$('#bundled-menu-review');box.replaceChildren();
+  const action=$('#bundled-menu-sync');
+  action.disabled=bundledMenuBusy||!bundledMenuPreview||!$('#bundled-menu-gst-ack').checked||
+    bundledMenuPreview.missing===0;
+  if(!bundledMenuPreview)return;
+  const plan=bundledMenuPreview;
+  const totals=label('p',plan.count+' dishes · '+plan.missing+
+    ' missing to add · '+plan.preserved+' existing dishes will be preserved','muted');
+  box.append(totals);
+  const scroll=label('div',undefined,'import-preview-scroll');
+  scroll.setAttribute('role','region');
+  scroll.setAttribute('aria-label','Complete prebuilt Garh Jaisal dish review');
+  scroll.tabIndex=0;
+  const table=label('table',undefined,'import-preview-table');
+  const thead=label('thead'),heading=label('tr');
+  for(const name of ['Dish','Category','Printed price','Provisional GST','Change']){
+    const th=label('th',name);th.scope='col';heading.append(th);
+  }
+  thead.append(heading);table.append(thead);
+  const tbody=label('tbody');
+  for(const item of plan.preview){
+    const tr=label('tr');
+    tr.append(label('td',item.name),label('td',item.category),
+      label('td',money(item.price_paise)),label('td',item.tax_rate+'%'),
+      label('td',item.change==='missing'?'Will add':'Keep current item unchanged'));
+    if(item.change==='preserved')tr.title='Existing price, GST and availability remain unchanged';
+    tbody.append(tr);
+  }
+  table.append(tbody);scroll.append(table);box.append(scroll);
+}
+async function refreshBundledMenuPreview(){
+  if(!can('menu.manage'))return;
+  const revision=++bundledMenuRevision;
+  bundledMenuPreview=null;
+  $('#bundled-menu-gst-ack').checked=false;
+  renderBundledMenuPreview();
+  const message=$('#bundled-menu-message');
+  message.textContent='Comparing the prebuilt dishes to your saved menu…';
+  const result=await api('/api/restaurant/menu/bundled/preview');
+  if(revision!==bundledMenuRevision)return;
+  bundledMenuPreview=result;
+  renderBundledMenuPreview();
+  message.textContent=result.missing===0?
+    'All '+result.count+' prebuilt dishes are already represented. No menu changes required.':
+    result.missing+' new dishes can be added. '+result.preserved+
+      ' existing dishes will not be changed. Verify GST before syncing.';
+}
+$('#bundled-menu-preview').onclick=()=>refreshBundledMenuPreview().catch(error=>{
+  $('#bundled-menu-message').textContent='Cannot review prebuilt menu: '+error.message;
+});
+$('#bundled-menu-gst-ack').onchange=renderBundledMenuPreview;
+$('#bundled-menu-sync').onclick=async()=>{
+  if(!can('menu.manage')||bundledMenuBusy||!bundledMenuPreview||
+    !$('#bundled-menu-gst-ack').checked||bundledMenuPreview.missing===0)return;
+  const preview=bundledMenuPreview,confirm=await confirmAction({
+    title:'Add '+preview.missing+' missing menu dishes?',
+    detail:'The printed prices are from Garh Jaisal Kitchen. The CSV GST rate is provisional 5%, not independently verified. You must verify the GST treatment before billing. Existing prices, GST, hidden items and saved receipts remain unchanged.',
+    confirmLabel:'Add missing dishes'
+  });
+  if(!confirm)return;
+  bundledMenuBusy=true;renderBundledMenuPreview();
+  const status=$('#bundled-menu-message');
+  try{
+    const result=await api('/api/restaurant/menu/bundled/sync',{method:'POST',
+      body:JSON.stringify({preview_token:preview.preview_token,
+        confirm_sync:true,confirm_provisional_gst:true})});
+    bundledMenuPreview=null;bundledMenuRevision++;renderBundledMenuPreview();
+    try{
+      await load();
+      if($('#menu-availability-section').open)await refreshMenuAvailability();
+      await refreshBundledMenuPreview();
+      status.textContent=result.added+' dishes added from the built-in menu. '+
+        result.preserved+' existing dishes kept unchanged. Check GST before issuing bills.';
+    }catch(error){
+      status.textContent=result.added+' dishes were saved; refresh the screen to see them. '+
+        'Do not sync again until you review the current menu: '+error.message;
+    }
+  }catch(error){
+    status.textContent='Sync not confirmed: '+error.message+
+      '. Review the menu again before retrying; no existing prices are overwritten.';
+    bundledMenuPreview=null;
+    renderBundledMenuPreview();
+  }finally{bundledMenuBusy=false;renderBundledMenuPreview();}
+};
+
 let validatedMenuCsv=null,menuImportGeneration=0,menuImportRows=[],menuImportInFlight=false;
 // Menu availability is separate from CSV price changes. It never edits a bill
 // or menu identity; the server checks the expected state and audits the actor.
