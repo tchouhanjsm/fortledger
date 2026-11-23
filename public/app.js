@@ -2138,9 +2138,13 @@ function renderRestaurantWorkspaceTab(){
   for(const [id,tab] of [['restaurant-jump-new','new'],['restaurant-jump-history','history']])
     $('#'+id).setAttribute('aria-pressed',String(restaurantWorkspaceTab===tab));
   if($('#restaurant').hidden||!cashier||restaurantWorkspaceTab!=='new')restaurantCartOpen=false;
-  $('#restaurant-bill-panel').dataset.open=String(restaurantCartOpen);
-  $('#restaurant-mobile-cart').setAttribute('aria-expanded',String(restaurantCartOpen));
-  document.body.classList.toggle('restaurant-cart-open',restaurantCartOpen);
+  const modal=restaurantCartOpen&&window.matchMedia('(max-width:700px)').matches;
+  const panel=$('#restaurant-bill-panel');
+  panel.dataset.open=String(modal);
+  if(modal){panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');}
+  else{panel.removeAttribute('role');panel.removeAttribute('aria-modal');}
+  $('#restaurant-mobile-cart').setAttribute('aria-expanded',String(modal));
+  document.body.classList.toggle('restaurant-cart-open',modal);
   updateRestaurantMobileCart();
 }
 function updateRestaurantMobileCart(total=null,quantity=null){
@@ -2164,8 +2168,19 @@ $('#restaurant-mobile-cart').onclick=()=>{
 };
 $('#restaurant-mobile-cart-close').onclick=closeRestaurantMobileCart;
 document.addEventListener('keydown',event=>{
-  if(event.key==='Escape'&&restaurantCartOpen){
-    event.preventDefault();closeRestaurantMobileCart();
+  if(!restaurantCartOpen||!window.matchMedia('(max-width:700px)').matches)return;
+  if(event.key==='Escape'){
+    event.preventDefault();closeRestaurantMobileCart();return;
+  }
+  if(event.key!=='Tab')return;
+  const focusable=[...$('#restaurant-bill-panel').querySelectorAll(
+    'button:not([disabled]):not([hidden]), input:not([disabled]), select:not([disabled]), a[href]')]
+    .filter(node=>node.getClientRects().length>0);
+  if(!focusable.length)return;
+  if(event.shiftKey&&document.activeElement===focusable[0]){
+    event.preventDefault();focusable.at(-1).focus();
+  }else if(!event.shiftKey&&document.activeElement===focusable.at(-1)){
+    event.preventDefault();focusable[0].focus();
   }
 });
 let restaurantHistoryLimit=15,restaurantBillFilter='all';
@@ -2301,8 +2316,8 @@ for(const button of $('#restaurant-history-filters').querySelectorAll('[data-bil
   };
 }
 $('#restaurant-jump-new').onclick=()=>{
-  restaurantWorkspaceTab='new';renderRestaurantWorkspaceTab();
-  $('#menu-search').focus({preventScroll:true});
+  restaurantWorkspaceTab='new';$('#restaurant-saved-actions').hidden=true;
+  renderRestaurantWorkspaceTab();$('#menu-search').focus({preventScroll:true});
 };
 $('#restaurant-jump-history').onclick=()=>{
   restaurantWorkspaceTab='history';renderRestaurantWorkspaceTab();
