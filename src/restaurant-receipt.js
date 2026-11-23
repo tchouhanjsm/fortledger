@@ -6,9 +6,10 @@ const money=p=>(p/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFr
 export function renderRestaurantReceipt(db,billId){
   if(!Number.isSafeInteger(billId)||billId<1)throw new Error('Invalid restaurant bill ID');
   const bill=db.prepare(`
-    SELECT b.*,s.method AS settlement_method,s.created_at AS settled_at
+    SELECT b.*,s.method AS settlement_method,s.created_at AS settled_at,bt.table_label
     FROM restaurant_bills b
-    LEFT JOIN restaurant_settlements s ON s.restaurant_bill_id=b.id WHERE b.id=?`).get(billId);
+    LEFT JOIN restaurant_settlements s ON s.restaurant_bill_id=b.id
+    LEFT JOIN restaurant_bill_tables bt ON bt.bill_id=b.id WHERE b.id=?`).get(billId);
   if(!bill)return null;
   const items=JSON.parse(bill.items_snapshot);
   const business=getBusinessSettings(db);
@@ -34,6 +35,7 @@ export function renderRestaurantReceipt(db,billId){
       <div class="center muted">Restaurant receipt · Not a tax invoice</div>
       <div class="rule"></div>
       <div>Receipt #${bill.id}</div><div>${esc(receiptLocalTime(bill.created_at))}</div>
+      ${bill.table_label?'<div>Table: '+esc(bill.table_label)+'</div>':''}
       <div class="muted">${esc(status)}</div>
       <div class="rule"></div>
       <table><tbody>${lines}</tbody></table>
