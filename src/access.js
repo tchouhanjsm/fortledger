@@ -93,6 +93,8 @@ export function requiredPermission(method,path){
   if(path.startsWith('/housekeeping/'))return method==='PATCH'?'housekeeping.write':null;
   if(path.startsWith('/rooms'))return method==='GET'?'rooms.read':'rooms.write';
   if(path==='/tax/readiness')return method==='GET'?'tax.review':null;
+  if(/^\/bookings\/\d+\/checkout-invoice-preflight$/.test(path))
+    return method==='GET'?'invoices.read':null;
   if(path.startsWith('/invoices')||path.startsWith('/tax-drafts'))
     return method==='GET'?'invoices.read':'invoices.write';
   if(/^\/bookings\/\d+\/operational-notes$/.test(path))

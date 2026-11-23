@@ -518,6 +518,12 @@
   </form></dialog>
 <dialog id="folio-dialog" aria-labelledby="folio-name"><div class="dialog-heading"><div><span class="eyebrow">GUEST FOLIO</span><h2 id="folio-name">Guest settlement</h2></div><button id="close-folio" type="button" class="icon-btn" aria-label="Close">×</button></div>
   <div id="folio-summary" class="form-preview"></div>
+  <details id="folio-invoice-preflight">
+    <summary>Checkout invoice review · no tax invoice issued</summary>
+    <p class="muted">Read-only review of actual room charges, linked food bills, recorded payments and the external PDF/numbering gap. No balance, invoice, email or booking status is changed.</p>
+    <button type="button" id="folio-invoice-preflight-refresh" class="secondary">Refresh invoice preflight</button>
+    <div id="folio-invoice-preflight-results" class="form-preview" role="status" aria-live="polite"></div>
+  </details>
   <section aria-label="Accommodation adjustments">
     <h3>Accommodation adjustments</h3>
     <p class="muted">Approved charges and credits are recorded separately. The issued proforma is never changed. This is not a GST tax invoice.</p>

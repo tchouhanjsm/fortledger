@@ -1,5 +1,12 @@
 # FortLedger — Development log
 
+## 2026-11-23 — Goal-first checkout invoice preflight, Phase 1
+- Confirmed operator workflow: final invoices currently come from an external online PDF generator, saved locally and manually shared by email; historic numbering policy remains unapproved. Actual PDFs have **not** been accessed or imported.
+- Added read-only GET checkout preflight in the existing guest folio, using authoritative SQLite accommodation adjustments, booked contract, saved original proforma, recorded guest payments, linked room-food receipts and settled status.
+- Preserves overpayment/food debt separation; flags mismatched proforma, unpaid folio, unknown external invoices, unapproved GST rule and supplier-field gaps. No statutory invoice issue, serial reservation, PDF/email, payment or checkout mutation.
+- Permission-checked for owner/manager/front desk, cashier excluded; tests for balances, historical mismatch, no writes and RBAC. See `docs/CHECKOUT_INVOICE_PREFLIGHT_PHASE1.md`.
+
+
 ## 2026-11-23 — Restaurant correction review cases A2
 - Built append-only correction *cases* on top of A1 source-snapshot estimator. Owner/manager can save a reviewed historic proposed correction with stable request ID, actor and date; original bill/receipt is immutable.
 - Added owner-only, single-decision case disposition: Needs accountant review / Dismissed (no credit). Both explicitly have zero financial and GST effects. Two additive optional tables preserve SQLite schema version 13 and make source-only patch rollback compatible.
