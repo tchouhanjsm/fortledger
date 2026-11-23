@@ -2407,12 +2407,75 @@ function renderMenuAvailability(focusId=null){
     button.type='button';button.disabled=menuAvailabilityBusy||!menuAvailabilityVerified;
     button.setAttribute('aria-label',(item.active?'Mark unavailable: ':'Make available: ')+item.name);
     button.onclick=()=>changeMenuAvailability(item);
-    row.append(details,button);container.append(row);
+    const edit=label('button','Edit price','secondary');edit.type='button';
+    edit.disabled=menuAvailabilityBusy||!menuAvailabilityVerified;
+    edit.setAttribute('aria-label','Edit current price and GST for '+item.name);
+    edit.onclick=()=>openMenuPriceEditor(item);
+    row.append(details,edit,button);container.append(row);
   }
   if(!visible.length)container.append(label('p',menuAvailabilityItems.length?
     'No dishes match the search.':'No menu items configured. Import a CSV first.','muted'));
   if(focusId!==null)container.querySelector('[data-menu-id="'+focusId+'"] button')?.focus({preventScroll:true});
 }
+
+let priceEditorItem=null,priceEditorBusy=false;
+function priceToPaise(value){
+  const input=String(value).trim();
+  if(!/^[0-9]{1,9}(?:\.[0-9]{1,2})?$/.test(input))
+    throw new Error('Enter a non-negative rupee amount with at most two decimal places');
+  const [whole,cents='']=input.split('.');
+  const paise=Number(whole)*100+Number(cents.padEnd(2,'0'));
+  if(!Number.isSafeInteger(paise)||paise>10000000000)
+    throw new Error('Price exceeds allowed amount');
+  return paise;
+}
+function openMenuPriceEditor(item){
+  if(!can('menu.manage')||menuAvailabilityBusy||!menuAvailabilityVerified)return;
+  priceEditorItem={...item};
+  const form=$('#menu-price-form');
+  form.reset();
+  form.elements.namedItem('price').value=(item.price_paise/100).toFixed(2);
+  form.elements.namedItem('tax_rate').value=String(item.tax_rate);
+  $('#menu-price-item').textContent=item.name+' · '+item.category;
+  $('#menu-price-previous').textContent='Current '+money(item.price_paise)+
+    ' (GST-inclusive), GST '+item.tax_rate+'%. This changes future bills only.';
+  $('#menu-price-message').textContent='';
+  $('#menu-price-dialog').showModal();
+}
+$('#menu-price-cancel').onclick=()=>$('#menu-price-dialog').close();
+$('#menu-price-form').onsubmit=async event=>{
+  event.preventDefault();
+  if(priceEditorBusy||!can('menu.manage')||!priceEditorItem)return;
+  const form=event.currentTarget,message=$('#menu-price-message'),item=priceEditorItem;
+  let price,tax;
+  try{
+    price=priceToPaise(form.elements.namedItem('price').value);
+    tax=Number(form.elements.namedItem('tax_rate').value);
+    if(!Number.isInteger(tax)||tax<0||tax>28)throw new Error('GST must be a whole percentage from 0 to 28');
+    if(price===item.price_paise&&tax===item.tax_rate)throw new Error('Change price or GST before saving');
+  }catch(error){message.textContent=error.message;return;}
+  const reason=form.elements.namedItem('reason').value.trim();
+  if(reason.length<10||reason.length>300){message.textContent='Provide a reason of 10–300 characters';return;}
+  if(!confirm('Change '+item.name+' from '+money(item.price_paise)+' at '+item.tax_rate+
+    '% GST to '+money(price)+' at '+tax+'% GST? Only future bills change; verify the applicable GST before proceeding.'))return;
+  const button=form.querySelector('[type=submit]');button.disabled=true;priceEditorBusy=true;
+  try{
+    await api('/api/restaurant/menu/'+item.id+'/price',{method:'PATCH',body:JSON.stringify({
+      price_paise:price,tax_rate:tax,expected_price_paise:item.price_paise,
+      expected_tax_rate:item.tax_rate,reason
+    })});
+    $('#menu-price-dialog').close();priceEditorItem=null;
+    restaurantReviewOpen=false; // force a fresh review if this manager also has an unsaved draft
+    await load();await refreshMenuAvailability();
+    $('#menu-availability-message').textContent=item.name+' updated for new bills. Original receipts remain unchanged.';
+  }catch(error){
+    message.textContent='Price change not confirmed: '+error.message+'. Refresh the dish before retrying.';
+    if(/changed since review/.test(error.message)){
+      try{await refreshMenuAvailability();}catch{}
+    }
+  }finally{priceEditorBusy=false;button.disabled=false;}
+};
+
 async function refreshMenuAvailability(){
   if(!can('menu.manage'))return;
   const revision=++menuAvailabilityRevision;
