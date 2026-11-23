@@ -133,8 +133,8 @@ test('authenticated HTTP: manager submits cases, owner reviews, cashier and fron
     const created=await api(route,{method:'POST',body:input,cookie:users.manager});
     assert.equal(created.status,201);
     assert.equal((await api(route,{method:'POST',body:input,cookie:users.manager})).status,200);
-    assert.equal((await api(route,{cookie:users.cashier})).status,200,
-      'Cashier can read saved restaurant bill history, but cannot submit cases');
+    assert.equal((await api(route,{cookie:users.cashier})).status,403,
+      'Cashier can read ordinary saved receipts but not manager correction cases');
     assert.equal((await api(route,{cookie:users.frontdesk})).status,403);
     const lookup='/api/restaurant/correction-cases/request/'+input.request_id;
     assert.equal((await api(lookup,{cookie:users.manager})).data.case.id,created.data.id);
