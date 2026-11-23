@@ -20,6 +20,7 @@ import {prepareTaxDraft,getTaxDraft} from './tax-draft.js';
 import {gstReadiness} from './gst-readiness.js';
 import {checkoutInvoicePreflight} from './checkout-invoice-preflight.js';
 import {getCheckoutDocumentCase,listCheckoutDocumentCases} from './checkout-document-case.js';
+import {searchBillingDocuments} from './billing-documents-register.js';
 import {importExternalInvoiceOriginal,listExternalInvoiceOriginals,lookupExternalInvoiceOriginal,getExternalInvoiceOriginal} from './external-invoice-originals.js';
 import {streamTaxDraftPdf} from './tax-draft-pdf.js';
 import {setHotelLogo,getCurrentLogo,getActiveLogoId,getLogoAsset} from './hotel-logo.js';
@@ -481,6 +482,15 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
       const draft=getTaxDraft(db,Number(req.params.id));
       if(!draft)return res.status(404).json({error:'Tax draft not found'});
       streamTaxDraftPdf(draft.snapshot,res,getLogoAsset(db,draft.snapshot.logo_asset_id));
+    }catch(error){next(error);}
+  });
+  app.get('/api/documents/register',(req,res,next)=>{
+    try{
+      res.json(searchBillingDocuments(db,req.actor,{
+        q:req.query.q??'',kind:req.query.kind??'all',
+        from:req.query.from??'',to:req.query.to??'',
+        offset:Number(req.query.offset??0),limit:30
+      }));
     }catch(error){next(error);}
   });
   app.get('/api/checkout-document-cases',(req,res,next)=>{
