@@ -41,6 +41,13 @@ export async function runHistoricalPdfIdentificationsSmoke(browser){
     await form.getByRole('button',{name:'Save reported details'}).click();
     await page.waitForFunction(()=>document.querySelector('#external-ident-status')?.textContent?.includes('transcription saved'));
     await panel.getByText('Owner-reported (unverified): invoice-123',{exact:false}).waitFor({state:'visible'});
+    await page.waitForFunction(()=>document.querySelector('#external-invoice-inventory-status')?.textContent?.includes('1 with owner-entered number/date'));
+    const inventory=await context.request.get(base+'/api/external-invoice-originals/inventory.csv');
+    assert.equal(inventory.status(),200);
+    assert.match(inventory.headers()['content-disposition'],/attachment/);
+    const worksheet=await inventory.text();
+    assert.match(worksheet,/invoice-123/);
+    assert.match(worksheet,/OWNER_REPORTED_UNVERIFIED_NOT_TAX_ISSUED/);
     const row=db.prepare('SELECT reported_number,reported_financial_year FROM historical_pdf_identifications').get();
     assert.equal(row.reported_number,'invoice-123');
     assert.equal(row.reported_financial_year,'2026-27');

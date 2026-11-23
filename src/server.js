@@ -23,6 +23,7 @@ import {getCheckoutDocumentCase,listCheckoutDocumentCases} from './checkout-docu
 import {searchBillingDocuments} from './billing-documents-register.js';
 import {importExternalInvoiceOriginal,listExternalInvoiceOriginals,lookupExternalInvoiceOriginal,getExternalInvoiceOriginal} from './external-invoice-originals.js';
 import {historicalPdfIdentificationHistory,historicalPdfIdentificationRequest,latestHistoricalPdfIdentification,recordHistoricalPdfIdentification} from './historical-pdf-identifications.js';
+import {historicalPdfInventory,historicalPdfInventoryCsv} from './historical-pdf-inventory.js';
 import {streamTaxDraftPdf} from './tax-draft-pdf.js';
 import {setHotelLogo,getCurrentLogo,getActiveLogoId,getLogoAsset} from './hotel-logo.js';
 import {scheduleEncryptedBackups} from './encrypted-backups.js';
@@ -545,6 +546,21 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.get('/api/bookings/:id/checkout-document-case',(req,res,next)=>{
     try{res.json({case:getCheckoutDocumentCase(db,Number(req.params.id))});}
     catch(error){next(error);}
+  });
+  // Export is a read-only, owner-only accountant worksheet. Not a GST return.
+  app.get('/api/external-invoice-originals/inventory',(req,res,next)=>{
+    if(req.actor?.role!=='owner')return res.status(403).json({error:'Owner required'});
+    try{res.json(historicalPdfInventory(db));}catch(error){next(error);}
+  });
+  app.get('/api/external-invoice-originals/inventory.csv',(req,res,next)=>{
+    if(req.actor?.role!=='owner')return res.status(403).json({error:'Owner required'});
+    try{
+      const csv=historicalPdfInventoryCsv(db);
+      res.setHeader('Content-Type','text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition','attachment; filename="fortledger-historical-pdf-review.csv"');
+      res.setHeader('X-Content-Type-Options','nosniff');
+      res.send(csv);
+    }catch(error){next(error);}
   });
   app.get('/api/external-invoice-originals/:id/identifications',(req,res,next)=>{
     try{res.json(historicalPdfIdentificationHistory(db,Number(req.params.id)));}

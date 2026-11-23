@@ -1428,12 +1428,26 @@ function historicalPdfIdentificationPanel(item){
           saved.possible_duplicate_count+' other archived PDF(s).';
       intent=null;
       await refreshExternalOriginals();
+      await refreshHistoricalInvoiceInventory();
     }catch(error){
       message.textContent='Entry not confirmed: '+error.message+
         '. Retry without changing fields to keep the original request ID.';
     }finally{submit.disabled=false;}
   });
   return details;
+}
+async function refreshHistoricalInvoiceInventory(){
+  if(currentUser?.role!=='owner')return;
+  const status=$('#external-invoice-inventory-status');
+  try{
+    const data=await api('/api/external-invoice-originals/inventory');
+    status.textContent=data.total_imported_originals+' archived PDF(s) · '+
+      data.transcribed_originals+' with owner-entered number/date · '+
+      data.missing_number_or_date+' pending identification · '+
+      data.potential_duplicate_originals+' with possible duplicate FY number · '+
+      data.possible_format_issues+' requiring serial-format review. '+
+      'External folder completeness and GST validity remain UNVERIFIED.';
+  }catch(error){status.textContent='Cannot check historical inventory: '+error.message;}
 }
 async function refreshExternalOriginals(reset=true){
   if(currentUser?.role!=='owner')return;
@@ -1482,7 +1496,10 @@ async function refreshExternalOriginals(reset=true){
   }finally{more.disabled=false;}
 }
 $('#historical-invoice-originals').addEventListener('toggle',event=>{
-  if(event.target.open&&currentUser?.role==='owner')void refreshExternalOriginals();
+  if(event.target.open&&currentUser?.role==='owner'){
+    void refreshExternalOriginals();
+    void refreshHistoricalInvoiceInventory();
+  }
 });
 $('#external-doc-refresh').onclick=()=>refreshExternalOriginals();
 $('#external-doc-search').addEventListener('keydown',event=>{
