@@ -87,6 +87,15 @@ $('#mobile-more-toggle').onclick=()=>{
   panel.hidden=!panel.hidden;
   toggle.setAttribute('aria-expanded',String(!panel.hidden));
 };
+document.addEventListener('keydown',event=>{
+  if(event.key!=='Escape')return;
+  const panel=$('#mobile-more-panel'),toggle=$('#mobile-more-toggle');
+  if(panel.hidden)return;
+  event.preventDefault();
+  panel.hidden=true;
+  toggle.setAttribute('aria-expanded','false');
+  toggle.focus({preventScroll:true});
+});
 window.addEventListener('hashchange',applyWorkspaceView);
 
 const money = paise => new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(paise/100);
