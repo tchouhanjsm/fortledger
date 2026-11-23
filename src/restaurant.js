@@ -206,6 +206,42 @@ export function setMenuItemAvailability(db,itemId,{active,expected_active}={},ac
   })();
 }
 
+
+/** Manager price/tax changes are compared against the exact reviewed current
+ * state; existing printed receipts are never edited. */
+export function updateMenuItemPrice(db,itemId,input={},actor){
+  if(!actor||!['owner','manager'].includes(actor.role))
+    throw new Error('Only owner or manager may change menu prices');
+  if(!Number.isSafeInteger(itemId)||itemId<1)throw new Error('Invalid menu item ID');
+  if(!input||typeof input!=='object'||Array.isArray(input))throw new Error('Invalid menu change');
+  const {price_paise,tax_rate,expected_price_paise,expected_tax_rate,reason}=input;
+  if(!Number.isSafeInteger(price_paise)||price_paise<0||price_paise>10000000000||
+     !Number.isSafeInteger(expected_price_paise)||expected_price_paise<0||
+     !Number.isInteger(tax_rate)||tax_rate<0||tax_rate>28||
+     !Number.isInteger(expected_tax_rate)||expected_tax_rate<0||expected_tax_rate>28)
+    throw new Error('Enter exact current and new GST-inclusive price (in paise) and GST rate');
+  if(typeof reason!=='string'||reason.trim().length<10||reason.trim().length>300)
+    throw new Error('A change reason of 10–300 characters is required');
+  return db.transaction(()=>{
+    const prior=db.prepare('SELECT id,name,category,price_paise,tax_rate,active FROM menu_items WHERE id=?').get(itemId);
+    if(!prior)throw new Error('Menu item not found');
+    if(prior.price_paise!==expected_price_paise||prior.tax_rate!==expected_tax_rate)
+      throw new Error('Menu price or GST rate changed since review; refresh before saving');
+    if(prior.price_paise===price_paise&&prior.tax_rate===tax_rate)
+      throw new Error('The new price and GST are unchanged');
+    const applied=db.prepare('UPDATE menu_items SET price_paise=?,tax_rate=? WHERE id=? AND price_paise=? AND tax_rate=?')
+      .run(price_paise,tax_rate,itemId,expected_price_paise,expected_tax_rate);
+    if(applied.changes!==1)throw new Error('Menu price or GST rate changed since review');
+    recordAudit(db,actor,'menu_item.price_tax_updated','menu_item',itemId,{
+      name:prior.name,category:prior.category,
+      previous_price_paise:prior.price_paise,price_paise,
+      previous_tax_rate:prior.tax_rate,tax_rate,
+      reason:reason.trim()
+    });
+    return {...prior,price_paise,tax_rate};
+  })();
+}
+
 export function listRestaurantBills(db){
   // Read-only settlement and original dining-table state; not open orders.
   return db.prepare(`SELECT b.*,s.method AS settlement_method,s.created_at AS settled_at,
