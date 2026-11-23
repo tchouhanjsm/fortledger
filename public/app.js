@@ -53,7 +53,7 @@ const updateNotice=createOwnerUpdateNotice({
 });
 function refreshOwnerUpdateNotice(){
   // Never let network checks slow or interrupt a booking, invoice or payment.
-  // Installer download is still a separate, explicit owner action.
+  // Read-only owner notice; code update requires explicit readiness and approval.
   void updateNotice.refresh({
     owner:currentUser?.role==='owner'&&can('system.update'),
     local:['127.0.0.1','localhost'].includes(window.location.hostname)
@@ -1508,7 +1508,7 @@ $('#update-center-check').onclick=async()=>{
       $('#owner-update-notice').hidden=false;
     else $('#owner-update-notice').hidden=true;
     const short=sha=>/^[a-f0-9]{12}$/i.test(sha||'')?sha:'Unavailable';
-    const installerManaged=state.state==='installer_managed';
+    const installerManaged=['installer_managed','installer_update_available','installer_check_unavailable'].includes(state.state);
     versions.textContent=installerManaged?'Windows desktop installer distribution':(
       'Installed: '+short(state.current)+' · GitHub main: '+short(state.remote));
     $('#update-center-desktop').hidden=!['installer_managed','installer_update_available','installer_check_unavailable'].includes(state.state);
@@ -1519,7 +1519,7 @@ $('#update-center-check').onclick=async()=>{
     }
     $('#update-center-windows').hidden=state.platform!=='windows'||installerManaged;
     $('#update-center-mac').hidden=state.platform!=='mac';
-    if(state.platform==='windows'&&state.state==='new_revision'){
+    if(state.platform==='windows'&&['new_revision','installer_update_available'].includes(state.state)){
       const readiness=await api('/api/system/updates/readiness');
       const panel=$('#update-center-readiness'),list=$('#update-center-blockers');
       panel.hidden=false;list.replaceChildren();
@@ -1527,10 +1527,14 @@ $('#update-center-check').onclick=async()=>{
       const ready=Boolean(readiness.ready)&&
         /^[a-f0-9]{40}$/i.test(readiness.target_sha||'');
       $('#update-center-readiness-status').textContent=ready?
-        'Verified GitHub commit, protected backup configuration and external supervisor are ready.':
-        'Automatic installation is blocked until the listed safety checks pass.';
+        (readiness.update_mode==='code_only'?
+          'Verified code-only update ready. No reinstall: FortLedger will finish work, patch reviewed app files and restart.':
+          'Verified GitHub commit, protected backup configuration and external supervisor are ready.'):
+        'One-click code update is blocked until the listed safety checks pass. An installer may be required for native or launcher changes.';
       if(ready){
         approvedUpdateSha=readiness.target_sha;
+        $('#update-center-install').textContent=readiness.update_mode==='code_only'?
+          'Apply code update & restart':'Install verified update & restart';
         $('#update-center-install').hidden=false;
         $('#update-center-install').disabled=false;
         const ci=$('#update-center-ci');ci.replaceChildren();
@@ -1549,7 +1553,7 @@ $('#update-center-install').onclick=async()=>{
   if(!can('system.update')||!/^[a-f0-9]{40}$/i.test(approvedUpdateSha||''))return;
   const accepted=await confirmAction({
     title:'Install verified FortLedger update?',
-    detail:'Confirm all staff have finished their booking or bill forms. The local Windows supervisor will reject new financial writes, let active requests finish, verify the encrypted backup and run tests before restarting. No payment is created by this action. If the update becomes uncertain, inspect the ledger before retrying.',
+    detail:'Confirm all staff have finished their booking or bill forms. The owner-only Windows updater will reject new financial writes, finish active requests and verify the external encrypted backup. For code-only changes, it updates application files without reinstalling, changing owner credentials or rewriting hotel data. If native components changed, a reviewed installer is still required.',
     confirmLabel:'Finish work & update'
   });
   if(!accepted)return;
@@ -1565,11 +1569,11 @@ $('#update-center-install').onclick=async()=>{
     });
     if(!response.accepted)throw new Error('The local supervisor did not accept the request');
     $('#update-center-readiness-status').textContent=
-      'Update accepted. Finish of active requests and verified installation are underway outside this browser. When localhost returns, reload and sign in. Do not issue a second update request.';
+      'Update accepted by the desktop supervisor. Existing requests will finish, then verified code will be applied and FortLedger restarted. When localhost returns, reload and sign in. Do not submit another update request.';
   }catch(error){
     $('#update-center-readiness-status').textContent=
       'Update acceptance could not be confirmed: '+error.message+
-      '. Inspect the supervisor terminal before clicking again or recording another financial transaction.';
+      '. Verify FortLedger is still running before retrying or recording another financial transaction.';
   }finally{approvedUpdateSha=null;}
 };
 $('#profile-password-form').onsubmit=async event=>{
