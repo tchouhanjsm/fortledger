@@ -9,6 +9,7 @@ import {runAuthenticatedBrowserSmoke} from './auth-smoke.mjs';
 import {runOwnerReleaseReadinessSmoke} from './release-readiness-smoke.mjs';
 import {runBookingCardPageSmoke} from './booking-card-page-smoke.mjs';
 import {runArrivalReadinessSmoke} from './arrival-readiness-smoke.mjs';
+import {runV5WorkflowSmoke} from './v5-workflow-smoke.mjs';
 
 const screenshots=process.env.FORTLEDGER_CAPTURE_SCREENSHOTS==='1';
 if(screenshots)mkdirSync('browser-artifacts',{recursive:true});
@@ -489,6 +490,7 @@ try{
   await runOwnerReleaseReadinessSmoke(browser);
   await runBookingCardPageSmoke(browser);
   await runArrivalReadinessSmoke(browser);
+  await runV5WorkflowSmoke(browser);
   console.log('PASS: Chromium receipt-loss reconciliation, booking/payment flow, responsive 320(reflow proxy)/360/390/768/1024/1280/1440/1920 px.');
 }finally{
   await browser?.close();
