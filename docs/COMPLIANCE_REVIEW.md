@@ -21,6 +21,7 @@ _Last reviewed 2026-11-21. This is a research checklist, not a tax opinion. Conf
 ## Staged final-GST / restaurant correction development (2026-11-23)
 - See [GST final invoice and credit-note implementation contract](GST_FINAL_INVOICE_AND_CREDIT_NOTE_SPEC.md) for the current mandatory fields, tax-policy decisions and accountant-gated architecture.
 - Read-only owner/manager restaurant correction estimates use the original saved bill snapshot and NEVER issue credit notes, change settlement, send a refund or edit historical financial records.
+- Review drafts can now compare per-line 5% and 18% GST illustrations, including mixed-rate rounding; the selected rate and any threshold warnings are visibly marked review-only and do not authorize GST issuance.
 - The draft's illustrative 5% split is **not automatically correct**, particularly for per-room daily supplies above ₹7,500, meals/bundles or restaurant specified-premises status. Final tax issuance remains disabled.
 
 ## Release-blocking checklist
