@@ -1,5 +1,12 @@
 # FortLedger — Development log
 
+## 2026-11-23 — Owner wired printer setup and staff-phone HTTPS status
+- Existing staff-LAN HTTPS and existing ESC/POS raw TCP printer support were inspected before development: no new Bluetooth/cloud subsystem or duplicate server. The hotel PC remains the sole SQLite source; phone setup still requires certificate trust and onsite guest-Wi-Fi isolation.
+- Added owner-only My Profile staff-HTTPS URL/status and Ethernet printer configuration for a compatible private IPv4 RAW TCP 9100/9101/9102 device, with validated persistent DB settings and legacy env fallback.
+- Added owner-only replay-safe **TEST ONLY** slip, durable attempts and physical-paper-not-verified states. Cashier checks owner configuration before sending an already saved restaurant bill, preserves prior explicit reprint protections. No receipt/money/GST mutation, schema version 13 unchanged.
+- Node and browser acceptance for owner/cashier boundaries, portable encrypted-backup-table data, no silent test repeats, mobile/desktop widths. Physical hotel Wi-Fi, printer paper and backup recovery gates remain open. See `docs/PHONE_AND_WIRED_PRINTER_SETUP.md`.
+
+
 ## 2026-11-23 — Historical external invoice PDF identification P2b
 - Added owner-transcribed printed invoice number, printed issue date, optional booking candidate and reason for each saved PDF; previous entries remain in an immutable append-only history. Source PDF bytes and hotel ledgers remain unchanged.
 - Duplicate candidate numbers in the same Indian FY are warned, not auto-renumbered; invoice series/GST validity still unverified. Owner can search the unified document register by latest reported number.
