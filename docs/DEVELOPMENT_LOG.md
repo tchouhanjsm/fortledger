@@ -1,5 +1,11 @@
 # FortLedger — Development log
 
+## 2026-11-23 — Accountant historical PDF inventory handoff (P2c)
+- Owner-only read-only progress counters and CSV download across byte-exact archived online-generator PDF originals and latest owner-entered historical number/date; pending identification, possible duplicate FY serial and format review are explicit.
+- CSV is injection-neutralized and contains no PDF bytes, tax IDs, payment totals, guest names or free-text notes; filename may still contain personal data and remains owner-only.
+- No GST invoice issuance, number reservation, external GST filing or historical PDF modification; tests cover incomplete inventory, source immutability, sanitized filename, role denial and browser download. See `docs/HISTORICAL_PDF_ACCOUNTANT_INVENTORY.md`.
+
+
 ## 2026-11-23 — Owner wired printer setup and staff-phone HTTPS status
 - Existing staff-LAN HTTPS and existing ESC/POS raw TCP printer support were inspected before development: no new Bluetooth/cloud subsystem or duplicate server. The hotel PC remains the sole SQLite source; phone setup still requires certificate trust and onsite guest-Wi-Fi isolation.
 - Added owner-only My Profile staff-HTTPS URL/status and Ethernet printer configuration for a compatible private IPv4 RAW TCP 9100/9101/9102 device, with validated persistent DB settings and legacy env fallback.
