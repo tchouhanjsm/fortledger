@@ -17,6 +17,31 @@ $('#skip-to-main').onclick=()=>{
   main.focus({preventScroll:true});
   main.scrollIntoView({block:'start'});
 };
+
+function setupSidebarToggle(){
+  const sidebar=document.querySelector('.sidebar'),button=$('#sidebar-toggle');
+  if(!sidebar||!button)return;
+  let collapsed=false;
+  try{collapsed=localStorage.getItem('fortledger.sidebar.compact')==='1';}catch{}
+  function update(){
+    sidebar.classList.toggle('is-collapsed',collapsed);
+    button.setAttribute('aria-expanded',String(!collapsed));
+    const action=collapsed?'Expand sidebar':'Minimise sidebar';
+    button.setAttribute('aria-label',action);
+    button.title=action;
+    button.querySelector('span').textContent=collapsed?'›':'‹';
+    for(const anchor of sidebar.querySelectorAll('nav a')){
+      const name=anchor.querySelector('.nav-label')?.textContent?.trim();
+      if(name)anchor.title=collapsed?name:'';
+    }
+  }
+  button.onclick=()=>{
+    collapsed=!collapsed;update();
+    try{localStorage.setItem('fortledger.sidebar.compact',collapsed?'1':'0');}catch{}
+  };
+  update();
+}
+setupSidebarToggle();
 let currentUser=null;
 const updateNotice=createOwnerUpdateNotice({
   check:()=>api('/api/system/updates'),
