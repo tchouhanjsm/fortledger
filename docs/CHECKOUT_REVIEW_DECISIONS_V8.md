@@ -15,3 +15,6 @@ Checkout #155 writes one durable immutable `held_for_review` case, but staff can
 Synthetic DB tests cover state changes, rejection, replay, immutable source, restart and v13 compatibility; authenticated role tests include cashier/front desk denials. Require Linux/Windows Node and Chromium, installer checks, independent encrypted backup and V7 supervisor compatibility. **Final tax invoice issuance remains disabled** pending #147 and physical acceptance #135.
 
 Future legally approved issuer states and numbering must use separate accountant-reviewed statutory events; never rename this internal review to `approved`.
+
+## Real-browser and SHIZUKA polish (V8 QA)
+The existing 390px/1440px checkout Chromium smoke now exercises the **actual owner review controls**, including selecting the accountant handoff status, entering a note, checking source evidence and saving the request. It confirms the immutable original case snapshot stays identical and no legal invoice is created. Review controls use a responsive single-column grid, full-width inputs, readable action height and visible keyboard focus. This is browser acceptance on disposable synthetic records, **not** accountant signoff or physical Windows acceptance.
