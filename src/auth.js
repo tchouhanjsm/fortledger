@@ -135,7 +135,12 @@ export function authGate(record,db,{authFile=null,network=null}={}){
   }
   function checkRequest(req,res,next){
     if(['POST','PUT','PATCH','DELETE'].includes(req.method)){
-      if(!req.is('application/json'))return res.status(415).json({error:'JSON requests required'});
+      // Only the owner-only historical original upload accepts PDF bytes.
+      // All existing write APIs remain JSON-only and same-origin protected.
+      const explicitPdfImport=req.method==='POST'&&
+        req.path==='/external-invoice-originals/import'&&req.is('application/pdf');
+      if(!req.is('application/json')&&!explicitPdfImport)
+        return res.status(415).json({error:'JSON requests required except authenticated original PDF import'});
       const origin=req.headers.origin;
       if(origin){
         let url;
