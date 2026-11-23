@@ -53,7 +53,7 @@ test('restaurant overview and filtered history are read-only, accessible and ali
   assert.match(app,/settled_at/);
   assert.match(app,/restaurant-history-details/);
   assert.match(app,/restaurant-history-items/);
-  assert.match(app,/if\\(can\\('restaurant\\.pos'\\)\\&\\&isRestaurantCashier\\(\\)\\)/);
+  assert.ok(app.includes("if(can('restaurant.pos')&&isRestaurantCashier())"));
   assert.match(app,/Check printer status/);
   assert.match(app,/physical paper NOT verified/);
   const cashierPrintBlock=app.indexOf("if(can('restaurant.pos')&&isRestaurantCashier())");
