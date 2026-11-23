@@ -4,6 +4,7 @@ import {randomUUID} from 'node:crypto';
 import {openDatabase} from '../src/database.js';
 import {createApp} from '../src/server.js';
 import {createPasswordRecord} from '../src/auth.js';
+import {createStaff} from '../src/staff.js';
 import {importMenuCsv,listMenu} from '../src/restaurant.js';
 
 test('public booking/payment/restaurant POSTs require stable client IDs and replay unchanged intents exactly once',async()=>{
@@ -17,7 +18,7 @@ test('public booking/payment/restaurant POSTs require stable client IDs and repl
       username:'owner',password:'synthetic-auth-financial-ids-strong'
     })});
   assert.equal(login.status,200);
-  const cookie=login.headers.get('set-cookie').split(';')[0];
+  let cookie=login.headers.get('set-cookie').split(';')[0];
   const post=async(path,body)=>{
     const res=await fetch(root+path,{method:'POST',
       headers:{'Content-Type':'application/json',Cookie:cookie},body:JSON.stringify(body)});
@@ -42,6 +43,16 @@ test('public booking/payment/restaurant POSTs require stable client IDs and repl
     const payment={request_id:randomUUID(),amount:100,method:'upi'};
     assert.equal((await post(payPath,payment)).status,201);
     assert.equal((await post(payPath,payment)).status,200);
+    // The original booking/payment owner session remains valid; authenticated
+    // restaurant sales now require a separate restaurant cashier identity.
+    createStaff(db,{username:'pos-test',display_name:'POS Test',role:'cashier',
+      password:'pos-test-synthetic-password-123'});
+    const posLogin=await fetch(root+'/api/auth/login',{method:'POST',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        username:'pos-test',password:'pos-test-synthetic-password-123'
+      })});
+    assert.equal(posLogin.status,200);
+    cookie=posLogin.headers.get('set-cookie').split(';')[0];
     const item=listMenu(db)[0];
     const bill={payment_method:'cash',items:[{menu_item_id:item.id,quantity:1,
       unit_price_paise:item.price_paise,tax_rate:item.tax_rate}]};
