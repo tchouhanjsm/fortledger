@@ -25,6 +25,8 @@ export async function runBundledMenuSmoke(browser){
     await page.waitForURL(base+'/');
     await page.goto(base+'/#restaurant');
     await page.locator('#restaurant').waitFor({state:'visible'});
+    await page.waitForFunction(()=>document.querySelector('#menu-import-section')?.open &&
+      document.querySelector('#bundled-menu-section')?.open);
     assert.equal(await page.locator('#menu-import-section').getAttribute('open'),'');
     assert.equal(await page.locator('#bundled-menu-section').getAttribute('open'),'');
     assert.equal(await page.locator('#bundled-menu-sync').isDisabled(),true);
