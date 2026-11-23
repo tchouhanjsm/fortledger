@@ -2137,7 +2137,7 @@ function renderRestaurantWorkspaceTab(){
   $('#restaurant-history-section').hidden=cashier&&restaurantWorkspaceTab!=='history';
   for(const [id,tab] of [['restaurant-jump-new','new'],['restaurant-jump-history','history']])
     $('#'+id).setAttribute('aria-pressed',String(restaurantWorkspaceTab===tab));
-  if(!cashier||restaurantWorkspaceTab!=='new')restaurantCartOpen=false;
+  if($('#restaurant').hidden||!cashier||restaurantWorkspaceTab!=='new')restaurantCartOpen=false;
   $('#restaurant-bill-panel').dataset.open=String(restaurantCartOpen);
   $('#restaurant-mobile-cart').setAttribute('aria-expanded',String(restaurantCartOpen));
   document.body.classList.toggle('restaurant-cart-open',restaurantCartOpen);
@@ -2494,8 +2494,11 @@ $('#save-restaurant-bill').onclick=async()=>{
         return;
       }
     }
-    const savedTotal=saved.total_paise??cart.reduce((n,x)=>
-      n+(menu.find(y=>y.id===x.menu_item_id)?.price_paise||0)*x.quantity,0);
+    // A lost POST response may be reconciled with an ID-only lookup. The
+    // original reviewed item snapshots, not possibly newer menu prices,
+    // remain authoritative for the saved-state confirmation amount.
+    const savedTotal=saved.total_paise??pendingRestaurantBill.items.reduce((n,item)=>
+      n+item.unit_price_paise*item.quantity,0);
     lastSavedRestaurantBill={id:saved.id,total_paise:savedTotal,method:pendingRestaurantBill.payment_method};
     pendingRestaurantBill=null;
     lockPendingRestaurantInputs(false);
