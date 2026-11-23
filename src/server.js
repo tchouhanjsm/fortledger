@@ -101,7 +101,7 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.use('/api',gate.protect);
   app.post('/api/auth/logout',gate.logout);
   app.use('/api',gate.authorize);
-  app.get('/api/me',(req,res)=>res.json({...req.actor,permissions:ROLE_PERMISSIONS[req.actor.role]||[]}));
+  app.get('/api/me',(req,res)=>res.json({...req.actor,login_method:req.auth_method||'password',permissions:ROLE_PERMISSIONS[req.actor.role]||[]}));
   app.get('/api/me/quick-pin',gate.pinProfile);
   app.post('/api/me/quick-pin',gate.pinEnroll);
   app.delete('/api/me/quick-pin',gate.pinRevoke);
