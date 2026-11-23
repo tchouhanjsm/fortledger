@@ -70,6 +70,21 @@ try{
       await page.keyboard.press('Enter');
       assert.equal(await page.evaluate(()=>document.activeElement?.id),'workspace-main');
       assert.equal(await page.locator('#bookings').isVisible(),true);
+      const toggle=page.locator('#sidebar-toggle');
+      const rail=page.locator('.sidebar');
+      assert.equal(await toggle.isVisible(),true);
+      await toggle.click();
+      assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+      const narrow=await rail.evaluate(el=>Math.round(el.getBoundingClientRect().width));
+      assert.ok(narrow<=79,'Minimised nav should free workspace width; actual '+narrow);
+      assert.equal(await page.getByRole('navigation',{name:'Primary'}).getByRole('link',{name:'Restaurant'}).count(),1);
+      await page.reload();
+      await page.waitForFunction(()=>document.querySelector('#sidebar-toggle')?.getAttribute('aria-expanded')==='false');
+      assert.ok(await rail.evaluate(el=>el.classList.contains('is-collapsed')),
+        'Compact sidebar must survive a page reload in the same browser');
+      await toggle.click();
+      assert.equal(await toggle.getAttribute('aria-expanded'),'true');
+      assert.ok(await rail.evaluate(el=>el.getBoundingClientRect().width)>200);
     }
     if(width===1440){
       const layout=await page.evaluate(()=>{
