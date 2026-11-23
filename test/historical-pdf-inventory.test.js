@@ -24,7 +24,7 @@ function mark(db,id,number,date){
  },owner);
 }
 function seed(db){
- const a=importPdf(db,'A','=HYPERLINK("https://invalid.example")-a.pdf');
+ const a=importPdf(db,'A','=SUM(1,2).pdf');
  const b=importPdf(db,'B','External Invoice B.pdf');
  const c=importPdf(db,'C','Unrecorded.pdf');
  mark(db,a.id,'invoice-123','2026-11-10');
@@ -50,7 +50,7 @@ test('accountant worksheet flags incomplete/duplicate external PDF records, cann
   assert.ok(csv.startsWith('\uFEFF'));
   assert.match(csv,/Owner-reported invoice number \(UNVERIFIED\)/);
   assert.match(csv,/OWNER_REPORTED_UNVERIFIED_NOT_TAX_ISSUED/);
-  assert.match(csv,/\\"'=HYPERLINK/,'Formula-looking filename should be neutralized');
+  assert.ok(csv.includes('\"\'=SUM(1,2).pdf'), 'Formula-looking filename should be neutralized');
   assert.equal(csv.split('\r\n').filter(Boolean).length,4);
   assert.deepEqual(db.serialize(),before,'Export must never mutate the hotel DB');
   assert.equal(db.prepare('SELECT COUNT(*) n FROM invoices').get().n,0);
