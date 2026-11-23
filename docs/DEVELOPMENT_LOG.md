@@ -1,5 +1,11 @@
 # FortLedger — Development log
 
+## 2026-11-23 — Phase C: cashier print-state clarity and manager action parity
+- Fixed a role mismatch: restaurant manager/owner saw an Epson LAN Print button that server RBAC refused (only cashiers are allowed to initiate POS printing). Manager overview now shows saved receipts and correction estimates but no unavailable print action.
+- Cashier saved-bill cards now have read-only Check printer status. It shows no attempt, sending, sent-but-physical-paper-unverified or uncertain delivery, and the logged attempt count. Original confirm-before-reprint behavior remains.
+- Synthetic browser smoke checks the status display without connecting to real hardware; the Epson receipt and no-duplicate-reprint physical gate remains open.
+
+
 ## 2026-11-23 — GST readiness phase B1: registered supplier identity
 - Added optional registered legal supplier name, kept distinct from hotel trade name. Existing settings storage is JSON so this requires no SQLite schema migration and preserves historic issued proforma snapshots.
 - Added manager/owner-only GST readiness API and invoice-page checklist for legal name, Rajasthan GSTIN format and registered address. These are presence checks, not portal or accountant verification. Final tax issuance remains disabled.
