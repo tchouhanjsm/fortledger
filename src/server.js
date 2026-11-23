@@ -22,6 +22,7 @@ import {checkoutInvoicePreflight} from './checkout-invoice-preflight.js';
 import {getCheckoutDocumentCase,listCheckoutDocumentCases} from './checkout-document-case.js';
 import {searchBillingDocuments} from './billing-documents-register.js';
 import {importExternalInvoiceOriginal,listExternalInvoiceOriginals,lookupExternalInvoiceOriginal,getExternalInvoiceOriginal} from './external-invoice-originals.js';
+import {historicalPdfIdentificationHistory,historicalPdfIdentificationRequest,latestHistoricalPdfIdentification,recordHistoricalPdfIdentification} from './historical-pdf-identifications.js';
 import {streamTaxDraftPdf} from './tax-draft-pdf.js';
 import {setHotelLogo,getCurrentLogo,getActiveLogoId,getLogoAsset} from './hotel-logo.js';
 import {scheduleEncryptedBackups} from './encrypted-backups.js';
@@ -502,11 +503,27 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
     try{res.json({case:getCheckoutDocumentCase(db,Number(req.params.id))});}
     catch(error){next(error);}
   });
+  app.get('/api/external-invoice-originals/:id/identifications',(req,res,next)=>{
+    try{res.json(historicalPdfIdentificationHistory(db,Number(req.params.id)));}
+    catch(error){next(error);}
+  });
+  app.post('/api/external-invoice-originals/:id/identifications',(req,res,next)=>{
+    try{
+      const result=recordHistoricalPdfIdentification(db,Number(req.params.id),req.body,req.actor);
+      res.status(result.already_recorded?200:201).json(result);
+    }catch(error){next(error);}
+  });
+  app.get('/api/external-invoice-originals/identifications/request/:requestId',(req,res,next)=>{
+    try{res.json(historicalPdfIdentificationRequest(db,req.params.requestId));}
+    catch(error){next(error);}
+  });
   app.get('/api/external-invoice-originals',(req,res,next)=>{
     try{
       const result=listExternalInvoiceOriginals(db,{q:req.query.q??'',
         offset:Number(req.query.offset??0),limit:30});
-      res.json(result);
+      res.json({...result,items:result.items.map(item=>({
+        ...item,identification:latestHistoricalPdfIdentification(db,item.id)
+      }))});
     }catch(error){next(error);}
   });
   app.post('/api/external-invoice-originals/import',
