@@ -2770,6 +2770,41 @@ function restaurantBillStatus(bill){
   if(bill.settlement_method)return {key:'paid',text:'Settled · '+bill.settlement_method.toUpperCase()};
   return {key:'unpaid',text:'Room balance due'};
 }
+// Shared cashier print action for both saved-bill history and post-save workspace.
+// Transport success is NOT physical paper acceptance; never retry automatically.
+async function sendSavedReceiptToLan(billId,refreshState=async()=>{}){
+  try{
+    const config=await api('/api/printer/status');
+    if(!config.configured){
+      alert('Ethernet printer is not configured. Ask the owner to set its LAN IP under My profile → Ethernet receipt printer.');
+      return false;
+    }
+  }catch(error){alert('Cannot check Ethernet printer: '+error.message);return false;}
+  if(!confirm('Send saved bill #'+billId+' to the Ethernet receipt printer? Confirm the paper after sending.'))return false;
+  try{
+    const sent=await api('/api/restaurant/bills/'+billId+'/print',
+      {method:'POST',body:JSON.stringify({reprint:false})});
+    await refreshState();
+    alert(sent.notice||'Sent to printer connection; physical paper is not verified.');
+    return true;
+  }catch(error){
+    await refreshState();
+    if(!/Previously attempted/.test(error.message)){
+      alert('Printer delivery is not confirmed: '+error.message+
+        '. Inspect the paper and print status before trying again.');
+      return false;
+    }
+    if(!confirm('This receipt was already attempted. Inspect physical paper to prevent a duplicate, then explicitly confirm a reprint?'))return false;
+    try{
+      const retried=await api('/api/restaurant/bills/'+billId+'/print',
+        {method:'POST',body:JSON.stringify({reprint:true})});
+      await refreshState();
+      alert(retried.notice||'Reprint attempted. Inspect physical paper.');
+      return true;
+    }catch(next){await refreshState();alert('Reprint is not confirmed: '+next.message);return false;}
+  }
+}
+
 function restaurantBillTime(stamp){
   const instant=new Date(String(stamp||'').replace(' ','T')+'Z');
   if(!Number.isFinite(instant.getTime()))return 'Saved time unavailable';
@@ -3014,32 +3049,7 @@ function renderRestaurantHistory(){
       };
       check.onclick=refreshPrintStatus;
       const lan=label('button','LAN Print','secondary');lan.type='button';
-      lan.onclick=async()=>{
-        try{
-          const status=await api('/api/printer/status');
-          if(!status.configured){
-            alert('Ethernet receipt printer is not configured. Ask the owner to set its LAN IP under My profile → Ethernet receipt printer.');
-            return;
-          }
-        }catch(error){alert('Cannot confirm LAN printer setup: '+error.message);return;}
-        if(!confirm('Send existing saved receipt #'+bill.id+' to configured Epson LAN printer?'))return;
-        try{
-          const sent=await api('/api/restaurant/bills/'+bill.id+'/print',
-            {method:'POST',body:JSON.stringify({reprint:false})});
-          await refreshPrintStatus();
-          alert(sent.notice);
-        }catch(error){
-          await refreshPrintStatus();
-          if(!/Previously attempted/.test(error.message)){alert(error.message);return;}
-          if(!confirm('Printing was previously attempted. Verify whether paper already printed before reprinting. Proceed?'))return;
-          try{
-            const retried=await api('/api/restaurant/bills/'+bill.id+'/print',
-              {method:'POST',body:JSON.stringify({reprint:true})});
-            await refreshPrintStatus();
-            alert(retried.notice);
-          }catch(next){await refreshPrintStatus();alert(next.message);}
-        }
-      };
+      lan.onclick=()=>sendSavedReceiptToLan(bill.id,refreshPrintStatus);
       actions.append(check,lan);
       article.append(printState);
     }
@@ -3274,6 +3284,8 @@ $('#save-restaurant-bill').onclick=async()=>{
     $('#restaurant-saved-summary').textContent='Saved bill #'+saved.id+' · '+money(savedTotal)+
       ' · '+(lastSavedRestaurantBill.method==='room'?'Unpaid room charge':'Payment recorded by staff');
     $('#restaurant-saved-actions').hidden=false;
+    $('#restaurant-saved-print-status').textContent=
+      'Printing not checked here. Confirm the Ethernet paper before retrying any previous attempt.';
     message.replaceChildren();
     message.append(document.createTextNode('Bill #'+saved.id+' saved once. Payment was recorded manually; FortLedger did not verify a bank transfer. '));
     const link=label('a','Open saved receipt #'+saved.id);
@@ -3290,6 +3302,26 @@ $('#save-restaurant-bill').onclick=async()=>{
   }catch(error){message.textContent='Bill was not saved: '+error.message;
     message.focus({preventScroll:true});}
   finally{restaurantBillSubmitting=false;button.disabled=false;}
+};
+async function refreshLastSavedPrintState(){
+  if(!lastSavedRestaurantBill)return;
+  const status=$('#restaurant-saved-print-status');
+  try{
+    const result=await api('/api/restaurant/bills/'+lastSavedRestaurantBill.id+'/print-status');
+    const job=result.status;
+    status.textContent=!job?'No recorded Ethernet print attempt.':
+      job.state==='sent_unverified'?'Sent to LAN printer; physical paper NOT verified. Inspect before reprint.':
+      job.state==='sending'?'Printer request in progress or interrupted. Check paper before retry.':
+      job.state==='uncertain'?'Print delivery uncertain. Check physical paper before retry.':
+      'Printer status unknown; inspect paper.';
+  }catch(error){status.textContent='Cannot check printer status: '+error.message;}
+}
+$('#restaurant-lan-print-last').onclick=async()=>{
+  if(!lastSavedRestaurantBill||!isRestaurantCashier())return;
+  const button=$('#restaurant-lan-print-last');
+  button.disabled=true;
+  try{await sendSavedReceiptToLan(lastSavedRestaurantBill.id,refreshLastSavedPrintState);}
+  finally{button.disabled=false;}
 };
 $('#restaurant-print-last').onclick=()=>{
   if(lastSavedRestaurantBill)showRestaurantReceipt(lastSavedRestaurantBill.id);

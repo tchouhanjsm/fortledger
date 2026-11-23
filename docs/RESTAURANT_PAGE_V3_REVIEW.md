@@ -23,3 +23,6 @@ The older presentation had an undifferentiated long page: menu and draft at the 
 5. **GST tax-document approval**, if statutory tax invoicing is required beyond current receipts explicitly marked non-tax invoices.
 
 Do **not** add kitchen tickets, KOT, table reservations, preparation statuses, ingredient inventory, enterprise stock systems or a second cloud POS merely for presentation. FortLedger remains a simple local-first bill-only hotel app. Physical acceptance and accountant signoff remain unresolved.
+
+## V8 post-save Ethernet print refinement
+After a successfully saved restaurant bill, cashier staff now see a **Send to Ethernet printer** action alongside the existing browser receipt. It calls the same guarded LAN printing API already used by Saved bills and shows explicitly that paper was not verified. Printer configuration is checked before sending, a first print requires confirmation, and subsequent reprint is possible only after a separate physical-paper confirmation. The app never auto-prints on save, blindly retries an uncertain attempt or lets managers access cashier-only printing. No bill, menu, tax, settlement, native dependency or printer-port policy changes. Live Epson paper acceptance remains a separate human check (#135).

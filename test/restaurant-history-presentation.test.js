@@ -55,6 +55,17 @@ test('restaurant overview and filtered history are read-only, accessible and ali
   assert.match(app,/restaurant-history-items/);
   assert.ok(app.includes("if(can('restaurant.pos')&&isRestaurantCashier())"));
   assert.match(app,/Check printer status/);
+  assert.match(html,/id="restaurant-lan-print-last"/);
+  assert.match(html,/id="restaurant-saved-print-status"/);
+  assert.match(app,/async function sendSavedReceiptToLan\(/);
+  assert.match(app,/await api\('\/api\/printer\/status'\)/);
+  assert.match(app,/physical paper NOT verified/);
+  assert.ok(app.includes("$('#restaurant-lan-print-last').onclick=async()=>{"));
+  assert.ok(app.includes("lan.onclick=()=>sendSavedReceiptToLan(bill.id,refreshPrintStatus)"));
+  assert.ok(app.includes("reprint:true"));
+  assert.ok(app.includes("if(!confirm('This receipt was already attempted."));
+  assert.equal(app.slice(app.indexOf("$('#save-restaurant-bill').onclick"),app.indexOf("$('#restaurant-lan-print-last').onclick")).includes("reprint:true"),false,
+    'Save must not dispatch a printer reprint automatically');
   assert.match(app,/physical paper NOT verified/);
   const cashierPrintBlock=app.indexOf("if(can('restaurant.pos')&&isRestaurantCashier())");
   assert.ok(cashierPrintBlock>=0&&app.indexOf("const lan=label('button','LAN Print'",cashierPrintBlock)>cashierPrintBlock,
