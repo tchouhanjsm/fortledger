@@ -95,11 +95,18 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   const gate=authGate(authRecord,db,{authFile,network});
   app.use('/api',gate.checkRequest);
   app.post('/api/auth/login',gate.login);
+  app.post('/api/auth/pin',gate.pinLogin);
+  app.get('/api/auth/pin/status',gate.pinLoginStatus);
   app.get('/api/auth/status',(req,res)=>res.json(gate.status(req)));
   app.use('/api',gate.protect);
   app.post('/api/auth/logout',gate.logout);
   app.use('/api',gate.authorize);
   app.get('/api/me',(req,res)=>res.json({...req.actor,permissions:ROLE_PERMISSIONS[req.actor.role]||[]}));
+  app.get('/api/me/quick-pin',gate.pinProfile);
+  app.post('/api/me/quick-pin',gate.pinEnroll);
+  app.delete('/api/me/quick-pin',gate.pinRevoke);
+  app.get('/api/system/staff-pin',gate.pinPolicyGet);
+  app.post('/api/system/staff-pin',gate.pinPolicyUpdate);
   app.get('/api/system/backup-status',(_req,res)=>res.json(backupFreshness()));
   // Explicit owner command: decrypt the latest off-device snapshot into a
   // private scratch folder. Never expose paths, passphrases or guest details.
@@ -192,7 +199,10 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   app.patch('/api/staff/:id',(req,res,next)=>{
     try{
       const updated=updateStaff(db,Number(req.params.id),req.body);
-      if(req.body?.password!==undefined||updated.active===false)gate.revokeUserSessions(updated.id);
+      if(req.body?.password!==undefined||updated.active===false||req.body?.role!==undefined){
+        gate.revokeUserSessions(updated.id);
+        gate.revokeStaffPin(updated.id);
+      }
       res.json(updated);
     }catch(error){next(error);}
   });
