@@ -1,12 +1,12 @@
 export const ROLE_PERMISSIONS={
   owner:['*'],
   manager:['bookings.read','bookings.write','payments.write','refunds.write','rooms.read','rooms.write',
-    'invoices.read','invoices.write','restaurant.read','restaurant.write','menu.manage','folio.read','folio.write','folio.adjust',
+    'invoices.read','invoices.write','restaurant.read','restaurant.link','menu.manage','folio.read','folio.write','folio.adjust',
     'settings.read','audit.read','finance.read','finance.write','analytics.read','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','maintenance.manage','guests.read','guests.write','profile.read','profile.write','system.health.read'],
   frontdesk:['bookings.read','bookings.write','payments.write','rooms.read',
-    'invoices.read','invoices.write','restaurant.read','folio.read','folio.write','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','guests.read','guests.write',
+    'invoices.read','invoices.write','folio.read','folio.write','housekeeping.read','housekeeping.write','maintenance.read','maintenance.write','guests.read','guests.write',
     'profile.read','profile.write'],
-  cashier:['restaurant.read','restaurant.write','profile.read','profile.write']
+  cashier:['restaurant.read','restaurant.write','restaurant.pos','restaurant.link','profile.read','profile.write']
 };
 export function may(role,permission){
   const allowed=ROLE_PERMISSIONS[role]||[];
@@ -57,9 +57,18 @@ export function requiredPermission(method,path){
       return method==='PATCH'?'menu.manage':null;
     if(path==='/restaurant/menu/preview'||path==='/restaurant/menu/import')
       return method==='POST'?'menu.manage':null;
-    if(path==='/restaurant/checked-in')return 'restaurant.read';
-    if(method==='GET')return 'restaurant.read';
-    return 'restaurant.write';
+    // POS financial operations require a narrow role, not generic restaurant visibility.
+    if(path==='/restaurant/bills')return method==='POST'?'restaurant.pos':
+      method==='GET'?'restaurant.read':null;
+    if(/^\/restaurant\/bills\/request\/[A-Za-z0-9_-]+$/.test(path))
+      return method==='GET'?'restaurant.pos':null;
+    if(/^\/restaurant\/bills\/\d+\/print$/.test(path))
+      return method==='POST'?'restaurant.pos':null;
+    if(/^\/restaurant\/bills\/\d+\/link-booking$/.test(path))
+      return method==='POST'?'restaurant.link':null;
+    if(path==='/restaurant/checked-in')return method==='GET'?'restaurant.read':null;
+    // New routes fail closed rather than implicitly becoming writable.
+    return method==='GET'?'restaurant.read':null;
   }
   if(method==='DELETE'&&(/^\/bookings\/\d+$/.test(path)||/^\/guests\/\d+$/.test(path)))
     return 'entries.delete';
