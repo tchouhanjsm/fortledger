@@ -12,6 +12,7 @@ using System.Runtime.Serialization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
@@ -77,6 +78,9 @@ namespace FortLedgerDesktop
     private readonly NotifyIcon tray;
     private readonly System.Windows.Forms.Timer startTimer;
     private readonly System.Windows.Forms.Timer stopTimer;
+    private readonly System.Windows.Forms.Timer patchTimer;
+    private volatile string pendingPatchSha;
+    private Task<int> patchTask;
     private Process server;
     private int attempts;
     private bool stopping;
@@ -104,6 +108,10 @@ namespace FortLedgerDesktop
       stopTimer = new System.Windows.Forms.Timer();
       stopTimer.Interval = 700;
       stopTimer.Tick += CheckStopped;
+      patchTimer = new System.Windows.Forms.Timer();
+      patchTimer.Interval = 700;
+      patchTimer.Tick += CheckCodeUpdate;
+      patchTimer.Start();
       try { Launch(); }
       catch (Exception ex)
       {
@@ -127,10 +135,15 @@ namespace FortLedgerDesktop
       var psi = BaseNode("src\\server.js");
       psi.EnvironmentVariables["FORTLEDGER_DESKTOP_INSTALLER"] = "1";
       psi.RedirectStandardInput = true;
+      psi.RedirectStandardOutput = true;
+      psi.EnvironmentVariables["FORTLEDGER_DESKTOP_UPDATE_HOST"] = "1";
       ReadBackups(psi);
       ReadLan(psi);
       server = Process.Start(psi);
       if (server == null) throw new InvalidOperationException("The local Node runtime could not start.");
+      pendingPatchSha=null;
+      server.OutputDataReceived += ReceiveServerOutput;
+      server.BeginOutputReadLine();
       attempts = 0;
       startTimer.Start();
     }
@@ -444,6 +457,100 @@ namespace FortLedgerDesktop
       catch (Exception ex) { MessageBox.Show(ex.Message,"Backup configuration unavailable"); }
     }
 
+    // A user-initiated update comes only from the authenticated owner route in
+    // the packaged local Node child. This message is NOT an instruction to write
+    // files yet: the launcher waits for clean HTTP/SQLite shutdown and exit 0.
+    private void ReceiveServerOutput(object sender, DataReceivedEventArgs e)
+    {
+      const string marker = "FORTLEDGER_DESKTOP_PATCH:";
+      string line = e.Data;
+      if (String.IsNullOrEmpty(line) || !line.StartsWith(marker, StringComparison.Ordinal)) return;
+      string sha = line.Substring(marker.Length).Trim().ToLowerInvariant();
+      if (sha.Length != 40) return;
+      foreach(char c in sha)
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return;
+      pendingPatchSha=sha;
+    }
+
+    private int ApplyPinnedCodePatch(string sha)
+    {
+      try
+      {
+        var psi=BaseNode("src\\desktop-code-update.js");
+        psi.Arguments += " " + sha; // SHA is strictly 40 lowercase hex.
+        psi.EnvironmentVariables["FORTLEDGER_DESKTOP_INSTALLER"]="1";
+        psi.EnvironmentVariables["FORTLEDGER_DESKTOP_UPDATE_HOST"]="1";
+        psi.RedirectStandardError=true;
+        psi.RedirectStandardOutput=true;
+        ReadBackups(psi);
+        using(Process helper=Process.Start(psi))
+        {
+          if(helper==null)return 3;
+          // No browser, SQLite connection or tray server is alive during patch.
+          string error=helper.StandardError.ReadToEnd();
+          helper.StandardOutput.ReadToEnd();
+          helper.WaitForExit();
+          if(helper.ExitCode!=0)
+          {
+            // The helper only returns code 1 when program files were unchanged
+            // or safely rolled back. Code 3 means source consistency uncertain.
+            File.AppendAllText(Path.Combine(Environment.GetFolderPath(
+              Environment.SpecialFolder.LocalApplicationData),"FortLedger",
+              "code-update-error.log"),DateTime.UtcNow.ToString("o")+" "+
+              (helper.ExitCode==3?"Code rollback unconfirmed":"Code update refused")+
+              Environment.NewLine);
+          }
+          return helper.ExitCode;
+        }
+      }
+      catch { return 3; } // fail closed; do not guess state of installed code
+    }
+
+    private void CheckCodeUpdate(object sender, EventArgs e)
+    {
+      if(patchTask!=null)
+      {
+        if(!patchTask.IsCompleted)return;
+        int result;
+        try{result=patchTask.Result;}catch{result=3;}
+        patchTask=null;pendingPatchSha=null;
+        if(result==3)
+        {
+          MessageBox.Show("The code update stopped without a verified rollback. Do not reopen " +
+            "FortLedger or reset the hotel database. Ask the owner/IT to inspect the " +
+            "local update journal and recover only program files from the reviewed build.",
+            "FortLedger update paused",MessageBoxButtons.OK,MessageBoxIcon.Error);
+          ExitThread();return;
+        }
+        try{ Launch(); }
+        catch(Exception ex)
+        {
+          MessageBox.Show("FortLedger did not restart safely: "+ex.Message+
+            ". Hotel records have not been erased. Do not reinstall or reset the data.",
+            "FortLedger restart blocked",MessageBoxButtons.OK,MessageBoxIcon.Error);
+          ExitThread();return;
+        }
+        if(result!=0)
+          MessageBox.Show("Code update refused safely. Your existing app was restarted " +
+            "without overwriting the hotel data. Review the backup and Update Center before retrying.",
+            "FortLedger update not installed",MessageBoxButtons.OK,MessageBoxIcon.Warning);
+        return;
+      }
+      string sha=pendingPatchSha;
+      if(String.IsNullOrEmpty(sha)||server==null||!server.HasExited)return;
+      startTimer.Stop();stopTimer.Stop();
+      server.WaitForExit(); // drain asynchronous stdout callback
+      if(server.ExitCode!=0)
+      {
+        pendingPatchSha=null;
+        MessageBox.Show("Cannot confirm safe database shutdown. No code patch was started. " +
+          "Inspect the original hotel process and backups before reopening.",
+          "FortLedger update blocked",MessageBoxButtons.OK,MessageBoxIcon.Error);
+        ExitThread();return;
+      }
+      patchTask=Task.Run(()=>ApplyPinnedCodePatch(sha));
+    }
+
     private void StopApp()
     {
       if (stopping) return;
@@ -476,7 +583,7 @@ namespace FortLedgerDesktop
     }
     protected override void ExitThreadCore()
     {
-      startTimer.Stop();stopTimer.Stop();tray.Visible=false;tray.Dispose();
+      startTimer.Stop();stopTimer.Stop();patchTimer.Stop();tray.Visible=false;tray.Dispose();
       base.ExitThreadCore();
     }
     public new void Dispose()
@@ -484,6 +591,7 @@ namespace FortLedgerDesktop
       if(tray!=null)tray.Dispose();
       if(startTimer!=null)startTimer.Dispose();
       if(stopTimer!=null)stopTimer.Dispose();
+      if(patchTimer!=null)patchTimer.Dispose();
     }
   }
 }
