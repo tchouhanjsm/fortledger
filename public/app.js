@@ -1553,7 +1553,7 @@ $('#update-center-install').onclick=async()=>{
   if(!can('system.update')||!/^[a-f0-9]{40}$/i.test(approvedUpdateSha||''))return;
   const accepted=await confirmAction({
     title:'Install verified FortLedger update?',
-    detail:'Confirm staff have finished booking and bill forms. The owner-only Windows updater will reject new financial writes, finish active requests and verify the external encrypted backup. For code-only changes, it updates application files without reinstalling, changing owner credentials or rewriting hotel data. If native components changed, a reviewed installer is still required.',
+    detail:'Confirm all staff have finished their booking or bill forms. The owner-only Windows updater will reject new financial writes, finish active requests and verify the external encrypted backup. For code-only changes, it updates application files without reinstalling, changing owner credentials or rewriting hotel data. If native components changed, a reviewed installer is still required.',
     confirmLabel:'Finish work & update'
   });
   if(!accepted)return;
