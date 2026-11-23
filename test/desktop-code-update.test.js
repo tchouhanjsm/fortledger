@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
+import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
@@ -139,7 +140,7 @@ test('update agent and Windows tray refuse unsafe subprocess and require clean e
 
 test('Windows CI packages byte-for-byte Git blobs in src/public (no hidden CRLF conversion)',()=>{
   if(process.platform!=='win32'||process.env.GITHUB_ACTIONS!=='true')return;
-  const root=path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+  const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const output=execFileSync('git',['ls-tree','-r','HEAD','src','public'],
     {cwd:root,encoding:'utf8',maxBuffer:2*1024*1024});
   let compared=0;
