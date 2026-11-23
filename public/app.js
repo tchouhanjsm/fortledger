@@ -3451,6 +3451,76 @@ $('#restaurant-table-create').onsubmit=async event=>{
   finally{tablesAdminBusy=false;form.querySelector('button').disabled=false;}
 };
 
+// Batch table setup is opt-in. Never infer physical tables from the seven hotel rooms.
+let tableSetupReview=null;
+const tableSetupMessage=$('#restaurant-table-bulk-message');
+const tableSetupApply=$('#restaurant-table-bulk-apply');
+function invalidateTableSetup(){
+  tableSetupReview=null;tableSetupApply.hidden=true;
+  tableSetupMessage.textContent='';
+}
+const tableSetupNames=()=>$('#restaurant-table-bulk-names').value.split(/\r?\n/)
+  .map(name=>name.trim()).filter(Boolean);
+$('#restaurant-table-bulk-names').addEventListener('input',invalidateTableSetup);
+$('#restaurant-table-bulk-generate').onclick=()=>{
+  const prefix=$('#restaurant-table-bulk-prefix').value.trim();
+  const count=Number($('#restaurant-table-bulk-count').value);
+  if(!prefix||!Number.isSafeInteger(count)||count<1||count>30){
+    tableSetupMessage.textContent='Enter a prefix and 1–30 actual physical tables.';return;
+  }
+  const names=Array.from({length:count},(_,i)=>prefix+' '+(i+1));
+  if(names.some(name=>name.length>30)){
+    tableSetupMessage.textContent='Generated table names must be at most 30 characters.';return;
+  }
+  $('#restaurant-table-bulk-names').value=names.join('\n');
+  invalidateTableSetup();
+  tableSetupMessage.textContent='Review the generated names before previewing; nothing has been created.';
+};
+$('#restaurant-table-bulk-preview').onclick=async()=>{
+  if(tablesAdminBusy||!can('menu.manage'))return;
+  const labels=tableSetupNames();
+  tableSetupApply.hidden=true;tableSetupReview=null;
+  if(labels.length<1||labels.length>30){
+    tableSetupMessage.textContent='Enter 1–30 actual physical table names.';return;
+  }
+  tablesAdminBusy=true;
+  const button=$('#restaurant-table-bulk-preview');button.disabled=true;
+  try{
+    const plan=await api('/api/restaurant/tables/setup/preview',{
+      method:'POST',body:JSON.stringify({labels})
+    });
+    tableSetupReview={labels,review_token:plan.review_token};
+    tableSetupMessage.textContent=plan.to_create.length+' new table(s): '+
+      (plan.to_create.join(', ')||'none')+' · '+plan.already_active.length+
+      ' already active · '+plan.already_hidden.length+
+      ' already hidden (will stay hidden). No saved bills change.';
+    tableSetupApply.hidden=plan.to_create.length===0;
+  }catch(error){tableSetupMessage.textContent='Cannot preview table setup: '+error.message;}
+  finally{tablesAdminBusy=false;button.disabled=false;}
+};
+tableSetupApply.onclick=async()=>{
+  if(tablesAdminBusy||!tableSetupReview||!can('menu.manage'))return;
+  const intent=tableSetupReview;
+  if(!await confirmAction({title:'Create reviewed dining table names?',
+    detail:'Only missing names will be added. Existing hidden tables and all saved receipts stay untouched.',
+    confirmLabel:'Create missing tables'}))return;
+  tablesAdminBusy=true;tableSetupApply.disabled=true;
+  try{
+    const result=await api('/api/restaurant/tables/setup/apply',{
+      method:'POST',body:JSON.stringify(intent)
+    });
+    invalidateTableSetup();
+    await load();await refreshRestaurantTablesManagement();
+    tableSetupMessage.textContent=result.created.length+
+      ' physical table label(s) created. Existing/hidden table labels preserved.';
+  }catch(error){
+    invalidateTableSetup();
+    tableSetupMessage.textContent='Table setup not confirmed: '+error.message+
+      '. Refresh and preview again before trying; no automatic retry.';
+    try{await refreshRestaurantTablesManagement();}catch{}
+  }finally{tablesAdminBusy=false;tableSetupApply.disabled=false;}
+};
+
 let bundledMenuPreview=null,bundledMenuBusy=false,bundledMenuRevision=0;
 function renderBundledMenuPreview(){
   const box=$('#bundled-menu-review');box.replaceChildren();

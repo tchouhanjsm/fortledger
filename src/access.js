@@ -55,6 +55,8 @@ export function requiredPermission(method,path){
     return method==='GET'?'restaurant.read':method==='POST'?'menu.manage':null;
   if(path==='/restaurant/tables/all')
     return method==='GET'?'menu.manage':null;
+  if(path==='/restaurant/tables/setup/preview'||path==='/restaurant/tables/setup/apply')
+    return method==='POST'?'menu.manage':null;
   if(/^\/restaurant\/tables\/\d+\/visibility$/.test(path))
     return method==='PATCH'?'menu.manage':null;
   if(/^\/restaurant\/menu\/\d+\/price$/.test(path))

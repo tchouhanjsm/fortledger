@@ -380,6 +380,24 @@
       <input id="restaurant-table-new" name="label" maxlength="30" required placeholder="e.g. Rooftop 1" autocomplete="off">
       <button type="submit" class="secondary">Add table</button>
     </form>
+    <details id="restaurant-table-bulk">
+      <summary>Set up multiple physical tables · preview first</summary>
+      <p class="muted">Paste one table name per line, or generate a numbered list. Names already present stay unchanged, including hidden ones. No automatic occupancy or kitchen orders.</p>
+      <div class="restaurant-reconciliation-actions">
+        <label for="restaurant-table-bulk-prefix">Numbered prefix</label>
+        <input id="restaurant-table-bulk-prefix" type="text" maxlength="26" placeholder="e.g. Rooftop" autocomplete="off">
+        <label for="restaurant-table-bulk-count">How many tables?</label>
+        <input id="restaurant-table-bulk-count" type="number" min="1" max="30" step="1" value="4">
+        <button type="button" id="restaurant-table-bulk-generate" class="secondary">Generate names</button>
+      </div>
+      <label for="restaurant-table-bulk-names">Actual table names (one per line)</label>
+      <textarea id="restaurant-table-bulk-names" rows="5" maxlength="1000" placeholder="Rooftop 1&#10;Rooftop 2&#10;Courtyard 1"></textarea>
+      <div class="restaurant-reconciliation-actions">
+        <button type="button" id="restaurant-table-bulk-preview" class="secondary">Preview table setup</button>
+        <button type="button" id="restaurant-table-bulk-apply" class="primary" hidden>Confirm &amp; create missing tables</button>
+      </div>
+      <p id="restaurant-table-bulk-message" role="status" aria-live="polite"></p>
+    </details>
     <p id="restaurant-table-admin-message" role="status" aria-live="polite"></p>
     <div id="restaurant-table-admin-list"></div>
   </details>

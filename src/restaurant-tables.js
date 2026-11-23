@@ -1,4 +1,5 @@
 import {recordAudit} from './financial-audit.js';
+import {createHash} from 'node:crypto';
 
 /** Optional seating labels only; no open orders, table occupancy or kitchen POS. */
 export function ensureRestaurantTablesSchema(db){
@@ -60,6 +61,62 @@ export function changeRestaurantTable(db,id,{active,expected_active}={},actor){
     return {...row,active:Number(active)};
   })();
 }
+
+// Bulk setup is explicit operator-reviewed configuration, not inferred physical seating.
+// Never rename, reactivate or delete a table, and never alter a historical receipt.
+function normalizeSetupNames(labels){
+  if(!Array.isArray(labels)||labels.length<1||labels.length>30)
+    throw new Error('Provide 1–30 physical dining table names');
+  const seen=new Set();
+  return labels.map(raw=>{
+    const name=validLabel(raw);
+    const key=name.toLocaleLowerCase();
+    if(seen.has(key))throw new Error('Repeated dining table name in setup: '+name);
+    seen.add(key);
+    return name;
+  });
+}
+function tableSetupPlan(db,labels){
+  const rows=db.prepare('SELECT id,label,active FROM restaurant_tables ORDER BY id').all();
+  const byName=new Map(rows.map(row=>[row.label.toLocaleLowerCase(),row]));
+  const to_create=[],already_active=[],already_hidden=[];
+  for(const label of labels){
+    const prior=byName.get(label.toLocaleLowerCase());
+    if(!prior)to_create.push(label);
+    else (prior.active?already_active:already_hidden).push({id:prior.id,label:prior.label});
+  }
+  const review_token=createHash('sha256').update(JSON.stringify({labels,rows})).digest('hex');
+  return {requested:labels.length,to_create,already_active,already_hidden,review_token,
+    existing_labels_preserved:true,saved_bills_changed:false};
+}
+export function previewRestaurantTableSetup(db,{labels}={},actor){
+  manager(actor);
+  return tableSetupPlan(db,normalizeSetupNames(labels));
+}
+export function applyRestaurantTableSetup(db,{labels,review_token}={},actor){
+  manager(actor);
+  const names=normalizeSetupNames(labels);
+  if(typeof review_token!=='string'||!/^[a-f0-9]{64}$/.test(review_token))
+    throw new Error('Review table setup before creating names');
+  return db.transaction(()=>{
+    const plan=tableSetupPlan(db,names);
+    if(plan.review_token!==review_token)
+      throw new Error('Restaurant table setup changed since preview; refresh and review again');
+    const insert=db.prepare('INSERT INTO restaurant_tables(label) VALUES(?)');
+    const created=[];
+    for(const label of plan.to_create){
+      const result=insert.run(label);
+      const table={id:Number(result.lastInsertRowid),label,active:1};
+      recordAudit(db,actor,'restaurant_table.created','restaurant_table',table.id,{
+        label,source:'reviewed_bulk_setup'
+      });
+      created.push(table);
+    }
+    return {created,already_active:plan.already_active,already_hidden:plan.already_hidden,
+      existing_labels_preserved:true,saved_bills_changed:false};
+  })();
+}
+
 /** Called inside the restaurant financial transaction. */
 export function saveBillTableSnapshot(db,billId,tableId){
   if(tableId===undefined||tableId===null||tableId==='')return null;
