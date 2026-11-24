@@ -154,3 +154,29 @@ test('Windows CI packages byte-for-byte Git blobs in src/public (no hidden CRLF 
   }
   assert.ok(compared>40,'Expected to verify the full installed JS/UI source set');
 });
+
+test('verified same-PC encrypted checkpoints allow ordinary source patches but block schema changes',async()=>{
+ const f=makeFixture();
+ const localEnv={...env,LOCALAPPDATA:'C:\\Fake',
+  FORTLEDGER_BACKUP_DIR:'C:\\Fake\\FortLedger\\local-backups',
+  FORTLEDGER_BACKUP_LOCAL_ONLY:'1'};
+ const localHealth=()=>({...backup(),independent_drive:false});
+ try{
+   const settings={root:f.root,env:localEnv,platform:'win32',
+     feed,trees:tree,freshness,backupHealth:localHealth};
+   const check=await inspectDesktopCodeUpdate(settings);
+   assert.equal(check.ready,true);
+   assert.equal(check.recovery_scope,'local_checkpoint');
+   const schema=map([...after.values(),file('src/database.js','new-migration')]);
+   const unsafe=await inspectDesktopCodeUpdate({...settings,
+     trees:async sha=>sha===oldSha?before:schema});
+   assert.equal(unsafe.ready,false);
+   assert.match(unsafe.blockers.join(' '),/Schema, restore and credential-storage/);
+   const wrong=await inspectDesktopCodeUpdate({...settings,
+     env:{...localEnv,FORTLEDGER_BACKUP_DIR:'C:\\Fake\\FortLedger\\data\\backups'}});
+   assert.equal(wrong.ready,false);
+   const applied=await installDesktopCodeUpdate(newSha,{...settings,workRoot:f.work,
+     fetchFile:async (_sha,name)=>Buffer.from(content[name])});
+   assert.equal(applied.updated,true);
+ }finally{f.cleanup();}
+});

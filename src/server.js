@@ -8,6 +8,7 @@ import {releaseReadiness} from './release-readiness.js';
 import {summarizeReleaseReadiness} from './release-status-summary.js';
 import {verifyLocalBackupHealth} from './backup-health.js';
 import {prepareVerifiedUpgradeBackup,UpgradeBackupRefusal} from './upgrade-backup.js';
+import {prepareRoutineUpdateCheckpoint} from './routine-update-recovery.js';
 import {updateStatus} from './update-status.js';
 import {inspectUpdateReadiness,createSupervisedUpdateIpc} from './update-readiness.js';
 import {inspectDesktopCodeUpdate} from './desktop-code-update.js';
@@ -917,10 +918,16 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
         (tls?'https://':'http://')+host+':'+port);
       backups=scheduleEncryptedBackups(db);
     });
-    async function closeDataSafely(){
+    async function closeDataSafely({forCodeUpdate=false}={}){
       backups?.stop();
       if(backups?.idle)await backups.idle();
       await app.locals.waitForUpgradeBackup();
+      // Every code patch obtains a NEW encrypted snapshot of the final drained
+      // ledger AND original owner credentials, then verifies the backup.
+      // It is not a startup-health gate or a backup on every sign-in.
+      if(forCodeUpdate)await prepareRoutineUpdateCheckpoint(db,{
+        env:process.env,authFile:DEFAULT_AUTH_FILE
+      });
       db.close();
     }
     if(process.platform==='win32'&&process.env.FORTLEDGER_DESKTOP_INSTALLER==='1'&&
@@ -950,10 +957,11 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
         // Desktop tray is an independent parent. Do not replace any installed
         // source files while a request, WAL connection or backup job is live.
         listener.close(async()=>{
-          try{await closeDataSafely();}
+          try{await closeDataSafely({forCodeUpdate:true});}
           catch(error){
             console.error('Desktop code update shutdown blocked:',error.message);
-            process.exitCode=1;return;
+            try{db.close();}catch{}
+            process.exit(1); // Tray refuses patch unless the drained child exited 0.
           }
           // Exactly one control line on stdout; the tray checks child exit 0
           // before allowing the separate, pinned update helper to run.

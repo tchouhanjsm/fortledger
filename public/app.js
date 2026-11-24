@@ -2136,7 +2136,8 @@ $('#update-center-check').onclick=async()=>{
         $('#update-center-desktop').hidden=!(choice.show_verified_installer||choice.show_in_place);
       }
       $('#update-center-readiness-status').textContent=installerManaged?
-        choice.guidance:
+        (choice.guidance+(readiness.recovery_scope==='local_checkpoint'?
+          ' The protected checkpoint is on this PC only. Independent disaster recovery remains pending.':'')):
         ready?
           (readiness.update_mode==='code_only'?
             'Verified code-only update ready. No reinstall: FortLedger will finish work, patch reviewed app files and restart.':

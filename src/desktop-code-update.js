@@ -6,8 +6,7 @@ import {readInstalledDesktopBuild} from './installer-update-feed.js';
 import {checkApprovedSourceUpdate} from './approved-source-feed.js';
 import {backupFreshness} from './backup-freshness.js';
 import {verifyLocalBackupHealth} from './backup-health.js';
-import {isSeparateBackupVolume} from './upgrade-backup.js';
-import {databasePath} from './data-paths.js';
+import {verifyRoutineUpdateBackup} from './routine-update-recovery.js';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const GH='https://api.github.com/repos/tchouhanjsm/fortledger';
@@ -102,19 +101,22 @@ function destination(root,filename){
   }
   return absolute;
 }
+// Database/schema and recovery machinery never migrate using only same-PC
+// protection. Ordinary non-migration source/UI fixes may use a verified local
+// emergency snapshot, with disaster recovery still explicitly pending.
+const SOURCE_MIGRATION_FILES=new Set([
+  'src/database.js','src/data-paths.js','src/restore.js',
+  'src/encrypted-backups.js','src/upgrade-backup.js',
+  'src/desktop-first-run.js'
+]);
+function ensureRoutineSourceScope(policy,plan){
+  if(policy.scope==='local_checkpoint'&&
+     plan.changes.some(x=>SOURCE_MIGRATION_FILES.has(x.path)))
+    throw new Error('Schema, restore and credential-storage code changes require independent recovery; ordinary source and UI patches do not');
+}
 function checkBackup({env,platform,freshness=backupFreshness,
   backupHealth=verifyLocalBackupHealth}={}){
-  if(platform!=='win32')throw new Error('Desktop code updates are Windows-only');
-  const data=databasePath(env);
-  if(typeof env.FORTLEDGER_BACKUP_DIR!=='string'||!path.win32.isAbsolute(env.FORTLEDGER_BACKUP_DIR)||
-     !isSeparateBackupVolume(env.FORTLEDGER_BACKUP_DIR,data,'win32'))
-    throw new Error('Configure a protected encrypted backup on a different drive before updating');
-  if(freshness({env}).state!=='recent')
-    throw new Error('The encrypted backup must be recent; prepare a fresh protected backup first');
-  const health=backupHealth({env});
-  if(health?.restorable!==true||health?.owner_auth_present!==true||
-     health?.owner_credential_recoverable!==true||health?.independent_drive!==true)
-    throw new Error('The external encrypted hotel and original owner credentials must pass restore verification');
+  return verifyRoutineUpdateBackup({env,platform,freshness,health:backupHealth});
 }
 export async function inspectDesktopCodeUpdate({
   root=ROOT,env=process.env,platform=process.platform,
@@ -123,7 +125,7 @@ export async function inspectDesktopCodeUpdate({
   freshness=backupFreshness,backupHealth=verifyLocalBackupHealth
 }={}){
   const blockers=[],info=await feed({installed});
-  let target_sha=null,run_number=null,changes=0;
+  let target_sha=null,run_number=null,changes=0,plan=null,recovery_scope=null;
   if(platform!=='win32'||env.FORTLEDGER_DESKTOP_UPDATE_HOST!=='1')
     blockers.push('This installation does not have the dedicated Windows desktop update supervisor. A one-time bootstrap installer is required.');
   if(!installed)blockers.push('This desktop installation has no trustworthy installed build identity.');
@@ -133,19 +135,22 @@ export async function inspectDesktopCodeUpdate({
   if(!blockers.length){
     target_sha=info.target_sha.toLowerCase();run_number=info.run_number;
     try{
-      const plan=planCodeChanges(await trees(installed.sha),await trees(target_sha));
+      plan=planCodeChanges(await trees(installed.sha),await trees(target_sha));
       if(!plan.supported)blockers.push(plan.reason);
       else changes=plan.changes.length;
       if(!changes)blockers.push('There are no app code or UI changes to apply; a full installer may be needed for this release.');
     }catch{blockers.push('Could not verify the complete old and new GitHub file trees.');}
   }
   if(!blockers.length){
-    try{checkBackup({env,platform,freshness,backupHealth});}
-    catch(error){blockers.push(error.message);}
+    try{
+      const policy=checkBackup({env,platform,freshness,backupHealth});
+      ensureRoutineSourceScope(policy,plan);
+      recovery_scope=policy.scope;
+    }catch(error){blockers.push(error.message);}
   }
   return {platform:'windows',state:info.state,ready:blockers.length===0,
     installed:installed?.sha.slice(0,12)||null,remote:info.remote||null,
-    target_sha,run_number,change_count:changes,blockers,
+    target_sha,run_number,change_count:changes,blockers,recovery_scope,
     ci_run_url:info.ci_run_url||null,
     update_mode:'code_only',
     note:'Owner-approved source-only update. Database, staff, invoices, native runtime and installed desktop launcher are never replaced.'};
@@ -194,9 +199,10 @@ export async function installDesktopCodeUpdate(target_sha,{
     info.target_sha?.toLowerCase()!==target_sha.toLowerCase()||
     !Number.isSafeInteger(info.run_number)||info.run_number!==installed.build_number)
     throw new Error('Pinned update is not the newest fully tested Windows build; review updates again');
-  checkBackup({env,platform,freshness,backupHealth});
+  const recovery=checkBackup({env,platform,freshness,backupHealth});
   const plan=planCodeChanges(await trees(installed.sha),await trees(target_sha));
   if(!plan.supported)throw new Error(plan.reason);
+  ensureRoutineSourceScope(recovery,plan);
   if(!plan.changes.length)throw new Error('No code-only update needed');
   if(!path.isAbsolute(workRoot)||path.resolve(workRoot)===path.resolve(root)||
      path.resolve(workRoot).startsWith(path.resolve(root)+path.sep))
