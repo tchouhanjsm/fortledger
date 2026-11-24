@@ -48,7 +48,12 @@ try {
     $configured=Import-FortLedgerBackupSettings -DataDirectory $live -AppRoot $InstallDirectory
     if (-not $configured -or -not $env:FORTLEDGER_BACKUP_DIR -or
         -not $env:FORTLEDGER_BACKUP_PASSPHRASE) {
-      throw 'Configure encrypted backups on a separate drive before updating this installation.'
+      throw ('Configure encrypted backups on a separate drive before updating this installation. '+
+        'Nothing has been replaced. Choose the installer backup-setup helper or '+
+        'FortLedger tray > Configure encrypted backups (owner). After setup, start '+
+        'the existing app and use My Profile > Protected backups > Prepare safe update '+
+        'backup (if available), verify a matching .flbk/.flba pair, close the tray '+
+        'safely and retry. Never delete the hotel database or original owner login.')
     }
     $latest=Get-ChildItem -LiteralPath $env:FORTLEDGER_BACKUP_DIR -Filter 'fortledger-*.flbk' -File |
       Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
