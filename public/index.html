@@ -532,7 +532,7 @@
         <button type="button" id="backup-center-prepare" class="primary">Prepare safe update backup</button>
         <p id="backup-center-prepare-state" role="status" aria-live="polite">Creates and tests a fresh encrypted backup on your separately protected drive. This does not install an update.</p>
       </div>
-      <p class="muted">Only the owner on this computer can prepare a backup. Same-PC emergency backups cannot qualify for a software upgrade.</p>
+      <p class="muted">Only the owner on this computer can prepare independent recovery backups. Verified same-PC encrypted checkpoints can protect routine code updates, but cannot protect against disk failure.</p>
       <p class="muted">A successful database check does not replace off-device recovery testing. Original owner credentials must also be protected separately.</p>
     </section>
     <section id="update-center" class="update-center" aria-labelledby="update-center-title" hidden>
@@ -551,7 +551,7 @@
       </div>
       <div id="update-center-desktop" hidden>
         <button type="button" class="primary" id="update-center-download" hidden>Download verified Windows update</button>
-        <p class="muted">On a Windows desktop with the V7 update supervisor, the owner can select <strong>Check for updates</strong> and <strong>Apply code update &amp; restart</strong>. Verified code-only updates change the necessary application files without reinstalling, resetting accounts or replacing hotel data. A recoverable encrypted backup, completed staff work and successful exact-main CI are mandatory. Code patches do not require a newly built Windows installer artifact. A verified full Windows installer is required only if desktop launcher, native dependencies or backup-control scripts change—or for older Windows installations that have not received the one-time updater bootstrap.</p>
+        <p class="muted">On a Windows desktop with the V7 update supervisor, the owner can select <strong>Check for updates</strong> and <strong>Apply code update &amp; restart</strong>. Verified code-only updates change the necessary application files without reinstalling, resetting accounts or replacing hotel data. A verified encrypted checkpoint, completed staff work and successful exact-main CI are mandatory. Disaster recovery on another drive remains a separate owner responsibility. A verified full Windows installer is required only if desktop launcher, native dependencies or backup-control scripts change—or for older Windows installations that have not received the one-time updater bootstrap.</p>
         <p class="muted">For the occasional native/launcher upgrade, use the <a href="https://github.com/tchouhanjsm/fortledger/actions/workflows/windows-installer.yml" target="_blank" rel="noopener noreferrer">official FortLedger installer builds</a>. Owner approval and a successful tested build never replace the separate physical recovery and accountant acceptance gates.</p>
       </div>
       <div id="update-center-windows" hidden>
