@@ -1790,10 +1790,13 @@ async function refreshOwnerStaffNetwork(){
     const data=await api('/api/network/staff-access');
     ownerStaffPhoneUrl=data.phone_url;
     copy.disabled=!ownerStaffPhoneUrl;
+    const ips=Array.isArray(data.lan_ip_candidates)?data.lan_ip_candidates.slice(0,8):[];
     target.textContent=data.mode==='staff_https'?
       'Configured hotel LAN HTTPS phone URL: '+data.phone_url+
-      '. Requires trusted certificates, individual staff logins and off-LAN denial tests.':
-      'FortLedger currently runs on this PC only. From the Windows tray choose Hotel LAN HTTPS - phone access (owner/IT); use the existing router, PC private IP, valid certificate and authorized LAN subnet, then restart.';
+      '. Use the SAME hotel Wi-Fi on your phone, trust the HTTPS certificate and sign in with individual staff credentials.':
+      'FortLedger currently runs on this PC only. Candidate Windows LAN IP'+
+      (ips.length===1?': ':'s: ')+(ips.join(', ')||'none detected')+
+      '. These are identification hints, not live phone URLs. Use the existing hotel Wi-Fi/router; no second Wi-Fi network is needed. The owner/IT must enable the existing HTTPS listener for the correct PC IP once (tray: Hotel LAN HTTPS - phone access), with a trusted certificate and restricted firewall subnet.';
   }catch(error){ownerStaffPhoneUrl=null;copy.disabled=true;target.textContent='Network check unavailable: '+error.message;}
 }
 $('#owner-staff-network-refresh').onclick=refreshOwnerStaffNetwork;

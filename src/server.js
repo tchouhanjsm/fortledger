@@ -64,6 +64,7 @@ import {createBookingSafely} from './booking-create.js';
 import {normalizeOperationalNotes,updateOperationalNotes} from './booking-notes.js';
 import {deleteUnusedBooking,deleteUnusedGuest} from './entry-deletion.js';
 import {requireConfiguredHost,localListenerSettings,readLanTlsCredentials} from './network-policy.js';
+import {localLanIpCandidates} from './phone-lan-address.js';
 
 /** Avoid full SQLite/backup decrypt diagnostics in the live HTTP process.
  * The complete doctor and isolated restore are separate maintenance operations. */
@@ -134,6 +135,7 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
     const lan=network?.mode==='lan';
     res.json({mode:lan?'staff_https':'localhost_only',
       phone_url:lan?'https://'+network.host+':'+network.port:null,
+      lan_ip_candidates:lan?[]:localLanIpCandidates(),
       needs_trusted_https_cert:lan,guest_wifi_isolation_physically_verified:false,
       phone_acceptance_physically_verified:false,service_requires_running_pc:true,
       note:lan?'Hotel LAN HTTPS URL configured. Test phone certificate trust, individual staff login, firewall subnet and off-LAN denial. No separate Wi-Fi SSID is required.':
