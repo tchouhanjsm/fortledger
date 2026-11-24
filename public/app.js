@@ -2164,7 +2164,7 @@ $('#update-center-install').onclick=async()=>{
   if(!can('system.update')||!/^[a-f0-9]{40}$/i.test(approvedUpdateSha||''))return;
   const accepted=await confirmAction({
     title:'Install verified FortLedger update?',
-    detail:'Confirm all booking and bill forms are finished. The owner-only updater finishes active requests, verifies the protected recovery snapshot and pinned code hashes, then applies reviewed source files. This needs no installer download or post-update startup verification gate.',
+    detail:'Confirm all staff have finished their booking or bill forms. The owner-only updater finishes active requests, verifies the protected recovery snapshot and pinned code hashes, then applies reviewed source files. This needs no installer download or post-update startup verification gate.',
     confirmLabel:'Finish work & update'
   });
   if(!accepted)return;
