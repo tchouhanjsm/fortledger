@@ -19,8 +19,10 @@ export async function updateStatus({cwd=ROOT,platform=process.platform,installer
   const result={platform:platform==='win32'?'windows':platform==='darwin'?'mac':'other',
     state:'unavailable',current:null,remote:null,available:false,
     message:'Cannot check GitHub updates on this computer'};
-  if(process.env.FORTLEDGER_DESKTOP_INSTALLER==='1')return
-    process.env.FORTLEDGER_DESKTOP_UPDATE_HOST==='1'?sourceStatus():installerStatus();
+  if(process.env.FORTLEDGER_DESKTOP_INSTALLER==='1'){
+    return process.env.FORTLEDGER_DESKTOP_UPDATE_HOST==='1'?
+      sourceStatus():installerStatus();
+  }
   const command=async(...args)=>String(await run(args)).trim();
   try{
     const current=await command('rev-parse','--verify','HEAD');
