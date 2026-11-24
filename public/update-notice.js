@@ -1,11 +1,12 @@
 /** Owner-only, read-only update indication. A Git push is not a release;
- * packaged installs only advertise candidates with official successful CI and
- * an unexpired installer artifact; Git installs advertise a newer revision
+ * supervised desktop source updates advertise only exact main CI-approved
+ * descendants; older packaged installs still require a reviewed installer; Git installs advertise a newer revision
  * that still needs a separate safe readiness/backup check. */
 export function shouldShowOwnerUpdateNotice(update){
   if(!update||update.available!==true)return false;
   if(update.platform!=='windows')return false;
-  return update.state==='installer_update_available'||update.state==='new_revision';
+  return update.state==='installer_update_available'||
+    update.state==='source_update_available'||update.state==='new_revision';
 }
 
 export function createOwnerUpdateNotice({check,show,hide,now=()=>Date.now(),

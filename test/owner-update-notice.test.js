@@ -70,3 +70,10 @@ test('old asynchronous owner check never reveals update after staff role changes
   assert.equal(shown,0);
   assert.ok(hidden>0);
 });
+
+test('owner update indicator includes exact-main source update without installer artifact',()=>{
+ assert.equal(shouldShowOwnerUpdateNotice({platform:'windows',state:'source_update_available',
+   available:true,download_url:null}),true);
+ assert.equal(shouldShowOwnerUpdateNotice({platform:'windows',state:'source_ci_pending',
+   available:false}),false);
+});

@@ -11,7 +11,7 @@ test('eligible V7 owner sees in-place update first; installer download is hidden
  assert.equal(result.in_place_ready,true);
  assert.equal(result.show_in_place,true);
  assert.equal(result.show_verified_installer,false);
- assert.match(result.guidance,/No installer download or reinstall/);
+ assert.match(result.guidance,/No installer download or startup verification/);
 });
 test('older supervisor or native-only update still offers verified installer fallback',()=>{
  for(const blocked of [
@@ -55,4 +55,16 @@ test('UI checks updater readiness before exposing installer fallback, without ki
  assert.match(guard,/Port 3000 is still listening:/);
  assert.match(installer,/restart Windows normally and run this installer/);
  assert.doesNotMatch(guard+installer,/Stop-Process|taskkill|Process\.Kill\(/i);
+});
+
+test('approved main source update is independent of a Windows installer artifact',()=>{
+ const source={platform:'windows',state:'source_update_available',available:true,
+   target_sha:'b'.repeat(40),download_url:null};
+ const ready=chooseWindowsUpdateAction(source,{ready:true,update_mode:'code_only',
+   target_sha:'b'.repeat(40)});
+ assert.equal(ready.show_in_place,true);
+ assert.equal(ready.show_verified_installer,false);
+ const blocked=chooseWindowsUpdateAction(source,{ready:false,update_mode:'code_only'});
+ assert.equal(blocked.show_in_place,false);
+ assert.equal(blocked.show_verified_installer,false);
 });

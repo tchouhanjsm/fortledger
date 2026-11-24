@@ -2105,15 +2105,15 @@ $('#update-center-check').onclick=async()=>{
     message.textContent=state.message;
     message.dataset.state=state.state;
     if(state.platform==='windows'&&
-      ['installer_update_available','new_revision'].includes(state.state)&&
+      ['installer_update_available','source_update_available','new_revision'].includes(state.state)&&
       state.available===true&&currentUser?.role==='owner')
       $('#owner-update-notice').hidden=false;
     else $('#owner-update-notice').hidden=true;
     const short=sha=>/^[a-f0-9]{12}$/i.test(sha||'')?sha:'Unavailable';
-    const installerManaged=['installer_managed','installer_update_available','installer_check_unavailable'].includes(state.state);
-    versions.textContent=installerManaged?'Windows desktop installer distribution':(
+    const installerManaged=['installer_managed','installer_update_available','installer_check_unavailable','source_update_available','source_up_to_date','source_ci_pending','source_history_blocked','source_check_unavailable'].includes(state.state);
+    versions.textContent=installerManaged?('Windows desktop · installed: '+short(state.current)+' · GitHub main: '+short(state.remote)):(
       'Installed: '+short(state.current)+' · GitHub main: '+short(state.remote));
-    $('#update-center-desktop').hidden=!['installer_managed','installer_update_available','installer_check_unavailable'].includes(state.state);
+    $('#update-center-desktop').hidden=!['installer_managed','installer_update_available','installer_check_unavailable','source_update_available'].includes(state.state);
     const verifiedUrl=/^https:\/\/github\.com\/tchouhanjsm\/fortledger\/actions\/runs\/[0-9]+\/artifacts\/[0-9]+$/.test(state.download_url||'');
     if(state.platform==='windows'&&state.state==='installer_update_available'&&state.available===true&&verifiedUrl){
       installerDownloadUrl=state.download_url;
@@ -2123,7 +2123,7 @@ $('#update-center-check').onclick=async()=>{
     }
     $('#update-center-windows').hidden=state.platform!=='windows'||installerManaged;
     $('#update-center-mac').hidden=state.platform!=='mac';
-    if(state.platform==='windows'&&['new_revision','installer_update_available'].includes(state.state)){
+    if(state.platform==='windows'&&['new_revision','installer_update_available','source_update_available'].includes(state.state)){
       const readiness=await api('/api/system/updates/readiness');
       const panel=$('#update-center-readiness'),list=$('#update-center-blockers');
       panel.hidden=false;list.replaceChildren();
@@ -2133,7 +2133,7 @@ $('#update-center-check').onclick=async()=>{
       const choice=chooseWindowsUpdateAction(state,readiness);
       if(installerManaged){
         $('#update-center-download').hidden=!choice.show_verified_installer;
-        $('#update-center-desktop').hidden=!choice.show_verified_installer;
+        $('#update-center-desktop').hidden=!(choice.show_verified_installer||choice.show_in_place);
       }
       $('#update-center-readiness-status').textContent=installerManaged?
         choice.guidance:
@@ -2164,7 +2164,7 @@ $('#update-center-install').onclick=async()=>{
   if(!can('system.update')||!/^[a-f0-9]{40}$/i.test(approvedUpdateSha||''))return;
   const accepted=await confirmAction({
     title:'Install verified FortLedger update?',
-    detail:'Confirm all staff have finished their booking or bill forms. The owner-only Windows updater will reject new financial writes, finish active requests and verify the external encrypted backup. For code-only changes, it updates application files without reinstalling, changing owner credentials or rewriting hotel data. If native components changed, a reviewed installer is still required.',
+    detail:'Confirm all staff have finished their booking or bill forms. The owner-only updater finishes active requests, verifies the protected recovery snapshot and pinned code hashes, then applies reviewed source files. This needs no installer download or post-update startup verification gate.',
     confirmLabel:'Finish work & update'
   });
   if(!accepted)return;
