@@ -83,3 +83,23 @@ test('Windows desktop package intentionally ships Node, native SQLite, exact app
   assert.match(workflow,/runs-on: windows-latest/);
   assert.match(workflow,/upload-artifact/);
 });
+
+test('installer offers a non-silent reviewed backup setup without bypassing the paired encrypted restore gate',()=>{
+  const iss=file('installers/FortLedger.iss');
+  const guard=file('scripts/windows-installer-guard.ps1');
+  const configure=file('scripts/windows-configure-backups.ps1');
+  assert.match(iss,/Source: "..\\scripts\\windows-configure-backups\.ps1"; Flags: dontcopy/);
+  assert.match(iss,/Source: "..\\scripts\\windows-backup-settings\.ps1"; Flags: dontcopy/);
+  assert.match(iss,/not WizardSilent/);
+  assert.match(iss,/MsgBox\('FortLedger was not updated/);
+  assert.match(iss,/BackupSetupArguments/);
+  assert.match(iss,/ewWaitUntilTerminated/);
+  assert.match(iss,/Result := String\(Diagnostic\)/);
+  assert.match(configure,/\[string\]\$AppRoot/);
+  assert.match(configure,/Assert-FortLedgerBackupSeparation/);
+  assert.match(configure,/Save-FortLedgerBackupSettings/);
+  assert.match(guard,/Configure encrypted backups on a separate drive/);
+  assert.match(guard,/--require-owner-companion/);
+  assert.match(guard,/& \$node \$Verifier \$latest\.FullName/);
+  assert.doesNotMatch(guard+iss,/taskkill|Stop-Process|Remove-Item|git reset --hard|skip-backup/i);
+});

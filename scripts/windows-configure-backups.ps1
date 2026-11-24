@@ -1,8 +1,18 @@
 # One-time encrypted external-backup setup. Secret is sealed with Windows DPAPI
 # for this Windows account, never written to Git or displayed in terminal output.
-param([string]$BackupDirectory = '')
+param([string]$BackupDirectory = '', [string]$AppRoot = '')
 $ErrorActionPreference='Stop'
-$root=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+# The installer can extract the trusted helper into a temporary folder. Pass the
+# real installed app directory explicitly; never infer the hotel data path from
+# the temporary helper location or write into the installer unpack folder.
+if ($AppRoot) {
+  if (-not [IO.Path]::IsPathRooted($AppRoot)) {
+    throw 'Installed FortLedger application folder must be absolute.'
+  }
+  $root=[IO.Path]::GetFullPath($AppRoot)
+} else {
+  $root=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+}
 $live=Join-Path $env:LOCALAPPDATA 'FortLedger\data'
 . (Join-Path $PSScriptRoot 'windows-backup-settings.ps1')
 if (-not $BackupDirectory) {

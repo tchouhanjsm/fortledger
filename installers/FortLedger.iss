@@ -38,6 +38,10 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Source: "..\dist\windows\app\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\scripts\windows-installer-guard.ps1"; Flags: dontcopy
 Source: "..\scripts\windows-verify-owner-companion.mjs"; Flags: dontcopy
+; A signed-off operator may configure DPAPI-protected backup settings without
+; installing any new app files. Extract only on an explicit non-silent request.
+Source: "..\scripts\windows-configure-backups.ps1"; Flags: dontcopy
+Source: "..\scripts\windows-backup-settings.ps1"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\FortLedger"; Filename: "{app}\FortLedger.exe"; WorkingDir: "{app}"; Comment: "Open the local hotel application"
@@ -53,6 +57,8 @@ var
   Parameters: String;
   DiagnosticPath: String;
   Diagnostic: AnsiString;
+  BackupSetupArguments: String;
+  HelperExitCode: Integer;
 begin
   Result := '';
   ExtractTemporaryFile('windows-installer-guard.ps1');
@@ -72,6 +78,32 @@ begin
     if LoadStringFromFile(DiagnosticPath, Diagnostic) and (Length(Diagnostic) > 0) then
     begin
       Result := String(Diagnostic);
+      if (not WizardSilent) and
+         (Pos('Configure encrypted backups on a separate drive', Result) > 0) then
+      begin
+        // The helper changes only per-user DPAPI-protected backup settings. It
+        // does NOT generate a recovery artifact, install app files, restart
+        // FortLedger, or silently turn off the separate-drive update gate.
+        if MsgBox('FortLedger was not updated because an independent encrypted backup ' +
+          'is not configured.' + #13#10 + #13#10 +
+          'Would you like to open the protected backup configuration now? ' +
+          'Connect a separate protected USB drive or network share first.' + #13#10 + #13#10 +
+          'After configuring it, open the EXISTING FortLedger app, create and verify ' +
+          'a fresh paired backup, safely close the tray, then run this installer again.',
+          mbConfirmation, MB_YESNO) = IDYES then
+        begin
+          ExtractTemporaryFile('windows-configure-backups.ps1');
+          ExtractTemporaryFile('windows-backup-settings.ps1');
+          BackupSetupArguments := '-NoProfile -ExecutionPolicy Bypass -File "' +
+            ExpandConstant('{tmp}\windows-configure-backups.ps1') +
+            '" -AppRoot "' + ExpandConstant('{app}') + '"';
+          if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+            BackupSetupArguments, '', SW_SHOWNORMAL, ewWaitUntilTerminated, HelperExitCode) or
+             (HelperExitCode <> 0) then
+            Result := Result + #13#10 +
+              'Backup configuration was cancelled or unsuccessful; no upgrade was made.';
+        end;
+      end;
       Exit;
     end;
     Result := 'Installation stopped safely before replacing program files.' + #13#10 +
