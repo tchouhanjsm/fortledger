@@ -485,14 +485,14 @@
       <p id="owner-staff-pin-message" role="status" aria-live="polite"></p>
     </section>
     <section id="owner-staff-network" class="update-center" aria-labelledby="owner-staff-network-title" hidden>
-      <h3 id="owner-staff-network-title">Staff phones · private hotel Wi-Fi</h3>
-      <p class="muted">Phones share this one Windows computer and its SQLite database. For staff Wi-Fi access, the owner/technician must enable the existing HTTPS tray wizard, install trusted certificate profiles, and verify guest Wi-Fi isolation. The PC must stay powered on.</p>
+      <h3 id="owner-staff-network-title">Staff phones · existing hotel Wi-Fi / LAN</h3>
+      <p class="muted">Authorized phones may use the existing password-protected Wi-Fi while the PC connects by Ethernet or Wi-Fi. A separate staff Wi-Fi is not required. Enable Hotel LAN HTTPS in the tray, trust phone certificates, and sign in with individual FortLedger accounts. Keep the PC running.</p>
       <p id="owner-staff-network-status" role="status" aria-live="polite">Network status not checked.</p>
       <div class="update-center-actions">
         <button id="owner-staff-network-refresh" type="button" class="secondary">Check staff phone address</button>
         <button id="owner-staff-network-copy" type="button" class="secondary" disabled>Copy phone address</button>
       </div>
-      <p class="muted">Never use a browser certificate-warning bypass or expose FortLedger port 3000 through your router. Phone readiness is not verified until actual staff/guest Wi-Fi tests pass.</p>
+      <p class="muted">Wi-Fi password alone is not FortLedger login security: devices on the allowed LAN may see the login screen. Never bypass HTTPS certificate warnings or forward port 3000 to the internet. Test staff login and off-LAN denial.</p>
     </section>
     <section id="owner-printer-setup" class="update-center" aria-labelledby="owner-printer-title" hidden>
       <h3 id="owner-printer-title">Ethernet receipt printer · owner setup</h3>
@@ -519,7 +519,7 @@
       </div>
       <p id="release-status-machine" class="muted"></p>
       <ul id="release-status-items" class="release-status-items"></ul>
-      <p class="muted">This is a read-only view. Actual printer paper, replacement-device recovery, guest Wi-Fi isolation, staff device acceptance and GST sign-off must be verified independently. The checklist never issues a tax invoice or installs an update.</p>
+      <p class="muted">This is a read-only view. Actual printer paper, replacement-device recovery, LAN HTTPS and account-security checks, staff device acceptance and GST sign-off must be verified independently. The checklist never issues a tax invoice or installs an update.</p>
     </section>
     <section id="backup-center" class="update-center" aria-labelledby="backup-center-title" hidden>
       <h3 id="backup-center-title">Protected backups</h3>

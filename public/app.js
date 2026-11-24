@@ -1791,9 +1791,9 @@ async function refreshOwnerStaffNetwork(){
     ownerStaffPhoneUrl=data.phone_url;
     copy.disabled=!ownerStaffPhoneUrl;
     target.textContent=data.mode==='staff_https'?
-      'Configured staff HTTPS phone URL: '+data.phone_url+
-      '. Still requires trusted certificates and real guest-Wi-Fi isolation tests.':
-      'FortLedger currently runs on this PC only. From the Windows tray choose Private hotel Wi-Fi HTTPS (owner/IT); configure a reserved private IP, valid certificate and restricted staff subnet, then restart.';
+      'Configured hotel LAN HTTPS phone URL: '+data.phone_url+
+      '. Requires trusted certificates, individual staff logins and off-LAN denial tests.':
+      'FortLedger currently runs on this PC only. From the Windows tray choose Hotel LAN HTTPS - phone access (owner/IT); use the existing router, PC private IP, valid certificate and authorized LAN subnet, then restart.';
   }catch(error){ownerStaffPhoneUrl=null;copy.disabled=true;target.textContent='Network check unavailable: '+error.message;}
 }
 $('#owner-staff-network-refresh').onclick=refreshOwnerStaffNetwork;
@@ -1803,7 +1803,7 @@ $('#owner-staff-network-copy').onclick=async()=>{
     await navigator.clipboard.writeText(ownerStaffPhoneUrl);
     $('#owner-staff-network-status').textContent='Staff HTTPS phone address copied. Do not share it with hotel guests. Verify phone certificate trust before login.';
   }catch{
-    $('#owner-staff-network-status').textContent='Copy unavailable. Use this address on authorized staff Wi-Fi: '+ownerStaffPhoneUrl;
+    $('#owner-staff-network-status').textContent='Copy unavailable. Use this address on authorized phone connected to hotel Wi-Fi: '+ownerStaffPhoneUrl;
   }
 };
 async function refreshOwnerLanPrinter(){

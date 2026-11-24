@@ -135,8 +135,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
       phone_url:lan?'https://'+network.host+':'+network.port:null,
       needs_trusted_https_cert:lan,guest_wifi_isolation_physically_verified:false,
       phone_acceptance_physically_verified:false,service_requires_running_pc:true,
-      note:lan?'URL configured. Verify phone certificate trust and guest-network denial onsite.':
-        'Use the existing owner/IT Windows tray staff Wi-Fi HTTPS wizard; no network listener is enabled.'});
+      note:lan?'Hotel LAN HTTPS URL configured. Test phone certificate trust, individual staff login, firewall subnet and off-LAN denial. No separate Wi-Fi SSID is required.':
+        'Use Windows tray > Hotel LAN HTTPS - phone access (owner/IT) to enable an authenticated local phone URL.'});
   });
   app.get('/api/printer/config',(req,res,next)=>{
     if(req.actor?.role!=='owner')return res.status(403).json({error:'Owner required'});

@@ -27,6 +27,6 @@ export function summarizeReleaseReadiness(report){
         name:typeof check.name==='string'?check.name.slice(0,90):'Diagnostic issue',
         status:['warn','fail'].includes(check.status)?check.status:'warn'
       })):[],
-    notice:'Engineering alpha — never issue statutory tax invoices or enable live release on the strength of this view. Actual replacement-device restore, printer paper, protected staff network and accountant approval need independent on-site proof.'
+    notice:'Engineering alpha — never issue statutory tax invoices or enable live release on the strength of this view. Actual replacement-device restore, printer paper, authenticated hotel LAN and accountant approval need independent on-site proof.'
   };
 }
