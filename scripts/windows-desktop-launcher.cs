@@ -95,7 +95,7 @@ namespace FortLedgerDesktop
       ContextMenuStrip menu = new ContextMenuStrip();
       menu.Items.Add("Open FortLedger", null, delegate { Program.OpenApp(); });
       menu.Items.Add("Configure encrypted backups (owner)", null, delegate { ConfigureBackups(); });
-      menu.Items.Add("Private hotel Wi-Fi HTTPS (owner/IT)", null, delegate { ConfigureStaffLan(); });
+      menu.Items.Add("Hotel LAN HTTPS - phone access (owner/IT)", null, delegate { ConfigureStaffLan(); });
       menu.Items.Add("Return to this computer only (owner/IT)", null, delegate { DisableStaffLan(); });
       menu.Items.Add(new ToolStripSeparator());
       menu.Items.Add("Close FortLedger safely", null, delegate { StopApp(); });
@@ -426,7 +426,7 @@ namespace FortLedgerDesktop
       try
       {
         string file=Path.Combine(root,"scripts","windows-configure-staff-lan.ps1");
-        if(!File.Exists(file))throw new FileNotFoundException("Private staff-Wi-Fi setup is unavailable");
+        if(!File.Exists(file))throw new FileNotFoundException("Hotel LAN HTTPS setup is unavailable");
         var psi=new ProcessStartInfo("powershell.exe",
           "-NoProfile -ExecutionPolicy Bypass -File \"" + file + "\"");
         psi.WorkingDirectory=root;
@@ -434,8 +434,8 @@ namespace FortLedgerDesktop
         psi.Verb="runas"; // Windows UAC; never silently open the firewall.
         Process.Start(psi);
         MessageBox.Show("After owner/IT configuration, safely close and reopen FortLedger. " +
-          "Every staff phone must trust the certificate issuer; verify guest Wi-Fi cannot connect.",
-          "Private hotel Wi-Fi",MessageBoxButtons.OK,MessageBoxIcon.Information);
+          "Authorized phones on the same router Wi-Fi must trust the HTTPS certificate and sign in with an individual FortLedger account. No second staff Wi-Fi is required. Never forward port 3000 to the internet.",
+          "Hotel LAN phone access",MessageBoxButtons.OK,MessageBoxIcon.Information);
       }
       catch(Exception ex){MessageBox.Show(ex.Message,"Staff Wi-Fi setup blocked");}
     }
