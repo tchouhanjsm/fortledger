@@ -45,7 +45,7 @@ test('Windows installer packages opt-in staff Wi-Fi wizard and desktop shutdown 
     script=read('scripts/windows-configure-staff-lan.ps1'),
     builder=read('scripts/build-windows-installer.ps1'),
     server=read('src/server.js');
-  assert.match(desktop,/Private hotel Wi-Fi HTTPS/);
+  assert.match(desktop,/Hotel LAN HTTPS - phone access/);
   assert.match(desktop,/psi\.Verb="runas"/);
   assert.match(desktop,/FORTLEDGER_TLS_CERT/);
   assert.match(desktop,/FORTLEDGER_TLS_KEY/);
@@ -62,4 +62,19 @@ test('Windows installer packages opt-in staff Wi-Fi wizard and desktop shutdown 
     execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',ps],
       {cwd:fileURLToPath(new URL('..',import.meta.url)),timeout:15000});
   }
+});
+
+test('one existing Ethernet-and-Wi-Fi hotel LAN remains HTTPS and firewall restricted',()=>{
+  const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
+  const script=read('scripts/windows-configure-staff-lan.ps1');
+  const guide=read('docs/WINDOWS_STAFF_WIFI.md');
+  const gate=read('src/release-readiness.js');
+  assert.match(script,/Ethernet or Wi-Fi/);
+  assert.match(script,/-RemoteAddress \$StaffSubnet -Profile Private/);
+  assert.match(script,/New-NetFirewallRule/);
+  assert.match(guide,/No second staff-only Wi-Fi is required/);
+  assert.match(guide,/individual FortLedger staff account/);
+  assert.match(guide,/no router port-forwarding/);
+  assert.match(gate,/denied outside-LAN access/);
+  assert.doesNotMatch(script,/RemoteAddress Any|0\.0\.0\.0:3000/);
 });

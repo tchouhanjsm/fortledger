@@ -37,3 +37,7 @@ Current proforma and review-only tax drafts are **not statutory invoices**. Writ
 - All critical exceptions resolved or explicitly deferred before a controlled go-live.
 
 **No self-certification:** `release:check` always reports PENDING until a separate authorised release governance workflow exists; passing Node, Chromium and Windows CI is not an operational launch approval.
+
+
+## Use the existing password-protected hotel Wi-Fi for phones
+A second staff SSID is **not required**. The Windows PC may be on router Ethernet and an authorized phone on the same router's password-protected Wi-Fi, connecting over authenticated HTTPS to the PC's private IP. The security gate still requires real phone TLS trust, individual account and role verification, firewall restricted to the intended subnet, owner/device revocation, **denied outside-LAN access** and no public port forwarding. Shared Wi-Fi permits anyone with the password to reach the sign-in page; it is **not proof of guest isolation**. Use separate guest Wi-Fi or router controls if guest devices should not be able to reach the login screen.
