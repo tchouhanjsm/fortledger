@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {checkInstallerUpdate,readInstalledDesktopBuild} from './installer-update-feed.js';
+import {readInstalledDesktopBuild} from './installer-update-feed.js';
+import {checkApprovedSourceUpdate} from './approved-source-feed.js';
 import {backupFreshness} from './backup-freshness.js';
 import {verifyLocalBackupHealth} from './backup-health.js';
 import {isSeparateBackupVolume} from './upgrade-backup.js';
@@ -118,7 +119,7 @@ function checkBackup({env,platform,freshness=backupFreshness,
 export async function inspectDesktopCodeUpdate({
   root=ROOT,env=process.env,platform=process.platform,
   installed=readInstalledDesktopBuild(path.join(root,'installer-build.json')),
-  feed=checkInstallerUpdate,trees=readGitTree,
+  feed=checkApprovedSourceUpdate,trees=readGitTree,
   freshness=backupFreshness,backupHealth=verifyLocalBackupHealth
 }={}){
   const blockers=[],info=await feed({installed});
@@ -126,7 +127,7 @@ export async function inspectDesktopCodeUpdate({
   if(platform!=='win32'||env.FORTLEDGER_DESKTOP_UPDATE_HOST!=='1')
     blockers.push('This installation does not have the dedicated Windows desktop update supervisor. A one-time bootstrap installer is required.');
   if(!installed)blockers.push('This desktop installation has no trustworthy installed build identity.');
-  if(info.state!=='installer_update_available'||!info.available||
+  if(info.state!=='source_update_available'||!info.available||
     !SHA.test(info.target_sha)||!Number.isSafeInteger(info.run_number))
     blockers.push('No fully tested newer GitHub main build is available.');
   if(!blockers.length){
@@ -145,7 +146,7 @@ export async function inspectDesktopCodeUpdate({
   return {platform:'windows',state:info.state,ready:blockers.length===0,
     installed:installed?.sha.slice(0,12)||null,remote:info.remote||null,
     target_sha,run_number,change_count:changes,blockers,
-    ci_run_url:info.download_url?.replace(/\/artifacts\/[0-9]+$/,'')||null,
+    ci_run_url:info.ci_run_url||null,
     update_mode:'code_only',
     note:'Owner-approved source-only update. Database, staff, invoices, native runtime and installed desktop launcher are never replaced.'};
 }
@@ -181,7 +182,7 @@ function ensureLocalFile(root,name,sha){
 export async function installDesktopCodeUpdate(target_sha,{
   root=ROOT,env=process.env,platform=process.platform,
   installed=readInstalledDesktopBuild(path.join(root,'installer-build.json')),
-  feed=checkInstallerUpdate,trees=readGitTree,
+  feed=checkApprovedSourceUpdate,trees=readGitTree,
   fetchFile=null,freshness=backupFreshness,backupHealth=verifyLocalBackupHealth,
   workRoot=path.join(env.LOCALAPPDATA||'', 'FortLedger','code-updates')
 }={}){
@@ -189,9 +190,9 @@ export async function installDesktopCodeUpdate(target_sha,{
     env.FORTLEDGER_DESKTOP_UPDATE_HOST!=='1')
     throw new Error('Only a recognized Windows desktop build can apply a pinned update');
   const info=await feed({installed});
-  if(info.available!==true||info.state!=='installer_update_available'||
+  if(info.available!==true||info.state!=='source_update_available'||
     info.target_sha?.toLowerCase()!==target_sha.toLowerCase()||
-    !Number.isSafeInteger(info.run_number)||info.run_number<=installed.build_number)
+    !Number.isSafeInteger(info.run_number)||info.run_number!==installed.build_number)
     throw new Error('Pinned update is not the newest fully tested Windows build; review updates again');
   checkBackup({env,platform,freshness,backupHealth});
   const plan=planCodeChanges(await trees(installed.sha),await trees(target_sha));
@@ -230,7 +231,7 @@ export async function installDesktopCodeUpdate(target_sha,{
       }else fs.unlinkSync(file);
       completed.push(change.path);
     }
-    const stamp={sha:target_sha.toLowerCase(),build_number:info.run_number,
+    const stamp={sha:target_sha.toLowerCase(),build_number:installed.build_number,
       version:'code-update',update_method:'verified_source_only'};
     const stampTemp=path.join(root,'installer-build.json.tmp-'+randomUUID());
     fs.writeFileSync(stampTemp,JSON.stringify(stamp)+'\n',{flag:'wx'});
