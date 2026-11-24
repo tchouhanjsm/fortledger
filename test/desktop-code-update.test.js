@@ -42,9 +42,9 @@ const makeFixture=()=>{
 const env={LOCALAPPDATA:'C:\\Fake\\FortLedger',FORTLEDGER_DESKTOP_UPDATE_HOST:'1',
   FORTLEDGER_DATA_DIR:'C:\\Fake\\FortLedger\\data',
   FORTLEDGER_BACKUP_DIR:'D:\\PrivateBackup',FORTLEDGER_BACKUP_PASSPHRASE:'dummy-only-not-used'};
-const feed=async()=>({state:'installer_update_available',available:true,target_sha:newSha,
-  remote:newSha.slice(0,12),run_number:90,
-  download_url:'https://github.com/tchouhanjsm/fortledger/actions/runs/2/artifacts/3'});
+const feed=async()=>({state:'source_update_available',available:true,target_sha:newSha,
+  remote:newSha.slice(0,12),run_number:80,
+  ci_run_url:'https://github.com/tchouhanjsm/fortledger/actions/runs/2'});
 const tree=async sha=>sha===oldSha?before:after;
 const backup=()=>({restorable:true,owner_auth_present:true,owner_credential_recoverable:true,independent_drive:true});
 const freshness=()=>({state:'recent'});
@@ -105,7 +105,7 @@ test('pinned update modifies only changed source, preserves other files and pers
     assert.equal(fs.readFileSync(owner,'utf8'),'original owner hash');
     assert.equal(fs.readFileSync(keep,'utf8'),'original bundled runtime');
     assert.equal(readInstalledDesktopBuild(path.join(f.root,'installer-build.json')).sha,newSha);
-    assert.equal(readInstalledDesktopBuild(path.join(f.root,'installer-build.json')).build_number,90);
+    assert.equal(readInstalledDesktopBuild(path.join(f.root,'installer-build.json')).build_number,80);
     assert.match(fs.readFileSync(path.join(f.work,'code-update-journal.jsonl'),'utf8'),
       /"kind":"source_applied"/);
   }finally{f.cleanup();}

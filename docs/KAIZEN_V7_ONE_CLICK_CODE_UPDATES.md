@@ -23,3 +23,7 @@ Before V7, an Inno Setup desktop installation could only **download another full
 This is **not silent/background updates**. The owner chooses when to update between staff work; offline machines keep working without updates. A separately verified clean Windows workstation, off-device replacement-PC recovery, real Epson paper printer and accountant GST sign-off remain **human release gates**: [#135](https://github.com/tchouhanjsm/fortledger/issues/135). The software is still an unsigned engineering alpha.
 
 The GitHub Actions installer continues to be published for fresh PCs, major native changes and recovery. The in-app button is not intended to bypass its own safeguards, the installer guard or physical acceptance.
+
+
+## V8 CI-approved source channel
+The owner-only source patcher discovers the current `main` commit, verifies it descends from the exact installed commit, and checks GitHub's Linux, Windows and Chromium passes for that **exact main SHA**. No Windows installer artifact is needed. A native/dependency/backup-control change is still refused by the strict source-only allowlist. Both Git trees, installed file bytes and downloaded pinned blobs are revalidated by the tray helper after financial work is drained and SQLite is closed. The native installed build number remains unchanged for code-only patches, while the exact installed commit SHA advances. There is **no post-startup verification prerequisite** for applying a routine source patch; the existing tray restarts the service normally. This release does not change the encrypted backup gate.
