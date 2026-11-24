@@ -33,7 +33,16 @@ try {
   if ($dbExists -xor $authExists) {
     throw 'Hotel records and owner credentials are incomplete; stop and recover the original files.'
   }
-  if ($dbExists -and (Test-Path -LiteralPath (Join-Path $InstallDirectory 'FortLedger.exe'))) {
+  if ($dbExists) {
+    # The persistent hotel ledger is independent of the selected setup directory.
+    # Selecting another app directory must NEVER skip backup/credential checks.
+    if (-not (Test-Path -LiteralPath (Join-Path $InstallDirectory 'FortLedger.exe') -PathType Leaf)) {
+      throw ('Existing hotel records detected, but the selected setup directory is '+
+        'not the previously installed FortLedger desktop. Select the ORIGINAL '+
+        'FortLedger program directory for a reviewed upgrade, or stop for manual '+
+        'recovery if that application has been lost. Do not install alongside the '+
+        'same live ledger or delete owner credentials to bypass backup checks.')
+    }
     # For an existing desktop installation, require a recent independently
     # verified encrypted backup BEFORE any executable or native module changes.
     $settingsScript=Join-Path $InstallDirectory 'scripts\windows-backup-settings.ps1'

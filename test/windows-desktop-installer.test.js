@@ -103,3 +103,13 @@ test('installer offers a non-silent reviewed backup setup without bypassing the 
   assert.match(guard,/& \$node \$Verifier \$latest\.FullName/);
   assert.doesNotMatch(guard+iss,/taskkill|Stop-Process|Remove-Item|git reset --hard|skip-backup/i);
 });
+
+test('changing the Inno app directory cannot bypass a recoverable backup for existing hotel records',()=>{
+  const guard=file('scripts/windows-installer-guard.ps1');
+  assert.match(guard,/if \(\$dbExists\) \{/);
+  assert.match(guard,/not \(Test-Path -LiteralPath \(Join-Path \$InstallDirectory 'FortLedger\.exe'\)/);
+  assert.match(guard,/Select the ORIGINAL/);
+  assert.match(guard,/Import-FortLedgerBackupSettings/);
+  assert.match(guard,/--require-owner-companion/);
+  assert.doesNotMatch(guard,/if \(\$dbExists -and \(Test-Path/);
+});
