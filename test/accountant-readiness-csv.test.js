@@ -81,3 +81,26 @@ test('export route excludes manager, frontdesk and cashier even if URL is reques
   assert.notEqual((await request('/api/accountant/readiness.csv',{cookie:owned,method:'POST'})).status,200);
  }finally{await new Promise(resolve=>server.close(resolve));db.close();}
 });
+
+test('staff review cannot hide a missing or contradictory checkout source snapshot',()=>{
+ const db=openDatabase(':memory:');
+ try{
+  const snapshots=[
+   {exception:{code:'source_preflight_unavailable'},preflight:null},
+   {preflight:{blockers:[{code:'proforma_contract_mismatch'}]}},
+   null
+  ];
+  for(const [index,snapshot] of snapshots.entries()){
+   const booking=Number(db.prepare("INSERT INTO bookings(guest_name,checkin,checkout,rooms_count,category,nightly_rate_paise,status) VALUES(?,?,?,?,?,?,'checked_out')").run('Fixture '+index,'2027-04-02','2027-04-03',1,'Unassigned',400000).lastInsertRowid);
+   const caseId=Number(db.prepare("INSERT INTO checkout_document_cases(booking_id,version,state,snapshot_json,actor_username,hotel_business_date) VALUES(?,1,'held_for_review',?,'owner','2027-04-03')").run(booking,JSON.stringify(snapshot)).lastInsertRowid);
+   recordCheckoutCaseReview(db,caseId,{request_id:randomUUID(),status:'reviewed_for_accountant',note:'Source evidence reviewed by fixture operator',source_evidence_checked:true},owner);
+   const issue=accountantReadiness(db).issues.find(x=>x.source==='checkout_case'&&x.source_id===caseId);
+   assert.equal(issue.code,'checkout_source_review_required');
+   assert.match(issue.next_action,/staff review does not clear/);
+  }
+  const before=db.serialize(),csv=accountantReadinessCsv(db);
+  assert.match(csv,/checkout_source_review_required/);
+  assert.doesNotMatch(csv,/checkout_accountant_signoff_pending/);
+  assert.deepEqual(db.serialize(),before);
+ }finally{db.close();}
+});
