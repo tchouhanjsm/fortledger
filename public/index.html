@@ -488,6 +488,7 @@
       <h3 id="owner-staff-network-title">Staff phones · existing hotel Wi-Fi / LAN</h3>
       <p class="muted">Authorized phones may use the existing password-protected Wi-Fi while the PC connects by Ethernet or Wi-Fi. A separate staff Wi-Fi is not required. Enable Hotel LAN HTTPS in the tray, trust phone certificates, and sign in with individual FortLedger accounts. Keep the PC running.</p>
       <p id="owner-staff-network-status" role="status" aria-live="polite">Network status not checked.</p>
+      <input id="owner-staff-network-address" type="text" aria-label="Configured staff phone HTTPS address" readonly hidden>
       <div class="update-center-actions">
         <button id="owner-staff-network-refresh" type="button" class="secondary">Check staff phone address</button>
         <button id="owner-staff-network-copy" type="button" class="secondary" disabled>Copy phone address</button>
@@ -542,6 +543,7 @@
         <button id="update-center-check" type="button" class="secondary">Check for updates</button>
         <p id="update-center-state" role="status" aria-live="polite">Version not checked.</p>
       </div>
+      <p id="update-center-lan-note" class="muted" hidden>Updates are currently local-only. Even on the hotel PC, LAN HTTPS mode does not support the update supervisor. Do not reinstall to bypass this. Use the existing owner/IT local-only tray mode in a planned maintenance window; this temporarily disables phone access and LAN setup must be restored afterwards.</p>
       <p id="update-center-versions" class="muted"></p>
       <div id="update-center-readiness" class="update-center-readiness" hidden>
         <p id="update-center-readiness-status" role="status" aria-live="polite"></p>
