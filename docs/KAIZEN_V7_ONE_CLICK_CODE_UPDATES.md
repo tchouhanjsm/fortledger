@@ -34,3 +34,6 @@ On a protected routine source/UI update the server first **stops accepting reque
 
 ## Local maintenance with hotel LAN enabled
 A compatible packaged supervisor can serve the same app on the existing private-IP HTTPS listener and a separate strictly loopback HTTP socket on port 3000. On the hotel PC use `http://127.0.0.1:3000/#profile` and sign in as owner. A phone cannot authorize updates; its TLS session cannot be replayed on the maintenance socket. Both listeners drain before the single SQLite checkpoint and supervisor patch. No LAN settings are removed. Physical Windows acceptance is still required.
+
+## Exceptional native upgrade
+The source updater may show an installer download only for a confirmed native incompatibility or a source patch exceeding its safe size limit, and only when a successful official installer workflow matches the exact approved source SHA. A stale backup, offline check, unsafe path or documentation-only revision is not a reason to reinstall. The installer remains guarded by independent recovery verification.
