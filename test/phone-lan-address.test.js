@@ -27,3 +27,20 @@ test('phone address hints remain owner-only and never open a listener or weaken 
  assert.match(app,/no second Wi-Fi network is needed/);
  assert.doesNotMatch(app,/http:\/\/\$\{.*lan_ip_candidates/);
 });
+
+test('phone address stays selectable after copy, and is cleared while refreshing',()=>{
+  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+  assert.match(html,/id="owner-staff-network-address"[^>]*readonly/);
+  assert.match(app,/ownerStaffPhoneUrl=null;address.value='';address.hidden=true;copy.disabled=true;/);
+  assert.match(app,/address.value=ownerStaffPhoneUrl\|\|''/);
+  assert.match(app,/if\(currentUser\?\.role!=='owner'\|\|!ownerStaffPhoneUrl\)return;/);
+  assert.match(app,/address.select\(\)/);
+});
+test('LAN browser shows the current local-only maintenance limitation without attempting update',()=>{
+  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+  assert.match(html,/id="update-center-lan-note"/);
+  assert.match(app,/\$\('#update-center-check'\).disabled=!localUpdateHost/);
+  assert.match(app,/if\(!can\('system.update'\)\|\|!isLocalUpdateHost\(\)\)return;/);
+});

@@ -13,6 +13,10 @@
 5. Safely close and restart FortLedger from its tray. On a phone joined to the hotel's existing Wi-Fi, open `https://<actual-Windows-PC-IP>:3000`, trust the certificate issuer, and sign in with that phone user's staff account. The hotel PC and FortLedger must stay running.
 6. Verify the phone can sign in over trusted HTTPS, individual role restrictions and logout/revocation work, and that **outside-LAN/cellular access fails**. Check there is **no router port-forwarding** to port 3000. If the network allows guest devices, evaluate a guest SSID, router ACL or per-device access controls. This is a human device acceptance step, not certified by software.
 
+The owner phone panel keeps the configured HTTPS address visible and selectable even after clipboard copy. Address candidates are only hints until LAN HTTPS is enabled. A successful status check is not a physical phone test.
+
+**Current maintenance limitation:** The packaged code updater is only enabled in localhost mode; in LAN HTTPS mode the local PC and phones both use the private-IP listener, which intentionally cannot authorize updates. The owner Update Center explains this rather than making a rejected request. Until a secure local maintenance path is implemented, plan maintenance with the existing local-only tray mode, then restore the approved LAN configuration. Do not disable TLS or use a remote owner session to bypass this restriction.
+
 To disable: **FortLedger tray → Return to this computer only (owner/IT)**, approve UAC and restart. The helper removes its firewall rule and archives LAN settings without changing hotel data, owner credentials or existing TLS key files.
 
 Do not bypass phone certificate warnings, use `0.0.0.0` or `RemoteAddress Any`, put the guest ledger on a hosted server, or run a second writable copy on the phone. This remains **ACTIVE ALPHA — NOT RELEASED** until physical device/backup/accountant acceptance.
