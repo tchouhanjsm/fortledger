@@ -180,3 +180,44 @@ test('verified same-PC encrypted checkpoints allow ordinary source patches but b
    assert.equal(applied.updated,true);
  }finally{f.cleanup();}
 });
+
+test('interrupted source update marker blocks another patch and preserves previous source',async()=>{
+ const f=makeFixture();try{
+  const marker=path.join(f.work,'source-update-pending.json');
+  fs.writeFileSync(marker,'{}');
+  await assert.rejects(installDesktopCodeUpdate(newSha,{root:f.root,workRoot:f.work,
+    env,platform:'win32',feed,trees:tree,freshness,backupHealth:backup,
+    fetchFile:async (_sha,p)=>Buffer.from(content[p])}),{code:'CODE_UNCERTAIN'});
+  assert.equal(fs.readFileSync(path.join(f.root,'src/server.js'),'utf8'),'old-server');
+  assert.equal(fs.existsSync(marker),true);
+ }finally{f.cleanup();}
+});
+test('before first write, rollback bytes and marker exist; write failure restores and verifies old build',async()=>{
+ const f=makeFixture(),rename=fs.renameSync;
+ try{
+  const marker=path.join(f.work,'source-update-pending.json');
+  let observed=false;
+  fs.renameSync=(from,to)=>{
+   if(to===path.join(f.root,'src/server.js')){
+    const record=JSON.parse(fs.readFileSync(marker,'utf8'));
+    assert.equal(fs.readFileSync(path.join(f.work,record.stage,'rollback','src/server.js'),'utf8'),'old-server');
+    observed=true;
+   }
+   if(to===path.join(f.root,'public/index.html'))throw new Error('synthetic write failure');
+   return rename(from,to);
+  };
+  await assert.rejects(installDesktopCodeUpdate(newSha,{root:f.root,workRoot:f.work,
+    env,platform:'win32',feed,trees:tree,freshness,backupHealth:backup,
+    fetchFile:async (_sha,p)=>Buffer.from(content[p])}),/synthetic write failure/);
+  assert.equal(observed,true);
+  assert.equal(fs.existsSync(marker),false);
+  assert.equal(fs.readFileSync(path.join(f.root,'src/server.js'),'utf8'),'old-server');
+  assert.equal(readInstalledDesktopBuild(path.join(f.root,'installer-build.json')).sha,oldSha);
+ }finally{fs.renameSync=rename;f.cleanup();}
+});
+test('native launcher checks pending patch before starting the existing application',()=>{
+ const launcher=readFileSync(new URL('../scripts/windows-desktop-launcher.cs',import.meta.url),'utf8');
+ const launch=launcher.slice(launcher.indexOf('private void Launch()'));
+ assert.ok(launch.indexOf('source-update-pending.json')<launch.indexOf('Process.Start(psi)'));
+ assert.match(launch,/File.GetAttributes\(pending\)/);
+});
