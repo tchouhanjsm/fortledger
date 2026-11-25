@@ -11,7 +11,7 @@ import {verifyLocalBackupHealth} from './backup-health.js';
 import {prepareVerifiedUpgradeBackup,UpgradeBackupRefusal} from './upgrade-backup.js';
 import {prepareRoutineUpdateCheckpoint} from './routine-update-recovery.js';
 import {updateStatus} from './update-status.js';
-import {inspectUpdateReadiness,createSupervisedUpdateIpc} from './update-readiness.js';
+import {inspectUpdateReadiness,createSupervisedUpdateIpc,drainAfterAcceptedResponse} from './update-readiness.js';
 import {inspectDesktopCodeUpdate} from './desktop-code-update.js';
 import { fileURLToPath } from 'node:url';
 import {authGate,loadPasswordRecord,DEFAULT_AUTH_FILE} from './auth.js';
@@ -242,7 +242,7 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
       }
       await updateService.request(readiness.target_sha);
       updateDraining=true;
-      res.once('finish',()=>setImmediate(()=>app.locals.stopForUpdate(readiness.target_sha)));
+      drainAfterAcceptedResponse(res,()=>app.locals.stopForUpdate(readiness.target_sha));
       return res.status(202).json({accepted:true,
         message:'The local update supervisor is finishing active requests before applying verified code changes. Reopen FortLedger after it restarts. Hotel data is not replaced.'});
     }catch(error){
