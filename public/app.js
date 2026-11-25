@@ -11,6 +11,7 @@ import {shiftHandover} from './shift-handover.js';
 import {stayMetrics} from './stay-metrics.js';
 import {createOwnerUpdateNotice} from './update-notice.js';
 import {chooseWindowsUpdateAction} from './windows-update-choice.js';
+import {compareCheckoutBalances} from './checkout-balance-comparison.js';
 const $ = selector => document.querySelector(selector);
 const confirmAction=createConfirmAction($('#shizuka-confirm-dialog'));
 $('#skip-to-main').onclick=()=>{
@@ -1308,10 +1309,40 @@ async function loadCheckoutCases(reset=true){
         label('small','Checkout '+entry.hotel_business_date+
           ' · '+(entry.review_status||'held_for_review').replaceAll('_',' ')+
           ' · not legally issued · saved '+entry.created_at+' UTC'));
-      if(preflight)detail.append(label('p','Recorded charges '+money(preflight.totals.charges_paise)+
+      if(preflight)detail.append(label('p','At checkout: recorded charges '+money(preflight.totals.charges_paise)+
         ' · received (operator-recorded) '+money(preflight.totals.operator_recorded_paise)+
         ' · still due '+money(preflight.totals.due_paise)+' · legal issuance blocked'));
       else detail.append(label('p','Source reconciliation unavailable; manual folio inspection required.','muted'));
+      const compare=label('button','Compare current balances','secondary');
+      compare.type='button';
+      const comparison=label('div',undefined,'muted');
+      comparison.setAttribute('role','status');
+      compare.onclick=async()=>{
+        compare.disabled=true;comparison.textContent='Checking current folio…';
+        try{
+          const current=await api('/api/bookings/'+entry.booking_id+'/checkout-invoice-preflight');
+          const result=compareCheckoutBalances(preflight,current);
+          comparison.replaceChildren();
+          comparison.append(label('p','Now: charges '+money(current.totals.charges_paise)+
+            ' · operator-recorded payments '+money(current.totals.operator_recorded_paise)+
+            ' · outstanding '+money(current.totals.due_paise)));
+          if(result.state==='unavailable')comparison.append(label('p',
+            'Original figures cannot be compared. Inspect source evidence manually.'));
+          else if(result.state==='unchanged')comparison.append(label('p',
+            'Compared amounts and room bill settlements match the checkout snapshot. Other evidence still requires review.'));
+          else{
+            comparison.append(label('p','Changes since checkout:'));
+            const list=label('ul');
+            for(const change of result.changes)list.append(label('li',change.label+': '+
+              money(change.before)+' → '+money(change.after)));
+            if(result.room_bills_changed)list.append(label('li','Linked room bills or their settlement details changed.'));
+            comparison.append(list);
+          }
+          comparison.append(label('small','Read-only comparison. No payment, invoice or statutory approval was recorded.'));
+        }catch(error){comparison.textContent='Current folio unavailable: '+error.message;}
+        finally{compare.disabled=false;}
+      };
+      detail.append(compare,comparison);
       const booking=bookings.find(b=>b.id===entry.booking_id);
       const action=label('button','View live guest folio','secondary');
       action.disabled=!booking;
