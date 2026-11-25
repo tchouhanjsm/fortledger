@@ -3,6 +3,7 @@ import express from 'express';
 import {randomBytes} from 'node:crypto';
 import path from 'node:path';
 import https from 'node:https';
+import http from 'node:http';
 import {backupFreshness} from './backup-freshness.js';
 import {releaseReadiness} from './release-readiness.js';
 import {summarizeReleaseReadiness} from './release-status-summary.js';
@@ -63,7 +64,7 @@ import {paymentMethod,recordAudit,auditEvents,recordHotelPayment} from './financ
 import {createBookingSafely} from './booking-create.js';
 import {normalizeOperationalNotes,updateOperationalNotes} from './booking-notes.js';
 import {deleteUnusedBooking,deleteUnusedGuest} from './entry-deletion.js';
-import {requireConfiguredHost,localListenerSettings,readLanTlsCredentials} from './network-policy.js';
+import {requireConfiguredHost,localListenerSettings,readLanTlsCredentials,isLocalMaintenanceRequest} from './network-policy.js';
 import {localLanIpCandidates} from './phone-lan-address.js';
 
 /** Avoid full SQLite/backup decrypt diagnostics in the live HTTP process.
@@ -179,8 +180,8 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
   });
   // Read-only inspection only. Never let a browser request execute a Git merge,
   // npm installation, data migration, process restart, or a remote network command.
-  const updateOwnerLocal=req=>Boolean(authRecord&&network?.mode!=='lan'&&
-    ['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress));
+  const updateOwnerLocal=req=>Boolean(authRecord&&req.actor?.role==='owner'&&
+    isLocalMaintenanceRequest(req,network));
   app.get('/api/system/release-readiness',(req,res,next)=>{
     if(req.actor?.role!=='owner'||!updateOwnerLocal(req))
       return res.status(403).json({error:'Read-only release review requires owner sign-in on this computer'});
@@ -901,7 +902,9 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
     const desktopCodeHost=process.platform==='win32'&&
       process.env.FORTLEDGER_DESKTOP_INSTALLER==='1'&&
       process.env.FORTLEDGER_DESKTOP_UPDATE_HOST==='1'&&
-      !supervised&&!tls&&host==='127.0.0.1'&&port===3000;
+      !supervised&&port===3000&&(network.mode==='lan'||(!tls&&host==='127.0.0.1'));
+    // Only the packaged supervisor enables the additional loopback socket.
+    if(desktopCodeHost&&tls)network.localMaintenance=true;
     const app=createApp(db,{authRecord,authFile:DEFAULT_AUTH_FILE,network,
       ...(ipc?{updateService:{
         inspect:()=>inspectUpdateReadiness({supervised:true}),
@@ -913,13 +916,47 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
           return true; // The tray parent performs ALL code file writes after clean exit.
         }
       }}:{})});
-    const server=tls?https.createServer({cert:tls.cert,key:tls.key,minVersion:'TLSv1.2'},app):app;
-    let backups=null;
-    const listener=server.listen(port,host,()=>{
-      console.log('FortLedger '+(tls?'private staff HTTPS':'local app')+': '+
-        (tls?'https://':'http://')+host+':'+port);
-      backups=scheduleEncryptedBackups(db);
-    });
+    // One Express instance, one auth gate, one SQLite connection. The LAN
+    // socket stays TLS-only; the additional HTTP socket binds strictly to 127.0.0.1.
+    let ready=false,backups=null;
+    const handle=(req,res)=>{
+      if(!ready){res.writeHead(503,{'Cache-Control':'no-store'});return res.end('FortLedger is starting');}
+      app(req,res);
+    };
+    const endpoints=[{server:tls?https.createServer({cert:tls.cert,key:tls.key,minVersion:'TLSv1.2'},handle):http.createServer(handle),host}];
+    if(network.localMaintenance)endpoints.push({server:http.createServer(handle),host:'127.0.0.1'});
+    let listening=0;
+    for(const endpoint of endpoints){
+      const onError=error=>{
+        console.error('FortLedger listener failed:',error.message);
+        // Neither listener accepts application requests until ALL binds succeed.
+        try{db.close();}catch{}
+        process.exit(1);
+      };
+      endpoint.server.once('error',onError);
+      endpoint.server.listen(port,endpoint.host,()=>{
+        endpoint.server.removeListener('error',onError);
+        if(++listening===endpoints.length){
+          ready=true;
+          console.log('FortLedger '+(tls?'private staff HTTPS':'local app')+': '+
+            (tls?'https://':'http://')+host+':'+port);
+          backups=scheduleEncryptedBackups(db);
+        }
+      });
+    }
+    let shutdownStarted=false;
+    function drainListeners(done){
+      if(shutdownStarted)return;
+      shutdownStarted=true;
+      // Close BOTH sockets before checkpointing. Existing requests finish; no
+      // force-close, duplicate backup scheduler or second database connection.
+      Promise.all(endpoints.map(({server:listener})=>new Promise((resolve,reject)=>{
+        listener.close(error=>error?reject(error):resolve());
+      }))).then(done).catch(error=>{
+        console.error('FortLedger listener drain failed:',error.message);
+        process.exit(1);
+      });
+    }
     async function closeDataSafely({forCodeUpdate=false}={}){
       backups?.stop();
       if(backups?.idle)await backups.idle();
@@ -943,7 +980,7 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
         if(!buffer.includes('FORTLEDGER_DESKTOP_QUIT\n'))return;
         if(quitting)return;
         quitting=true;
-        listener.close(async()=>{
+        drainListeners(async()=>{
           try{await closeDataSafely();}
           catch(error){console.error('FortLedger shutdown blocked:',error.message);process.exitCode=1;return;}
           process.exit(0);
@@ -958,7 +995,7 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
         stopping=true;
         // Desktop tray is an independent parent. Do not replace any installed
         // source files while a request, WAL connection or backup job is live.
-        listener.close(async()=>{
+        drainListeners(async()=>{
           try{await closeDataSafely({forCodeUpdate:true});}
           catch(error){
             console.error('Desktop code update shutdown blocked:',error.message);
@@ -978,7 +1015,7 @@ if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta
         stopping=true;
         // Node's graceful close finishes existing HTTP responses, including
         // persisted transactions. Never call closeAllConnections or kill staff writes.
-        listener.close(async()=>{
+        drainListeners(async()=>{
           try{await closeDataSafely();}
           catch(error){console.error('Supervised shutdown blocked:',error.message);process.exitCode=1;return;}
           if(process.send)process.send({type:'fortledger.update.drained'},()=>process.exit(0));

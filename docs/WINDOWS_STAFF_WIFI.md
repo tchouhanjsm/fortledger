@@ -15,7 +15,7 @@
 
 The owner phone panel keeps the configured HTTPS address visible and selectable even after clipboard copy. Address candidates are only hints until LAN HTTPS is enabled. A successful status check is not a physical phone test.
 
-**Current maintenance limitation:** The packaged code updater is only enabled in localhost mode; in LAN HTTPS mode the local PC and phones both use the private-IP listener, which intentionally cannot authorize updates. The owner Update Center explains this rather than making a rejected request. Until a secure local maintenance path is implemented, plan maintenance with the existing local-only tray mode, then restore the approved LAN configuration. Do not disable TLS or use a remote owner session to bypass this restriction.
+**Local maintenance with LAN enabled:** On a compatible packaged Windows supervisor, open `http://127.0.0.1:3000/#profile` on the hotel PC and sign in as owner. The same Node process serves the loopback-only HTTP socket and the existing private-IP HTTPS socket; both share one ledger, authentication authority and transaction drain. Phone sessions cannot authorize updates or replay their HTTPS session on the local maintenance socket. No router/firewall/certificate changes are required during a routine code update. The existing tray restarts both listeners after the verified update; all staff must finish unsaved forms before owner approval. Physical Windows and phone acceptance remain required.
 
 To disable: **FortLedger tray → Return to this computer only (owner/IT)**, approve UAC and restart. The helper removes its firewall rule and archives LAN settings without changing hotel data, owner credentials or existing TLS key files.
 
