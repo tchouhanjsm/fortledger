@@ -33,11 +33,21 @@ export function requireLoopbackHost(req,res,next){
   next();
 }
 
+// The optional second socket is strictly loopback, not a second application.
+export function isLocalMaintenanceRequest(req,settings){
+  const socket=req.socket;
+  if(settings?.mode!=='lan')
+    return ['127.0.0.1','::1','::ffff:127.0.0.1'].includes(socket?.remoteAddress);
+  return settings.localMaintenance===true&&socket?.localAddress==='127.0.0.1'&&
+    socket.remoteAddress==='127.0.0.1'&&!socket.encrypted&&
+    req.headers.host==='127.0.0.1:'+settings.port;
+}
 export function requireConfiguredHost(settings){
   if(settings?.mode!=='lan')return requireLoopbackHost;
   const expected=settings.host+':'+settings.port;
   return (req,res,next)=>{
     // Do not trust forwarded headers or proxy-provided transport identity.
+    if(isLocalMaintenanceRequest(req,settings))return next();
     if(req.headers.host!==expected||!req.socket.encrypted){
       res.setHeader('Cache-Control','no-store');
       return res.status(421).json({error:'Secure staff-LAN HTTPS host required'});
