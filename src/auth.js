@@ -5,6 +5,7 @@ import {authPath} from './data-paths.js';
 import {getStaffById,getStaffLogin,getOwnerProfile} from './staff.js';
 import {may,requiredPermission} from './access.js';
 import {createStaffPinService,PIN_SESSION_MS} from './staff-pin.js';
+import {isLocalMaintenanceRequest} from './network-policy.js';
 
 export const DEFAULT_AUTH_FILE=authPath();
 const SESSIONS_MS=8*60*60*1000;
@@ -55,7 +56,8 @@ export function authGate(record,db,{authFile=null,network=null}={}){
   const lan=network?.mode==='lan';
   const localRequest=req=>!lan&&['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
   const pinService=createStaffPinService(db,{getOwnerHash:()=>record?.hash,localOnly:()=>!lan});
-  const cookieAttributes=(req)=>'; HttpOnly; SameSite=Strict; Path=/'+(lan?'; Secure':'');
+  const lanTransport=req=>lan&&!isLocalMaintenanceRequest(req,network);
+  const cookieAttributes=(req)=>'; HttpOnly; SameSite=Strict; Path=/'+(lanTransport(req)?'; Secure':'');
   function revokeUserSessions(id){
     for(const [token,item] of sessions)if(item.actor.id===id)sessions.delete(token);
   }
@@ -108,7 +110,7 @@ export function authGate(record,db,{authFile=null,network=null}={}){
     const raw=(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='));
     const token=raw?.slice(name.length+1);
     const item=token&&sessions.get(token);
-    if(!item)return null;
+    if(!item||item.lanTransport!==lanTransport(req))return null;
     if(item.expires<Date.now()){sessions.delete(token);return null;}
     // Re-read staff status and role on every request: revocations apply immediately.
     const actor=item.actor.id===0?getOwnerProfile(db):getStaffById(db,item.actor.id);
@@ -145,7 +147,7 @@ export function authGate(record,db,{authFile=null,network=null}={}){
       if(origin){
         let url;
         try{url=new URL(origin);}catch{return res.status(403).json({error:'Invalid origin'});}
-        const goodOrigin=lan?
+        const goodOrigin=lanTransport(req)?
           url.protocol==='https:'&&url.host===network.host+':'+network.port&&req.socket.encrypted:
           ['127.0.0.1','localhost'].includes(url.hostname)&&
             url.host===req.headers.host&&['http:','https:'].includes(url.protocol);
@@ -172,7 +174,7 @@ export function authGate(record,db,{authFile=null,network=null}={}){
     }
     failures.delete(key);
     const token=randomBytes(32).toString('hex');
-    sessions.set(token,{expires:now+SESSIONS_MS,actor:{id:actor.id},method:'password'});
+    sessions.set(token,{expires:now+SESSIONS_MS,actor:{id:actor.id},method:'password',lanTransport:lanTransport(req)});
     res.setHeader('Set-Cookie',name+'='+token+cookieAttributes(req)+'; Max-Age=28800');
     res.json({ok:true,user:actor});
   }
@@ -183,7 +185,7 @@ export function authGate(record,db,{authFile=null,network=null}={}){
       const actor=pinService.check(req.body?.username,req.body?.pin,req.headers.cookie||'');
       if(!actor)return res.status(401).json({error:'PIN sign-in unavailable. Use your full password or ask the owner to reset quick sign-in'});
       const token=randomBytes(32).toString('hex');
-      sessions.set(token,{expires:Date.now()+PIN_SESSION_MS,actor:{id:actor.id},method:'pin'});
+      sessions.set(token,{expires:Date.now()+PIN_SESSION_MS,actor:{id:actor.id},method:'pin',lanTransport:lanTransport(req)});
       res.setHeader('Set-Cookie',name+'='+token+cookieAttributes(req)+'; Max-Age=7200');
       res.json({ok:true,user:actor});
     }catch(error){res.status(401).json({error:'PIN sign-in unavailable. Use your full password'});}
