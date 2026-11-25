@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {chooseWindowsUpdateAction} from '../public/windows-update-choice.js';
 
 const candidate={platform:'windows',state:'installer_update_available',available:true,
- download_url:'https://github.com/tchouhanjsm/fortledger/actions/runs/123/artifacts/456'};
+ target_sha:'a'.repeat(40),download_url:'https://github.com/tchouhanjsm/fortledger/actions/runs/123/artifacts/456'};
 const ready={ready:true,update_mode:'code_only',target_sha:'a'.repeat(40)};
 test('eligible V7 owner sees in-place update first; installer download is hidden',()=>{
  const result=chooseWindowsUpdateAction(candidate,ready);
@@ -67,4 +67,25 @@ test('approved main source update is independent of a Windows installer artifact
  const blocked=chooseWindowsUpdateAction(source,{ready:false,update_mode:'code_only'});
  assert.equal(blocked.show_in_place,false);
  assert.equal(blocked.show_verified_installer,false);
+});
+
+test('status and readiness must agree on the full approved target before showing Apply',()=>{
+  const source={platform:'windows',state:'source_update_available',available:true,
+    target_sha:'b'.repeat(40),download_url:null};
+  for(const state of [source,candidate]){
+    const changed=chooseWindowsUpdateAction(state,{ready:true,update_mode:'code_only',
+      target_sha:'c'.repeat(40)});
+    assert.equal(changed.in_place_ready,false);
+    assert.equal(changed.show_in_place,false);
+    assert.equal(changed.show_verified_installer,false);
+    assert.match(changed.guidance,/Check for updates again/);
+  }
+  assert.equal(chooseWindowsUpdateAction({...source,target_sha:'B'.repeat(40)},
+    {ready:true,update_mode:'code_only',target_sha:'b'.repeat(40)}).show_in_place,true);
+  assert.equal(chooseWindowsUpdateAction({...candidate,target_sha:undefined},ready).show_in_place,false);
+});
+
+test('desktop Apply button uses the reconciled decision, not independent readiness',()=>{
+  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+  assert.match(app,/const ready=installerManaged\s*\?choice\.show_in_place\s*:/);
 });
