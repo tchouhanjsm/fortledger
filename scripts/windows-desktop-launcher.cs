@@ -124,6 +124,17 @@ namespace FortLedgerDesktop
 
     private void Launch()
     {
+      // A cheap automatic check, before any Node source or ledger is opened.
+      // An interrupted patch must not boot mixed application files.
+      string pending=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "FortLedger","code-updates","source-update-pending.json");
+      try
+      {
+        File.GetAttributes(pending);
+        throw new InvalidOperationException("A source update was interrupted. Keep FortLedger closed and preserve the code-update recovery bundle and hotel data; owner/IT must verify program files before reopening.");
+      }
+      catch(FileNotFoundException) {}
+      catch(DirectoryNotFoundException) {}
       string db = Path.Combine(data, "fortledger.sqlite");
       string auth = Path.Combine(data, "admin-auth.json");
       bool hasDb = File.Exists(db), hasAuth = File.Exists(auth);
