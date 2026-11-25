@@ -11,6 +11,7 @@ import {shiftHandover} from './shift-handover.js';
 import {stayMetrics} from './stay-metrics.js';
 import {createOwnerUpdateNotice} from './update-notice.js';
 import {chooseWindowsUpdateAction} from './windows-update-choice.js';
+import {reconcileRestaurantSaveFailure} from './restaurant-save-recovery.js';
 const $ = selector => document.querySelector(selector);
 const confirmAction=createConfirmAction($('#shizuka-confirm-dialog'));
 $('#skip-to-main').onclick=()=>{
@@ -194,7 +195,9 @@ async function api(url,options={}){
   setConnectionStatus('connected');
   const data=await response.json();
   if(response.status===401&&url!=='/api/auth/status'){window.location.href='/login.html';throw new Error('Login required');}
-  if(!response.ok)throw new Error(data.error||'Request failed');
+  if(!response.ok){
+    const error=new Error(data.error||'Request failed');error.httpStatus=response.status;throw error;
+  }
   return data;
 }
 function setMessage(message){const node=$('#form-error');node.textContent=message;}
@@ -2647,9 +2650,9 @@ function renderRestaurantReview(){
   $('#edit-restaurant-bill').hidden=!restaurantReviewOpen;
   $('#save-restaurant-bill').hidden=!restaurantReviewOpen;
   const unavailable=cart.some(entry=>!menu.some(item=>item.id===entry.menu_item_id));
-  const priceDrift=restaurantPriceDrift();
-  $('#save-restaurant-bill').disabled=!cart.length||restaurantBillSubmitting||
-    priceDrift||(unavailable&&!pendingRestaurantBill);
+  const priceDrift=!pendingRestaurantBill&&restaurantPriceDrift();
+  $('#save-restaurant-bill').disabled=restaurantBillSubmitting||
+    (!pendingRestaurantBill&&(!cart.length||priceDrift||unavailable));
   if(priceDrift)$('#restaurant-message').textContent=
     'Menu availability, price or GST changed after review. Continue editing, then review the latest prices before saving.';
   if(!restaurantReviewOpen)return;
@@ -3281,22 +3284,18 @@ $('#save-restaurant-bill').onclick=async()=>{
         method:'POST',body:JSON.stringify(pendingRestaurantBill)
       });
     }catch(error){
-      if(!(error instanceof TypeError)){
+      const recovery=await reconcileRestaurantSaveFailure(error,()=>api(
+        '/api/restaurant/bills/request/'+encodeURIComponent(pendingRestaurantBill.request_id)));
+      if(recovery.state==='recorded'){
+        saved={id:recovery.id};
+      }else if(recovery.state==='rejected'){
         pendingRestaurantBill=null;
         lockPendingRestaurantInputs(false);
+        restaurantReviewOpen=false;restaurantReviewedRates=null;
         renderCart();
         throw error;
-      }
-      try{
-        const receipt=await api('/api/restaurant/bills/request/'+encodeURIComponent(pendingRestaurantBill.request_id));
-        if(receipt.recorded){
-          saved={id:receipt.id};
-        }else{
-          message.textContent='Bill not confirmed under this request ID. Check saved bills before retrying the unchanged bill; this screen preserves the original request ID.';
-          return;
-        }
-      }catch(lookupError){
-        message.textContent='Connection lost. Bill may already be saved. Reconnect, check saved bills and retry only the unchanged bill with the same request ID. '+lookupError.message;
+      }else{
+        message.textContent=recovery.detail;
         return;
       }
     }
@@ -3332,7 +3331,7 @@ $('#save-restaurant-bill').onclick=async()=>{
     }
   }catch(error){message.textContent='Bill was not saved: '+error.message;
     message.focus({preventScroll:true});}
-  finally{restaurantBillSubmitting=false;button.disabled=false;}
+  finally{restaurantBillSubmitting=false;renderRestaurantReview();}
 };
 async function refreshLastSavedPrintState(){
   if(!lastSavedRestaurantBill)return;
