@@ -32,18 +32,18 @@ function snapshotFingerprint(file){
  * Both decrypted candidate and restored target are isolated in a private scratch
  * folder and destroyed after verification. The live DB is never opened for write. */
 export function rehearseEncryptedRecovery({backup,passphrase,
-  auth=authPath(),requireAuth=true,live=databasePath()}={}){
+  auth=authPath(),requireAuth=true,live=databasePath(),requireOwnerCompanion=false}={}){
   if(!backup||!path.isAbsolute(backup))throw new Error('Provide an absolute encrypted backup file path');
   if(!fs.existsSync(backup))throw new Error('Encrypted backup file not found');
   if(typeof passphrase!=='string'||passphrase.length<16)
     throw new Error('Encrypted backup passphrase is missing or invalid');
-  if(requireAuth&&!fs.existsSync(auth))throw new Error('Administrator authentication file missing; recovery incomplete');
+  if(requireAuth&&(!auth||!fs.existsSync(auth)))throw new Error('Administrator authentication file missing; recovery incomplete');
   const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'fortledger-external-rehearsal-'));
   try{
     fs.chmodSync(scratch,0o700);
     const candidate=path.join(scratch,'candidate.sqlite');
     const target=path.join(scratch,'restored.sqlite');
-    if(path.resolve(live)===candidate||path.resolve(live)===target)
+    if(live&&(path.resolve(live)===candidate||path.resolve(live)===target))
       throw new Error('Recovery scratch location must not be the live database');
     const original=decryptBackupFile(backup,candidate,passphrase);
     const before=snapshotFingerprint(candidate);
@@ -55,11 +55,13 @@ export function rehearseEncryptedRecovery({backup,passphrase,
     // replacement-device owner credential recovery.
     const protectedOwner=decryptEncryptedCredentialCompanion(
       backup,path.join(scratch,'owner-credentials-from-artifact.json'),passphrase);
+    if(requireOwnerCompanion&&!protectedOwner)
+      throw new Error('The encrypted owner credential companion is missing; this backup is incomplete');
     if(before.hash!==after.hash||before.tables!==after.tables||
       original.rooms!==restored.rooms||original.bookings!==inspected.bookings)
       throw new Error('Recovered SQLite content differs from authenticated backup');
     let authVerified=false;
-    if(fs.existsSync(auth)){
+    if(auth&&fs.existsSync(auth)){
       const copy=path.join(scratch,'admin-auth.json');
       fs.copyFileSync(auth,copy,fs.constants.COPYFILE_EXCL);
       const digest=p=>createHash('sha256').update(fs.readFileSync(p)).digest('hex');
@@ -73,19 +75,19 @@ export function rehearseEncryptedRecovery({backup,passphrase,
   }finally{fs.rmSync(scratch,{recursive:true,force:true});}
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  const backup=process.argv[2];
-  const requireOwnerCompanion=process.argv[3]==='--require-owner-companion';
+  const [, ,backup,option,...extra]=process.argv;
+  const replacementDevice=option==='--replacement-device';
   try{
-    if(process.argv[3]&&process.argv[3]!=='--require-owner-companion')
+    if(extra.length||(option&&option!=='--require-owner-companion'&&!replacementDevice))
       throw new Error('Unknown recovery drill option');
     const result=rehearseEncryptedRecovery({
-      backup,passphrase:process.env.FORTLEDGER_BACKUP_PASSPHRASE
+      backup,passphrase:process.env.FORTLEDGER_BACKUP_PASSPHRASE,
+      requireOwnerCompanion:replacementDevice||option==='--require-owner-companion',
+      ...(replacementDevice?{auth:null,live:null,requireAuth:false}:{})
     });
-    if(requireOwnerCompanion&&!result.owner_credential_recoverable)
-      throw new Error('The owner credential companion is missing; this backup is incomplete for a Windows installer upgrade');
     console.log('PASS: authenticated encrypted backup restored into isolated disposable database.');
     console.log('Rooms:',result.rooms,'Bookings:',result.bookings,'Schema tables:',result.schema_tables);
-    console.log('Administrator credentials verified:',result.admin_auth_copied?'yes':'no');
+    if(!replacementDevice)console.log('Local administrator credentials copied:',result.admin_auth_copied?'yes':'no');
     console.log('Original owner credential separately encrypted in this backup:',
       result.owner_credential_recoverable?'yes':'NO — retain independent owner-auth copy');
     console.log('Not a physical replacement-device certification.');

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {readInstalledDesktopBuild} from './installer-update-feed.js';
+import {readInstalledDesktopBuild,checkInstallerUpdate} from './installer-update-feed.js';
 import {checkApprovedSourceUpdate} from './approved-source-feed.js';
 import {backupFreshness} from './backup-freshness.js';
 import {verifyLocalBackupHealth} from './backup-health.js';
@@ -53,7 +53,7 @@ function allowedFile(name){
 export function planCodeChanges(previous,target){
   for(const critical of CRITICAL){
     if(previous.get(critical)?.sha!==target.get(critical)?.sha)
-      return {supported:false,reason:'This release changes the desktop launcher, backup controls or native dependencies. Use the verified full Windows installer once for this release.',changes:[]};
+      return {supported:false,requiresInstaller:true,reason:'This release changes the desktop launcher, backup controls or native dependencies. Use the verified full Windows installer once for this release.',changes:[]};
   }
   const changes=[];
   for(const name of new Set([...previous.keys(),...target.keys()])){
@@ -70,7 +70,7 @@ export function planCodeChanges(previous,target){
       new_sha:next?.sha||null,size:next?.size||0});
   }
   if(changes.length>MAX_FILES||changes.reduce((n,x)=>n+x.size,0)>MAX_BYTES)
-    return {supported:false,reason:'This update is larger than the safe source-only limit. Use the verified full Windows installer.',changes:[]};
+    return {supported:false,requiresInstaller:true,reason:'This update is larger than the safe source-only limit. Use the verified full Windows installer.',changes:[]};
   return {supported:true,changes};
 }
 export function gitBlobSha(data){
@@ -121,11 +121,12 @@ function checkBackup({env,platform,freshness=backupFreshness,
 export async function inspectDesktopCodeUpdate({
   root=ROOT,env=process.env,platform=process.platform,
   installed=readInstalledDesktopBuild(path.join(root,'installer-build.json')),
-  feed=checkApprovedSourceUpdate,trees=readGitTree,
+  feed=checkApprovedSourceUpdate,trees=readGitTree,installerFeed=checkInstallerUpdate,
   freshness=backupFreshness,backupHealth=verifyLocalBackupHealth
 }={}){
   const blockers=[],info=await feed({installed});
   let target_sha=null,run_number=null,changes=0,plan=null,recovery_scope=null;
+  let installer_required=false,installer_download_url=null;
   if(platform!=='win32'||env.FORTLEDGER_DESKTOP_UPDATE_HOST!=='1')
     blockers.push('This installation does not have the dedicated Windows desktop update supervisor. A one-time bootstrap installer is required.');
   if(!installed)blockers.push('This desktop installation has no trustworthy installed build identity.');
@@ -136,9 +137,11 @@ export async function inspectDesktopCodeUpdate({
     target_sha=info.target_sha.toLowerCase();run_number=info.run_number;
     try{
       plan=planCodeChanges(await trees(installed.sha),await trees(target_sha));
-      if(!plan.supported)blockers.push(plan.reason);
-      else changes=plan.changes.length;
-      if(!changes)blockers.push('There are no app code or UI changes to apply; a full installer may be needed for this release.');
+      if(!plan.supported){blockers.push(plan.reason);installer_required=plan.requiresInstaller===true;}
+      else{
+        changes=plan.changes.length;
+        if(!changes)blockers.push('No application code or UI changes in this revision. No reinstall needed.');
+      }
     }catch{blockers.push('Could not verify the complete old and new GitHub file trees.');}
   }
   if(!blockers.length){
@@ -148,9 +151,18 @@ export async function inspectDesktopCodeUpdate({
       recovery_scope=policy.scope;
     }catch(error){blockers.push(error.message);}
   }
+  if(installer_required){
+    try{
+      const artifact=await installerFeed({installed,requiredTarget:target_sha});
+      if(artifact.state==='installer_update_available'&&artifact.available===true&&
+        artifact.target_sha===target_sha&&/^https:\/\/github\.com\/tchouhanjsm\/fortledger\/actions\/runs\/[0-9]+\/artifacts\/[0-9]+$/.test(artifact.download_url||''))
+        installer_download_url=artifact.download_url;
+    }catch{} // absence of verified packaging is not permission to install
+  }
   return {platform:'windows',state:info.state,ready:blockers.length===0,
     installed:installed?.sha.slice(0,12)||null,remote:info.remote||null,
     target_sha,run_number,change_count:changes,blockers,recovery_scope,
+    installer_required,installer_download_url,
     ci_run_url:info.ci_run_url||null,
     update_mode:'code_only',
     note:'Owner-approved source-only update. Database, staff, invoices, native runtime and installed desktop launcher are never replaced.'};

@@ -9,7 +9,7 @@ import {diagnose} from './doctor.js';
 /** Read-only preflight. Do not copy a running WAL database, print secrets,
  * create directories, or change the environment used by FortLedger. */
 export function macPreflight({env=process.env,platform=process.platform,
-  nodeVersion=process.versions.node,interfaces=networkInterfaces()}={}){
+  nodeVersion=process.versions.node,interfaces}={}){
   const checks=[];
   const check=(name,status,detail)=>checks.push({name,status,detail});
   if(platform!=='darwin')check('Operating system','warn','This procedure targets macOS; no operating-system change is made');
@@ -30,11 +30,15 @@ export function macPreflight({env=process.env,platform=process.platform,
     if(listener.mode==='lan'){
       check('Local listener','warn','Private HTTPS staff-LAN configured at '+listener.host+':'+listener.port+
         '; physical firewall, certificate trust and guest-network isolation are not verified');
-      const assigned=Object.values(interfaces).flat().some(item=>
-        item?.family==='IPv4'&&item.address===listener.host);
-      check('LAN interface address',assigned?'pass':'fail',assigned?
-        'Chosen private IP belongs to a network interface on this computer':
-        'Configured staff-LAN IP is not assigned to this computer; check Mac Wi-Fi or static IP');
+      try{
+        const assigned=Object.values(interfaces??networkInterfaces()).flat().some(item=>
+          item?.family==='IPv4'&&item.address===listener.host);
+        check('LAN interface address',assigned?'pass':'fail',assigned?
+          'Chosen private IP belongs to a network interface on this computer':
+          'Configured staff-LAN IP is not assigned to this computer; check Mac Wi-Fi or static IP');
+      }catch{
+        check('LAN interface address','fail','Could not verify local network interfaces');
+      }
       try{
         readLanTlsCredentials(listener);
         check('LAN TLS credentials','pass',

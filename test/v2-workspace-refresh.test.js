@@ -22,5 +22,6 @@ test('saved restaurant bills remain searchable without creating new bills',()=>{
   assert.match(app,/matched\.slice\(0,restaurantHistoryLimit\)/);
   assert.match(app,/restaurantHistoryLimit\+=20/);
   assert.match(app,/link\.href='\/api\/restaurant\/bills\/'/);
-  assert.match(app,/saved once\. Payment was recorded manually/);
+  assert.match(app,/Payment was recorded manually/);
+  assert.match(app,/saved once\. '\+savedMessage/);
 });

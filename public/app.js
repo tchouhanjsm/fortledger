@@ -11,6 +11,8 @@ import {shiftHandover} from './shift-handover.js';
 import {stayMetrics} from './stay-metrics.js';
 import {createOwnerUpdateNotice} from './update-notice.js';
 import {chooseWindowsUpdateAction} from './windows-update-choice.js';
+import {reconcileRestaurantSaveFailure} from './restaurant-save-recovery.js';
+import {compareCheckoutBalances} from './checkout-balance-comparison.js';
 const $ = selector => document.querySelector(selector);
 const confirmAction=createConfirmAction($('#shizuka-confirm-dialog'));
 $('#skip-to-main').onclick=()=>{
@@ -194,7 +196,9 @@ async function api(url,options={}){
   setConnectionStatus('connected');
   const data=await response.json();
   if(response.status===401&&url!=='/api/auth/status'){window.location.href='/login.html';throw new Error('Login required');}
-  if(!response.ok)throw new Error(data.error||'Request failed');
+  if(!response.ok){
+    const error=new Error(data.error||'Request failed');error.httpStatus=response.status;throw error;
+  }
   return data;
 }
 function setMessage(message){const node=$('#form-error');node.textContent=message;}
@@ -1303,15 +1307,51 @@ async function loadCheckoutCases(reset=true){
     for(const entry of result.items){
       const row=label('div',undefined,'checkout-case-row');
       const preflight=entry.snapshot?.preflight;
+      const frozenTotals=preflight?.totals;
       const detail=label('div');
       detail.append(label('strong','Review #'+entry.id+' · Booking #'+entry.booking_id+' · '+entry.guest_name),
         label('small','Checkout '+entry.hotel_business_date+
           ' · '+(entry.review_status||'held_for_review').replaceAll('_',' ')+
           ' · not legally issued · saved '+entry.created_at+' UTC'));
-      if(preflight)detail.append(label('p','Recorded charges '+money(preflight.totals.charges_paise)+
-        ' · received (operator-recorded) '+money(preflight.totals.operator_recorded_paise)+
-        ' · still due '+money(preflight.totals.due_paise)+' · legal issuance blocked'));
+      if(preflight?.booking_id===entry.booking_id&&[frozenTotals?.charges_paise,frozenTotals?.operator_recorded_paise,
+        frozenTotals?.due_paise].every(Number.isSafeInteger))
+        detail.append(label('p','At checkout: recorded charges '+money(frozenTotals.charges_paise)+
+          ' · received (operator-recorded) '+money(frozenTotals.operator_recorded_paise)+
+          ' · still due '+money(frozenTotals.due_paise)+' · legal issuance blocked'));
       else detail.append(label('p','Source reconciliation unavailable; manual folio inspection required.','muted'));
+      const compare=label('button','Compare current balances','secondary');
+      compare.type='button';
+      const comparison=label('div',undefined,'muted');
+      comparison.setAttribute('role','status');
+      compare.onclick=async()=>{
+        compare.disabled=true;comparison.textContent='Checking current folio…';
+        try{
+          const current=await api('/api/bookings/'+entry.booking_id+'/checkout-invoice-preflight');
+          if(current?.booking_id!==entry.booking_id||![current.totals?.charges_paise,
+            current.totals?.operator_recorded_paise,current.totals?.due_paise].every(Number.isSafeInteger))
+            throw new Error('Current figures could not be verified. Inspect the guest folio.');
+          const result=compareCheckoutBalances(preflight,current);
+          comparison.replaceChildren();
+          comparison.append(label('p','Now: charges '+money(current.totals.charges_paise)+
+            ' · operator-recorded payments '+money(current.totals.operator_recorded_paise)+
+            ' · outstanding '+money(current.totals.due_paise)));
+          if(result.state==='unavailable')comparison.append(label('p',
+            'Original figures cannot be compared. Inspect source evidence manually.'));
+          else if(result.state==='unchanged')comparison.append(label('p',
+            'Compared amounts and room bill settlements match the checkout snapshot. Other evidence still requires review.'));
+          else{
+            comparison.append(label('p','Changes since checkout:'));
+            const list=label('ul');
+            for(const change of result.changes)list.append(label('li',change.label+': '+
+              money(change.before)+' → '+money(change.after)));
+            if(result.room_bills_changed)list.append(label('li','Linked room bills or their settlement details changed.'));
+            comparison.append(list);
+          }
+          comparison.append(label('small','Read-only comparison. No payment, invoice or statutory approval was recorded.'));
+        }catch(error){comparison.textContent='Current folio unavailable: '+error.message;}
+        finally{compare.disabled=false;}
+      };
+      detail.append(compare,comparison);
       const booking=bookings.find(b=>b.id===entry.booking_id);
       const action=label('button','View live guest folio','secondary');
       action.disabled=!booking;
@@ -2110,7 +2150,7 @@ $('#backup-center-check').onclick=async()=>{
 };
 let approvedUpdateSha=null,installerDownloadUrl=null;
 $('#update-center-download').onclick=()=>{
-  if(!can('system.update')||!installerDownloadUrl)return;
+  if(!can('system.update')||!isLocalUpdateHost()||!installerDownloadUrl)return;
   // User-initiated host action, never an automatic executable download/run.
   window.open(installerDownloadUrl,'_blank','noopener,noreferrer');
 };
@@ -2158,6 +2198,7 @@ $('#update-center-check').onclick=async()=>{
       const ready=installerManaged?choice.show_in_place:
         Boolean(readiness.ready)&&/^[a-f0-9]{40}$/i.test(readiness.target_sha||'');
       if(installerManaged){
+        installerDownloadUrl=choice.installer_download_url;
         $('#update-center-download').hidden=!choice.show_verified_installer;
         $('#update-center-desktop').hidden=!(choice.show_verified_installer||choice.show_in_place);
       }
@@ -2647,16 +2688,17 @@ function renderRestaurantReview(){
   $('#edit-restaurant-bill').hidden=!restaurantReviewOpen;
   $('#save-restaurant-bill').hidden=!restaurantReviewOpen;
   const unavailable=cart.some(entry=>!menu.some(item=>item.id===entry.menu_item_id));
-  const priceDrift=restaurantPriceDrift();
-  $('#save-restaurant-bill').disabled=!cart.length||restaurantBillSubmitting||
-    priceDrift||(unavailable&&!pendingRestaurantBill);
+  const priceDrift=!pendingRestaurantBill&&restaurantPriceDrift();
+  $('#save-restaurant-bill').disabled=restaurantBillSubmitting||
+    (!pendingRestaurantBill&&(!cart.length||priceDrift||unavailable));
   if(priceDrift)$('#restaurant-message').textContent=
     'Menu availability, price or GST changed after review. Continue editing, then review the latest prices before saving.';
   if(!restaurantReviewOpen)return;
   const list=$('#restaurant-review-items');list.replaceChildren();
   let total=0,tax=0;
   for(const entry of cart){
-    const item=menu.find(x=>x.id===entry.menu_item_id);
+    const item=pendingRestaurantBill?restaurantReviewedRates?.get(entry.menu_item_id):
+      menu.find(x=>x.id===entry.menu_item_id);
     if(!item){
       list.append(label('p','Menu item #'+entry.menu_item_id+
         ' is no longer available. Continue editing and remove it before saving.','muted'));
@@ -3199,7 +3241,7 @@ $('#review-restaurant-bill').onclick=()=>{
   catch(error){$('#restaurant-message').textContent=error.message;return;}
   restaurantReviewOpen=true;
   restaurantReviewedRates=new Map(menu.map(item=>[item.id,{
-    price_paise:item.price_paise,tax_rate:item.tax_rate}]));
+    name:item.name,price_paise:item.price_paise,tax_rate:item.tax_rate}]));
   $('#restaurant-message').textContent='Review and edit the items above. Confirm & save only when the final bill is correct.';
   renderRestaurantReview();
   $('#restaurant-review-heading').focus({preventScroll:true});
@@ -3274,32 +3316,32 @@ $('#save-restaurant-bill').onclick=async()=>{
     return;
   }
   restaurantBillSubmitting=true;button.disabled=true;
+  let confirmedBillId=null;
   try{
     let saved;
     try{
       saved=await api('/api/restaurant/bills',{
         method:'POST',body:JSON.stringify(pendingRestaurantBill)
       });
+      if(!Number.isSafeInteger(saved?.id)||saved.id<1)throw new Error('Bill save response did not contain a valid receipt ID');
     }catch(error){
-      if(!(error instanceof TypeError)){
+      const recovery=await reconcileRestaurantSaveFailure(error,()=>api(
+        '/api/restaurant/bills/request/'+encodeURIComponent(pendingRestaurantBill.request_id)));
+      if(recovery.state==='recorded'){
+        saved={id:recovery.id};
+      }else if(recovery.state==='rejected'){
         pendingRestaurantBill=null;
         lockPendingRestaurantInputs(false);
+        restaurantReviewOpen=false;restaurantReviewedRates=null;
         renderCart();
         throw error;
-      }
-      try{
-        const receipt=await api('/api/restaurant/bills/request/'+encodeURIComponent(pendingRestaurantBill.request_id));
-        if(receipt.recorded){
-          saved={id:receipt.id};
-        }else{
-          message.textContent='Bill not confirmed under this request ID. Check saved bills before retrying the unchanged bill; this screen preserves the original request ID.';
-          return;
-        }
-      }catch(lookupError){
-        message.textContent='Connection lost. Bill may already be saved. Reconnect, check saved bills and retry only the unchanged bill with the same request ID. '+lookupError.message;
+      }else{
+        message.textContent=recovery.detail;
+        message.focus({preventScroll:true});
         return;
       }
     }
+    confirmedBillId=saved.id;
     // A lost POST response may be reconciled with an ID-only lookup. The
     // original reviewed item snapshots, not possibly newer menu prices,
     // remain authoritative for the saved-state confirmation amount.
@@ -3318,7 +3360,9 @@ $('#save-restaurant-bill').onclick=async()=>{
     $('#restaurant-saved-print-status').textContent=
       'Printing not checked here. Confirm the Ethernet paper before retrying any previous attempt.';
     message.replaceChildren();
-    message.append(document.createTextNode('Bill #'+saved.id+' saved once. Payment was recorded manually; FortLedger did not verify a bank transfer. '));
+    const savedMessage=lastSavedRestaurantBill.method==='room'?'Unpaid room charge recorded. ':
+      'Payment was recorded manually; FortLedger did not verify a bank transfer. ';
+    message.append(document.createTextNode('Bill #'+saved.id+' saved once. '+savedMessage));
     const link=label('a','Open saved receipt #'+saved.id);
     link.href='/api/restaurant/bills/'+encodeURIComponent(saved.id)+'/receipt';
     link.target='_blank';link.rel='noopener';
@@ -3330,9 +3374,11 @@ $('#save-restaurant-bill').onclick=async()=>{
     }catch(error){
       message.append(document.createTextNode(' Refresh failed: '+error.message+'. The bill is already saved; use Refresh to reload, not Save again.'));
     }
-  }catch(error){message.textContent='Bill was not saved: '+error.message;
+  }catch(error){
+    message.textContent=confirmedBillId?'Bill #'+confirmedBillId+' was saved. Refresh the workspace or open saved bills.':
+      'Bill was not saved: '+error.message;
     message.focus({preventScroll:true});}
-  finally{restaurantBillSubmitting=false;button.disabled=false;}
+  finally{restaurantBillSubmitting=false;renderRestaurantReview();}
 };
 async function refreshLastSavedPrintState(){
   if(!lastSavedRestaurantBill)return;

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {openDatabase} from '../src/database.js';
 import {savePasswordRecord,verifyPassword,loadPasswordRecord} from '../src/auth.js';
 import {createEncryptedBackup,credentialCompanionPath,verifyEncryptedCredentialCompanion,
@@ -57,6 +59,26 @@ test('old standalone encrypted SQLite backups remain readable but are flagged in
   assert.equal(drill.ok,true);
   assert.equal(drill.owner_credential_recoverable,false);
   assert.equal(decryptEncryptedCredentialCompanion(encrypted.file,path.join(root,'old-owner-auth'),secret),false);
+}));
+test('replacement-device rehearsal verifies the encrypted pair without an initialized local installation',()=>fixture(async({root,auth,backups,db})=>{
+  const encrypted=await createEncryptedBackup(db,backups,secret,{authFile:auth});
+  const replacementData=path.join(root,'replacement-data');
+  const script=fileURLToPath(new URL('../src/encrypted-recovery-drill.js',import.meta.url));
+  const run=()=>spawnSync(process.execPath,[script,encrypted.file,'--replacement-device'],{
+    encoding:'utf8',
+    env:{...process.env,FORTLEDGER_DATA_DIR:replacementData,FORTLEDGER_BACKUP_PASSPHRASE:secret}
+  });
+  const successful=run();
+  assert.equal(successful.status,0,successful.stderr);
+  assert.match(successful.stdout,/Rooms: 7/);
+  assert.match(successful.stdout,/Original owner credential separately encrypted in this backup: yes/);
+  assert.equal(fs.existsSync(replacementData),false);
+  fs.rmSync(credentialCompanionPath(encrypted.file));
+  const incomplete=run();
+  assert.equal(incomplete.status,1,incomplete.stderr);
+  assert.match(incomplete.stderr,/owner credential companion is missing/);
+  assert.doesNotMatch(incomplete.stdout,/PASS/);
+  assert.equal(fs.existsSync(replacementData),false);
 }));
 test('retention removes encrypted SQLite and corresponding owner companions together',()=>fixture(async({auth,backups,db})=>{
   for(const day of ['2026-11-20','2026-11-21','2026-11-22']){

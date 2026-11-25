@@ -29,7 +29,7 @@ Both files use independent random salts and nonces, and are authenticated with t
 
 1. Stop the app and complete a protected pre-restore snapshot of whatever remains on the PC. Never overwrite an active SQLite or manually remove its WAL files.
 2. Copy the matching `.flbk` and `.flba` from independent encrypted storage into a private recovery area. Have the owner supply the separately retained passphrase.
-3. The `src/encrypted-recovery-drill.js` helper now tests **both** encrypted artifacts in disposable scratch storage without modifying the live hotel ledger. It reports whether the original owner hash is recoverable.
+3. On a replacement PC, run the [paired-artifact rehearsal](PHASE8_OPERATOR_HANDOVER.md#2-rehearse-the-actual-encrypted-backup-without-replacing-live-data) before initializing FortLedger. It restores the encrypted ledger in disposable scratch storage and requires the matching authenticated owner companion. Complete the documented replacement restoration and verify the original owner login afterward.
 4. The separate owner credential companion can be decrypted by the reviewed `decryptEncryptedCredentialCompanion` recovery helper **only to a new, nonexisting destination**. Reconcile the existing data path and owner file before moving verified recovery artifacts into a stopped application's persistent data folder. Do not automatically restore over live hotel accounts.
 5. On a **different Windows PC**, the original CurrentUser DPAPI configuration will not decrypt. Re-enter the separately stored backup passphrase, reconfigure the new backup drive and verify historic invoices/guest records before reopening for business.
 

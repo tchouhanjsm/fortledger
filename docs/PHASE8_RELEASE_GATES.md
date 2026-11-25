@@ -25,6 +25,18 @@ From the installed FortLedger folder, run `npm run doctor`, `npm run recovery:dr
 ## 4. Actual hotel staff UAT
 Run on the hotel Windows PC and the operator's phone/tablet at 100% and 200% zoom. Check keyboard focus, visible routes and no clipped buttons. Create seven-room synthetic bookings with partial assignments, check-in, maintenance conflict, food room charge, cash/UPI/card received-payment recording, folio settlement, refund-warning and checkout with dirty-to-ready housekeeping turnover. Verify role restrictions for owner, manager, reception, housekeeping and cashier.
 
+### Staff timing and friction check
+
+Use the same synthetic records on the hotel Windows PC on both the installed build and the candidate. Record the build, staff role, device and browser for each run. Time each journey three times and record the median, click or tap count, any repeated entry, and the step where staff had to wait or ask for help.
+
+| Journey | Start | Finish |
+| --- | --- | --- |
+| Reception booking | Open the booking workspace | Confirm the saved booking and optional pickup note in readback |
+| Restaurant bill and print | Open a new restaurant draft | Confirm one saved bill and inspect its paper receipt |
+| Checkout | Open an in-house booking with a room charge | Confirm the checkout status and reconcile the displayed balance and linked charge |
+
+Record operator time and printer wait separately if the receipt is slow. Test interrupted saves and printing separately from normal timing. Record suspected duplicates and balance discrepancies as open defects. Keep results with the local release evidence and share only synthetic outcomes in GitHub.
+
 ## 5. GST accountant authorisation (blocking)
 Current proforma and review-only tax drafts are **not statutory invoices**. Written accountant review must approve registered supplier identity, accommodation and restaurant rate applicability, SAC/HSN, legal FY series (including historical sequence), place of supply, CGST/SGST/IGST, ITC, e-invoice applicability, signed PDFs, credit notes and refund treatment **before any final numbered tax-invoice implementation is enabled**. See `docs/COMPLIANCE_REVIEW.md`. Do not infer legal readiness from an illustrative 5% proforma calculation.
 

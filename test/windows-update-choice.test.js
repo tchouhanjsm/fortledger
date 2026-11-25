@@ -89,3 +89,19 @@ test('desktop Apply button uses the reconciled decision, not independent readine
   const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
   assert.match(app,/const ready=installerManaged\s*\?choice\.show_in_place\s*:/);
 });
+
+test('source fallback is exact-target and verified URL only, never a backup workaround',()=>{
+ const source={platform:'windows',state:'source_update_available',available:true,target_sha:'b'.repeat(40)};
+ const native={ready:false,update_mode:'code_only',target_sha:source.target_sha,installer_required:true,
+  installer_download_url:candidate.download_url};
+ const choice=chooseWindowsUpdateAction(source,native);
+ assert.equal(choice.show_verified_installer,true);
+ assert.equal(choice.installer_download_url,candidate.download_url);
+ assert.equal(choice.show_in_place,false);
+ for(const readiness of [{...native,target_sha:'c'.repeat(40)},{...native,installer_required:false},
+  {...native,installer_download_url:'https://example.com/setup.exe'},{...native,installer_download_url:null}]){
+  const blocked=chooseWindowsUpdateAction(source,readiness);
+  assert.equal(blocked.show_verified_installer,false);assert.equal(blocked.installer_download_url,null);
+ }
+ assert.equal(chooseWindowsUpdateAction(source,{...native,ready:true}).show_in_place,true);
+});

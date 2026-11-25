@@ -74,7 +74,7 @@ test('native dependency, tray and backup script changes refuse source-only updat
 test('owner readiness refuses unverified external backups and wrong host',async()=>{
   const f=makeFixture();try{
     const base={root:f.root,env,platform:'win32',
-      feed,trees:tree,freshness,backupHealth:backup};
+      feed,trees:tree,freshness,backupHealth:backup,installerFeed:async()=>({available:false})};
     assert.equal((await inspectDesktopCodeUpdate(base)).ready,true);
     assert.equal((await inspectDesktopCodeUpdate({...base,
       env:{...env,FORTLEDGER_DESKTOP_UPDATE_HOST:'0'}})).ready,false);
@@ -220,4 +220,25 @@ test('native launcher checks pending patch before starting the existing applicat
  const launch=launcher.slice(launcher.indexOf('private void Launch()'));
  assert.ok(launch.indexOf('source-update-pending.json')<launch.indexOf('Process.Start(psi)'));
  assert.match(launch,/File.GetAttributes\(pending\)/);
+});
+
+test('native fallback looks up only the exact candidate; ordinary backup failure or docs-only change never requests an installer',async()=>{
+ const f=makeFixture(),seen=[];
+ try{
+  const artifact='https://github.com/tchouhanjsm/fortledger/actions/runs/10/artifacts/20';
+  const base={root:f.root,env,platform:'win32',feed,trees:tree,freshness,backupHealth:backup,
+    installerFeed:async args=>{seen.push(args.requiredTarget);return {state:'installer_update_available',available:true,target_sha:newSha,download_url:artifact};}};
+  const native=map([...after.values()].map(row=>row.path==='package-lock.json'?file(row.path,'different'):row));
+  const result=await inspectDesktopCodeUpdate({...base,trees:async sha=>sha===oldSha?before:native});
+  assert.equal(result.ready,false);assert.equal(result.installer_required,true);
+  assert.equal(result.installer_download_url,artifact);assert.deepEqual(seen,[newSha]);
+  const wrong=await inspectDesktopCodeUpdate({...base,trees:async sha=>sha===oldSha?before:native,
+    installerFeed:async()=>({state:'installer_update_available',available:true,target_sha:oldSha,download_url:artifact})});
+  assert.equal(wrong.installer_download_url,null);
+  const blocked=await inspectDesktopCodeUpdate({...base,backupHealth:()=>({restorable:false})});
+  assert.equal(blocked.installer_required,false);
+  const docs=await inspectDesktopCodeUpdate({...base,trees:async()=>before});
+  assert.equal(docs.installer_required,false);assert.match(docs.blockers.join(' '),/No reinstall needed/);
+  assert.deepEqual(seen,[newSha]);
+ }finally{f.cleanup();}
 });

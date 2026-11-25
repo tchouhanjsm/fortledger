@@ -95,6 +95,22 @@ test('broken checkout case storage rolls back booking status and housekeeping to
  }finally{db.close();}
 });
 
+test('an unreadable snapshot leaves the checkout case visible for review',()=>{
+ const db=openDatabase(':memory:');
+ try{
+  const id=booking(db);
+  db.prepare(`INSERT INTO checkout_document_cases
+    (booking_id,state,snapshot_json,actor_username,hotel_business_date)
+    VALUES(?,'held_for_review','invalid JSON','owner','2027-04-03')`).run(id);
+  const result=listCheckoutDocumentCases(db);
+  assert.equal(result.total,1);
+  assert.equal(result.items[0].booking_id,id);
+  assert.equal(result.items[0].snapshot,null);
+  assert.equal(getCheckoutDocumentCase(db,id).final_tax_invoice_issued,false);
+  assert.equal(db.prepare('SELECT snapshot_json FROM checkout_document_cases').get().snapshot_json,'invalid JSON');
+ }finally{db.close();}
+});
+
 test('checkout case APIs are read-only: front desk/owner allowed, cashier denied',async()=>{
  assert.equal(requiredPermission('GET','/checkout-document-cases'),'invoices.read');
  assert.equal(requiredPermission('GET','/bookings/1/checkout-document-case'),'invoices.read');

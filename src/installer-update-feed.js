@@ -31,13 +31,14 @@ export function readInstalledDesktopBuild(file=path.join(ROOT,'installer-build.j
  * CI, a successful installer workflow and a nonexpired official artifact.
  * Never use this endpoint to execute downloaded code. */
 export async function checkInstallerUpdate({
-  installed=readInstalledDesktopBuild(),read=requestJson,approve=approvedMainCommit
+  installed=readInstalledDesktopBuild(),read=requestJson,approve=approvedMainCommit,requiredTarget=null
 }={}){
   const base={platform:'windows',state:'installer_managed',available:false,
     current:installed?.sha?.slice(0,12)??null,remote:null,
     download_url:null,build_number:installed?.build_number??null,
     message:'This Windows installation uses verified installer packages, not Git. No hotel data was changed.'};
   try{
+    if(requiredTarget!==null&&!SHA.test(requiredTarget))throw new Error('Invalid required installer target');
     const response=await read(API+'/actions/workflows/windows-installer.yml/runs?branch=main&event=push&status=success&per_page=20');
     const runs=(Array.isArray(response?.workflow_runs)?response.workflow_runs:[])
       .filter(run=>SHA.test(run?.head_sha)&&run.head_branch==='main'&&
@@ -47,6 +48,7 @@ export async function checkInstallerUpdate({
         Number.isSafeInteger(run.run_number)&&run.run_number>0)
       .sort((a,b)=>b.run_number-a.run_number);
     for(const run of runs){
+      if(requiredTarget!==null&&run.head_sha.toLowerCase()!==requiredTarget.toLowerCase())continue;
       // If installed revision is already current, older artifacts are not updates.
       if(installed&&run.run_number<=installed.build_number)continue;
       if(installed&&run.head_sha.toLowerCase()===installed.sha)continue;
