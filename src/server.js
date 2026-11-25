@@ -239,8 +239,7 @@ export function createApp(db,{authRecord=null,authFile=null,network=null,busines
         installPending=false;
         return res.status(409).json({error:'The verified candidate or backup readiness changed. Check for updates again.'});
       }
-      const accepted=await updateService.request(readiness.target_sha);
-      if(accepted!==true)throw new Error('The local update supervisor did not accept the pinned request');
+      await updateService.request(readiness.target_sha);
       updateDraining=true;
       drainAfterAcceptedResponse(res,()=>app.locals.stopForUpdate(readiness.target_sha));
       return res.status(202).json({accepted:true,
