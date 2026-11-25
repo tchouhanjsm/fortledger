@@ -6,12 +6,12 @@
 
 The server already implements an **owner/technician opt-in HTTPS staff Wi-Fi listener**; it is localhost-only until configured. Follow [WINDOWS_STAFF_WIFI.md](WINDOWS_STAFF_WIFI.md).
 
-1. Windows hotel PC stays powered on and runs FortLedger. It can connect to the same router by Ethernet or private staff Wi-Fi. Reserve the PC's **real assigned private IPv4** in the router (for example `192.168.10.15`). Do not use examples as actual addresses.
-2. Configure a **staff-only** Wi-Fi/network where guest Wi-Fi cannot route to the PC. Firewall inbound TCP 3000 must be limited to the intended staff subnet, never the public internet.
+1. Windows hotel PC stays powered on and runs FortLedger. It can connect to the same router by Ethernet or existing hotel Wi-Fi. Reserve the PC's **real assigned private IPv4** in the router (for example `192.168.10.15`). Do not use examples as actual addresses.
+2. Use the existing hotel router and Wi-Fi; no second SSID is required. Firewall inbound TCP 3000 must be limited to the authorized local subnet, never the public internet. If guests share the subnet, they may reach the login page; use existing router isolation or device access controls where network-level denial is required.
 3. Owner/IT provisions an HTTPS certificate whose IP SAN matches that PC address, protects its private key outside the source repository and installs/trusts the correct issuer on authorized phones only. **Never bypass browser certificate warnings.**
-4. Windows tray → **Private hotel Wi-Fi HTTPS (owner/IT)** (approve UAC) → enter host IP, staff subnet and certificate/key paths → restart FortLedger. Existing native helper validates local address, Private network adapter, certificate/key and firewall rule. It does not invent a certificate, open public port forwarding or change the hotel ledger.
-5. Owner → **My profile → Staff phones** → **Check staff phone address**. The API reports `localhost_only` or the private `staff_https` URL, e.g. `https://192.168.10.15:3000`. It does **not** certify the router or phone. Copy the URL to an authorized phone on staff Wi-Fi; sign in with that employee's own full-password account and use **Add to Home Screen** if desired.
-6. Physically test real staff-phone login; browser SSL trust; staff PIN is intentionally **not** available on phones; disconnect/reconnect mid-read; sign out; verify guest Wi-Fi and cellular cannot access this service. Keep #135 OPEN until owner/IT verifies. Windows PC remains the authoritative source for all staff.
+4. Windows tray → **Hotel LAN HTTPS - phone access (owner/IT)** (approve UAC) → enter host IP, staff subnet and certificate/key paths → restart FortLedger. Existing native helper validates local address, Private network adapter, certificate/key and firewall rule. It does not invent a certificate, open public port forwarding or change the hotel ledger.
+5. Owner → **My profile → Staff phones** → **Check staff phone address**. The API reports `localhost_only` or the private `staff_https` URL, e.g. `https://192.168.10.15:3000`. It does **not** certify the router or phone. Copy the URL to an authorized phone on the existing authorized hotel Wi-Fi; sign in with that employee's own full-password account and use **Add to Home Screen** if desired.
+6. Physically test real staff-phone login; browser SSL trust; staff PIN is intentionally **not** available on phones; disconnect/reconnect mid-read; sign out; verify cellular cannot access this service and test the approved guest isolation policy; do not claim guests are network-blocked if they share the allowed subnet. Keep #135 OPEN until owner/IT verifies. Windows PC remains the authoritative source for all staff.
 
 Revert using the tray → **Return to this computer only (owner/IT)**. Details in [WINDOWS_STAFF_WIFI.md](WINDOWS_STAFF_WIFI.md).
 
@@ -32,7 +32,7 @@ The existing restaurant saved-receipt renderer and transport use **ESC/POS over 
 - Raw network printer setup rejects hostnames, loopback, public IPv4, invalid ports and generic IPP/LPR ports. Configuration change is audited. Owner-only test status is persisted in a unique-request SQLite table; replay returns the first attempted outcome, never resends. No PDF or statutory GST issuance/numbering change.
 - Newly added tables are additive and source-only-updater-compatible, retaining SQLite schema version 13, with no new native package dependency. They live in the one SQLite backup. Legacy environment printer variables remain as fallback unless owner settings exist.
 - Print transport still cannot know if a slip printed; the device's network is not under CI control. A live acceptance test on **the real printer** is mandatory under [#135](https://github.com/tchouhanjsm/fortledger/issues/135).
-- The owner can disable the printer in profile without changing any saved food bills or staff accounts. No forced reinstall of the Windows application for code-only changes when existing V7 supervisor checks/backup gate are met.
+- The owner can disable the printer in profile without changing any saved food bills or staff accounts. No forced reinstall of the Windows application for code-only changes when compatible supervisor, CI, source and appropriate recovery checkpoint checks are met.
 
 ## Milestones not claimed complete
 

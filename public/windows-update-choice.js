@@ -10,13 +10,19 @@ export function chooseWindowsUpdateAction(state,readiness){
   const candidate=state?.platform==='windows'&&
     state.state==='installer_update_available'&&state.available===true&&
     OFFICIAL_ARTIFACT.test(state.download_url||'');
-  const inPlace=Boolean((source||candidate)&&readiness?.ready===true&&
-    readiness.update_mode==='code_only'&&SHA.test(readiness.target_sha||''));
+  const readyTarget=readiness?.ready===true&&readiness.update_mode==='code_only'&&
+    SHA.test(readiness.target_sha||'');
+  const sameTarget=SHA.test(state?.target_sha||'')&&readyTarget&&
+    state.target_sha.toLowerCase()===readiness.target_sha.toLowerCase();
+  const changed=Boolean((source||candidate)&&readyTarget&&!sameTarget);
+  const inPlace=Boolean((source||candidate)&&sameTarget);
   return {
     in_place_ready:inPlace,
-    show_verified_installer:Boolean(candidate&&!inPlace),
+    show_verified_installer:Boolean(candidate&&!inPlace&&!changed),
     show_in_place:inPlace,
-    guidance:inPlace?
+    guidance:changed?
+      'The available update changed during verification. Check for updates again before applying or downloading it.':
+      inPlace?
       'Apply the CI-approved source-only update and restart. No installer download or startup verification gate is needed; a clean transaction drain and recoverable backup remain mandatory.':
       source?
       'Local source update is not ready. Review the safety blockers. A compatible code patch requires no installer.':
