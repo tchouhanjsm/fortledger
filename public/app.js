@@ -2110,7 +2110,7 @@ $('#backup-center-check').onclick=async()=>{
 };
 let approvedUpdateSha=null,installerDownloadUrl=null;
 $('#update-center-download').onclick=()=>{
-  if(!can('system.update')||!installerDownloadUrl)return;
+  if(!can('system.update')||!isLocalUpdateHost()||!installerDownloadUrl)return;
   // User-initiated host action, never an automatic executable download/run.
   window.open(installerDownloadUrl,'_blank','noopener,noreferrer');
 };
@@ -2158,6 +2158,7 @@ $('#update-center-check').onclick=async()=>{
       const ready=installerManaged?choice.show_in_place:
         Boolean(readiness.ready)&&/^[a-f0-9]{40}$/i.test(readiness.target_sha||'');
       if(installerManaged){
+        installerDownloadUrl=choice.installer_download_url;
         $('#update-center-download').hidden=!choice.show_verified_installer;
         $('#update-center-desktop').hidden=!(choice.show_verified_installer||choice.show_in_place);
       }
