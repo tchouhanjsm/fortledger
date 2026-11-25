@@ -55,17 +55,22 @@ export function accountantReadiness(db,{limit=80}={}){
   ).all();
   const checkoutCount=db.prepare('SELECT COUNT(*) AS n FROM checkout_document_cases').get().n;
   for(const c of cases){
-    let code='checkout_held_unreviewed';
+    let code='checkout_held_unreviewed',sourceException=false;
     try{
       const snapshot=JSON.parse(c.snapshot_json);
-      if(snapshot.exception||snapshot.preflight?.blockers?.some(b=>
-        b.code==='proforma_contract_mismatch'))code='checkout_source_review_required';
+      if(!snapshot||snapshot.exception||!snapshot.preflight||snapshot.preflight.blockers?.some(b=>
+        b.code==='proforma_contract_mismatch')){
+        code='checkout_source_review_required';sourceException=true;
+      }
       else if(!snapshot.preflight?.billing_recipient?.confirmed)
         code='checkout_recipient_unconfirmed';
-    }catch{code='checkout_snapshot_unreadable';}
-    if(c.review_status==='reviewed_for_accountant')code='checkout_accountant_signoff_pending';
-    else if(c.review_status==='needs_source_review')code='checkout_source_review_required';
+    }catch{code='checkout_snapshot_unreadable';sourceException=true;}
+    // A staff decision cannot make missing or contradictory frozen evidence disappear.
+    if(!sourceException&&c.review_status==='reviewed_for_accountant')code='checkout_accountant_signoff_pending';
+    else if(!sourceException&&c.review_status==='needs_source_review')code='checkout_source_review_required';
     add('checkout_case',c.id,code,
+      sourceException?
+        'Owner/manager and accountant: reconcile missing or conflicting checkout source evidence before any statutory document; staff review does not clear this exception':
       c.review_status==='reviewed_for_accountant'?
         'Accountant: independently check dated tax policy, recipient, original PDF series and authority; NOT approved':
         'Owner/manager: inspect frozen checkout and live folio evidence; do not issue a GST invoice',
