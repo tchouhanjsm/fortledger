@@ -1231,7 +1231,7 @@ async function load(){
   const localUpdateHost=isLocalUpdateHost();
   $('#update-center-check').disabled=!localUpdateHost;
   $('#update-center-lan-note').hidden=localUpdateHost;
-  if(!localUpdateHost)$('#update-center-state').textContent='Local maintenance required.';
+  if(!localUpdateHost)$('#update-center-state').textContent='Open the local Update Center on the hotel PC.';
   $('#backup-center').hidden=!can('system.update');
   $('#release-status-panel').hidden=currentUser.role!=='owner'||!can('system.update')||
     !['127.0.0.1','localhost'].includes(window.location.hostname);
