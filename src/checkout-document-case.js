@@ -27,7 +27,12 @@ export function ensureCheckoutDocumentCaseSchema(db){
 function materialize(row){
  if(!row)return null;
  const {snapshot_json,...withoutSnapshot}=row;
- return {...withoutSnapshot,snapshot:JSON.parse(snapshot_json),
+ let snapshot=null;
+ try{snapshot=JSON.parse(snapshot_json);}
+ catch{
+   // Keep the case visible for reconciliation when its frozen evidence is unreadable.
+ }
+ return {...withoutSnapshot,snapshot,
   final_tax_invoice_issued:false,statutory_number_reserved:false,
   document_pdf_created:false,email_delivered:false};
 }

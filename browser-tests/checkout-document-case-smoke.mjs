@@ -45,6 +45,15 @@ export async function runCheckoutDocumentCaseSmoke(browser){
    await panel.getByText('Synthetic Checkout Case Guest').waitFor({state:'visible'});
    assert.match(await panel.locator('#checkout-case-list').textContent(),/held for review/);
    assert.match(await panel.locator('#checkout-case-list').textContent(),/4,700/);
+   const compare=panel.getByRole('button',{name:'Compare current balances'});
+   await compare.click();
+   await panel.getByText('Compared amounts and room bill settlements match', {exact:false})
+     .waitFor({state:'visible'});
+   db.prepare('INSERT INTO payments(booking_id,amount_paise,method,note) VALUES(?,?,?,?)')
+     .run(bookingId,10000,'cash','Synthetic payment received after checkout');
+   await compare.click();
+   await panel.getByText('Changes since checkout:').waitFor({state:'visible'});
+   assert.match(await panel.getByText('Outstanding balance:',{exact:false}).textContent(),/4,700.*4,600/);
    await panel.getByRole('button',{name:'View live guest folio'}).click();
    await page.locator('#folio-dialog').waitFor({state:'visible'});
    assert.equal(db.prepare('SELECT COUNT(*) n FROM checkout_document_cases').get().n,1);

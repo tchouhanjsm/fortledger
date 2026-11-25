@@ -14,16 +14,28 @@ export function chooseWindowsUpdateAction(state,readiness){
     SHA.test(readiness.target_sha||'');
   const sameTarget=SHA.test(state?.target_sha||'')&&readyTarget&&
     state.target_sha.toLowerCase()===readiness.target_sha.toLowerCase();
-  const changed=Boolean((source||candidate)&&readyTarget&&!sameTarget);
+  const readinessTarget=SHA.test(readiness?.target_sha||'');
+  const matchingReadiness=readinessTarget&&SHA.test(state?.target_sha||'')&&
+    state.target_sha.toLowerCase()===readiness.target_sha.toLowerCase();
+  const nativeFallback=Boolean(source&&matchingReadiness&&readiness?.ready===false&&
+    readiness.installer_required===true&&OFFICIAL_ARTIFACT.test(readiness.installer_download_url||''));
+  const changed=Boolean((source||candidate)&&
+    (readyTarget||source&&readinessTarget)&&!matchingReadiness);
   const inPlace=Boolean((source||candidate)&&sameTarget);
   return {
     in_place_ready:inPlace,
-    show_verified_installer:Boolean(candidate&&!inPlace&&!changed),
+    show_verified_installer:Boolean((candidate&&!inPlace&&!changed)||nativeFallback),
+    installer_download_url:nativeFallback?readiness.installer_download_url:
+      candidate&&!inPlace&&!changed?state.download_url:null,
     show_in_place:inPlace,
     guidance:changed?
       'The available update changed during verification. Check for updates again before applying or downloading it.':
       inPlace?
       'Apply the CI-approved source-only update and restart. No installer download or startup verification gate is needed; a clean transaction drain and recoverable backup remain mandatory.':
+      nativeFallback?
+      'This revision requires a verified installer upgrade. Preserve the existing ledger and complete independent backup verification before installing.':
+      source&&matchingReadiness&&readiness.installer_required===true?
+      'This revision requires an installer; the exact verified installer is not yet available. Do not download an older build.':
       source?
       'Local source update is not ready. Review the safety blockers. A compatible code patch requires no installer.':
       candidate?

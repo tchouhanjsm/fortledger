@@ -4,7 +4,11 @@ import {isPrivateLanIp} from './network-policy.js';
 /** Owner-only read-only address hints, never server-binding instructions.
  * LAN interface enumeration may include VPNs or virtual adapters; do not
  * claim that any candidate is reachable from a particular staff phone. */
-export function localLanIpCandidates(interfaces=os.networkInterfaces()){
+export function localLanIpCandidates(interfaces){
+  if(interfaces===undefined){
+    try{interfaces=os.networkInterfaces();}
+    catch{return [];}
+  }
   if(!interfaces||typeof interfaces!=='object')return [];
   const addresses=new Set();
   for(const list of Object.values(interfaces)){

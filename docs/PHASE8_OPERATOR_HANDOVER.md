@@ -5,22 +5,26 @@
 
 ## 1. Protect the current installation before any change
 
-1. Record the currently installed Git commit SHA using `git rev-parse HEAD`; note the Node 22 version and Windows device model.
-2. Finish active reservations / restaurant sales; stop FortLedger using Ctrl+C. Check no Node/FortLedger instance is serving port 3000. Keep the source machine and its `%LOCALAPPDATA%\FortLedger\data` directory untouched.
-3. Use `scripts/windows-update.ps1` for controlled updates. It validates a SQLite-consistent pre-update snapshot **before** modifying app code and retains the previous commit SHA. Pre-update backups on the same physical disk are *not* disaster recovery.
-4. Confirm a separate encrypted `.flbk` backup exists on independently protected storage; separately retrieve the passphrase and `admin-auth.json` (the encrypted database file alone does **not** back up this credential file). Do not copy a hot SQLite database via Windows Explorer or delete `-wal`/`-shm`.
+1. Record the installed build and commit on the hotel PC. For a packaged installation, open `installer-build.json` in the program folder (default `%LOCALAPPDATA%\Programs\FortLedger`) and record `version`, `build_number`, and `sha`. For a source checkout, run `git rev-parse HEAD`. If the identity file is absent, record the Windows Installed Apps version and mark the commit unknown.
+2. Confirm the matching `.flbk` ledger and `.flba` owner companion are on independently protected storage. Retrieve the passphrase separately and run the rehearsal below. Keep the source machine and its `%LOCALAPPDATA%\FortLedger\data` directory intact. Use FortLedger's backup command to capture a running ledger.
+3. Finish active reservations and restaurant sales. The packaged installation uses the local owner's [Windows update procedure](WINDOWS_UPDATE_NO_REINSTALL_AND_PORT_3000.md). For a source checkout, stop the app using Ctrl+C, confirm no FortLedger instance is serving port 3000, and use `scripts/windows-update.ps1` for its verified pre-update snapshot and update.
 
 ## 2. Rehearse the actual encrypted backup without replacing live data
 
-Open PowerShell in the installed repository. Fetch the backup from its real location and enter its passphrase **only in the current session** from separately kept records:
+Open PowerShell in the recovery checkout with dependencies installed. On a replacement PC, the rehearsal can use the encrypted pair directly before any local ledger or owner account has been created. Fetch the matching `.flbk` and `.flba` from independent storage and supply the separately retained passphrase when prompted.
 
 ```powershell
-$env:FORTLEDGER_BACKUP_PASSPHRASE = Read-Host 'Backup passphrase'
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows-recovery-rehearsal.ps1 -BackupFile 'E:\FortLedgerBackups\fortledger-example.flbk'
-Remove-Item Env:\FORTLEDGER_BACKUP_PASSPHRASE
+$backupSecret = Read-Host 'Backup passphrase' -AsSecureString
+try {
+  $env:FORTLEDGER_BACKUP_PASSPHRASE = [Net.NetworkCredential]::new('', $backupSecret).Password
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows-recovery-rehearsal.ps1 -ReplacementDevice -BackupFile 'E:\FortLedgerBackups\fortledger-example.flbk'
+} finally {
+  Remove-Item Env:\FORTLEDGER_BACKUP_PASSPHRASE -ErrorAction SilentlyContinue
+  $backupSecret.Dispose()
+}
 ```
 
-Replace the example file with the **actual absolute backup path**. The script validates the existing live data and admin credential file, decrypts the supplied backup into private scratch storage, restores that candidate to another scratch database and checks all table rows. It never installs a replacement, changes live guest records or creates a release certificate. A failed check stops the workflow; preserve the original backup for investigation.
+Replace the example file with the **actual absolute backup path**. The helper restores the candidate into disposable private storage, checks all table rows, and authenticates the matching owner companion. A missing or tampered companion fails the replacement-device check. On the source PC, omit `-ReplacementDevice` to also check for the existing local ledger and owner credential file. This rehearsal cleans up its scratch files and leaves both the hotel installation and backup pair untouched. A successful rehearsal checks the encrypted artifacts. Verify the original owner login during the physical restore below.
 
 **Required human evidence:** date, device, source storage description, backup filename (not guest data or secret), approximate age, recovered seven-room count, and whether synthetic invoices/restaurant records are present. Never record the passphrase.
 
