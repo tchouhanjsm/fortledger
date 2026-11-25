@@ -2131,9 +2131,9 @@ $('#update-center-check').onclick=async()=>{
       const panel=$('#update-center-readiness'),list=$('#update-center-blockers');
       panel.hidden=false;list.replaceChildren();
       for(const blocker of readiness.blockers||[])list.append(label('li',blocker));
-      const ready=Boolean(readiness.ready)&&
-        /^[a-f0-9]{40}$/i.test(readiness.target_sha||'');
       const choice=chooseWindowsUpdateAction(state,readiness);
+      const ready=installerManaged?choice.show_in_place:
+        Boolean(readiness.ready)&&/^[a-f0-9]{40}$/i.test(readiness.target_sha||'');
       if(installerManaged){
         $('#update-center-download').hidden=!choice.show_verified_installer;
         $('#update-center-desktop').hidden=!(choice.show_verified_installer||choice.show_in_place);
