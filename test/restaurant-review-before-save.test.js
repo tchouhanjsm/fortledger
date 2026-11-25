@@ -19,7 +19,11 @@ test('restaurant review is a distinct unsaved stage; menu and item edits remain 
   assert.match(js,/Remove '\+item\.name\+' from bill/);
   assert.match(js,/if\(pendingRestaurantBill\)return/);
   assert.match(js,/pendingRestaurantBill=body/);
-  assert.match(js,/Restaurant bill request ID already used|different details|retry only the unchanged bill/i);
+  const recovery=readFileSync(new URL('../public/restaurant-save-recovery.js',import.meta.url),'utf8');
+  assert.match(js,/reconcileRestaurantSaveFailure\(error,\(\)=>api\(/);
+  assert.match(recovery,/retry only the original request/i);
+  assert.match(js,/retry only the unchanged bill/i);
+  assert.match(js,/Bill save response did not contain a valid receipt ID/);
 });
 test('server only records confirmed final bill; changes to an unsaved cart do not create historical ledger events',()=>{
   const db=openDatabase(':memory:');
