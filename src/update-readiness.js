@@ -105,3 +105,20 @@ export function createSupervisedUpdateIpc(ipc=process){
     dispose(){ipc.removeListener('message',receive);}
   };
 }
+
+/** An accepted, pinned supervisor request must drain exactly once even if
+ * the owner closes the tab or loses the HTTP response. This is never called
+ * until owner authorization, readiness and supervisor acceptance succeed. */
+export function drainAfterAcceptedResponse(res,drain,schedule=setImmediate){
+  let queued=false;
+  const queue=()=>{
+    if(queued)return;
+    queued=true;
+    res.removeListener('finish',queue);
+    res.removeListener('close',queue);
+    schedule(drain);
+  };
+  res.once('finish',queue);
+  res.once('close',queue);
+  if(res.destroyed||res.writableFinished)queue();
+}
