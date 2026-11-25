@@ -52,12 +52,13 @@ const updateNotice=createOwnerUpdateNotice({
   },
   hide:()=>{$('#owner-update-notice').hidden=true;}
 });
+const isLocalUpdateHost=()=>['127.0.0.1','localhost'].includes(window.location.hostname);
 function refreshOwnerUpdateNotice(){
   // Never let network checks slow or interrupt a booking, invoice or payment.
   // Read-only owner notice; code update requires explicit readiness and approval.
   void updateNotice.refresh({
     owner:currentUser?.role==='owner'&&can('system.update'),
-    local:['127.0.0.1','localhost'].includes(window.location.hostname)
+    local:isLocalUpdateHost()
   });
 }
 $('#owner-update-notice').onclick=()=>{
@@ -1227,6 +1228,10 @@ async function load(){
   $('#preview-menu').hidden=!can('menu.manage');
   $('#staff-admin').hidden=currentUser.role!=='owner';
   $('#update-center').hidden=!can('system.update');
+  const localUpdateHost=isLocalUpdateHost();
+  $('#update-center-check').disabled=!localUpdateHost;
+  $('#update-center-lan-note').hidden=localUpdateHost;
+  if(!localUpdateHost)$('#update-center-state').textContent='Local maintenance required.';
   $('#backup-center').hidden=!can('system.update');
   $('#release-status-panel').hidden=currentUser.role!=='owner'||!can('system.update')||
     !['127.0.0.1','localhost'].includes(window.location.hostname);
@@ -1786,27 +1791,45 @@ let ownerStaffPhoneUrl=null;
 async function refreshOwnerStaffNetwork(){
   if(currentUser?.role!=='owner')return;
   const target=$('#owner-staff-network-status'),copy=$('#owner-staff-network-copy');
+  const address=$('#owner-staff-network-address'),refresh=$('#owner-staff-network-refresh');
+  if(refresh.disabled)return;
+  const actor=currentUser;
+  refresh.disabled=true;
+  ownerStaffPhoneUrl=null;address.value='';address.hidden=true;copy.disabled=true;
+  target.textContent='Checking configured phone access…';
   try{
     const data=await api('/api/network/staff-access');
-    ownerStaffPhoneUrl=data.phone_url;
+    if(currentUser!==actor)return;
+    ownerStaffPhoneUrl=data.mode==='staff_https'&&typeof data.phone_url==='string'&&
+      /^https:\/\/\d{1,3}(?:\.\d{1,3}){3}:\d{1,5}$/.test(data.phone_url)?data.phone_url:null;
+    address.value=ownerStaffPhoneUrl||'';
+    address.hidden=!ownerStaffPhoneUrl;
     copy.disabled=!ownerStaffPhoneUrl;
     const ips=Array.isArray(data.lan_ip_candidates)?data.lan_ip_candidates.slice(0,8):[];
-    target.textContent=data.mode==='staff_https'?
-      'Configured hotel LAN HTTPS phone URL: '+data.phone_url+
-      '. Use the SAME hotel Wi-Fi on your phone, trust the HTTPS certificate and sign in with individual staff credentials.':
+    target.textContent=ownerStaffPhoneUrl?
+      'Configured address. Open it on the same hotel Wi-Fi using a trusted certificate and individual staff login. Phone connectivity is not yet verified.':
+      data.mode==='staff_https'?'Configured HTTPS address unavailable. Ask owner/IT to review the network settings.':
       'FortLedger currently runs on this PC only. Candidate Windows LAN IP'+
       (ips.length===1?': ':'s: ')+(ips.join(', ')||'none detected')+
-      '. These are identification hints, not live phone URLs. Use the existing hotel Wi-Fi/router; no second Wi-Fi network is needed. The owner/IT must enable the existing HTTPS listener for the correct PC IP once (tray: Hotel LAN HTTPS - phone access), with a trusted certificate and restricted firewall subnet.';
-  }catch(error){ownerStaffPhoneUrl=null;copy.disabled=true;target.textContent='Network check unavailable: '+error.message;}
+      '. These are identification hints, not live phone URLs. Use the existing hotel Wi-Fi/router; no second Wi-Fi network is needed. Enable Hotel LAN HTTPS in the tray once, using a trusted certificate and restricted firewall subnet.';
+  }catch(error){
+    if(currentUser===actor)target.textContent='Network check unavailable: '+error.message;
+  }finally{refresh.disabled=false;}
 }
 $('#owner-staff-network-refresh').onclick=refreshOwnerStaffNetwork;
 $('#owner-staff-network-copy').onclick=async()=>{
-  if(!ownerStaffPhoneUrl)return;
+  if(currentUser?.role!=='owner'||!ownerStaffPhoneUrl)return;
+  const actor=currentUser,url=ownerStaffPhoneUrl;
+  const address=$('#owner-staff-network-address'),target=$('#owner-staff-network-status');
   try{
-    await navigator.clipboard.writeText(ownerStaffPhoneUrl);
-    $('#owner-staff-network-status').textContent='Staff HTTPS phone address copied. Do not share it with hotel guests. Verify phone certificate trust before login.';
+    await navigator.clipboard.writeText(url);
+    if(currentUser===actor&&ownerStaffPhoneUrl===url)
+      target.textContent='Address copied. Open on an authorized phone and verify certificate trust before login.';
   }catch{
-    $('#owner-staff-network-status').textContent='Copy unavailable. Use this address on authorized phone connected to hotel Wi-Fi: '+ownerStaffPhoneUrl;
+    if(currentUser===actor&&ownerStaffPhoneUrl===url){
+      address.focus();address.select();
+      target.textContent='Copy unavailable. The configured address is selected for manual copying.';
+    }
   }
 };
 async function refreshOwnerLanPrinter(){
@@ -2092,7 +2115,7 @@ $('#update-center-download').onclick=()=>{
   window.open(installerDownloadUrl,'_blank','noopener,noreferrer');
 };
 $('#update-center-check').onclick=async()=>{
-  if(!can('system.update'))return;
+  if(!can('system.update')||!isLocalUpdateHost())return;
   const button=$('#update-center-check'),message=$('#update-center-state');
   const versions=$('#update-center-versions');
   button.disabled=true;message.dataset.state='checking';
