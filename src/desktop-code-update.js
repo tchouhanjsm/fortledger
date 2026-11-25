@@ -164,6 +164,16 @@ async function downloadPinnedFile(sha,name,{fetchFile}={}){
   if(bytes.length>MAX_FILE)throw new Error('Pinned source file exceeds size limit');
   return bytes;
 }
+// A persistent interruption marker is also checked by the Windows launcher
+// BEFORE starting any application code. Never silently clear it on startup.
+const PENDING_PATCH='source-update-pending.json';
+function markerExists(file){
+  try{fs.lstatSync(file);return true;}
+  catch(error){if(error.code==='ENOENT')return false;throw error;}
+}
+function uncertainUpdate(message){
+  const error=new Error(message);error.code='CODE_UNCERTAIN';return error;
+}
 function journal(workRoot,kind,sha){
   fs.mkdirSync(workRoot,{recursive:true,mode:0o700});
   fs.appendFileSync(path.join(workRoot,'code-update-journal.jsonl'),
@@ -207,7 +217,10 @@ export async function installDesktopCodeUpdate(target_sha,{
   if(!path.isAbsolute(workRoot)||path.resolve(workRoot)===path.resolve(root)||
      path.resolve(workRoot).startsWith(path.resolve(root)+path.sep))
     throw new Error('Update staging must be outside the installed application');
+  const marker=path.join(workRoot,PENDING_PATCH);
+  if(markerExists(marker))throw uncertainUpdate('An interrupted source update needs reviewed program-file recovery. Keep the hotel ledger intact.');
   const stage=path.join(workRoot,'stage-'+randomUUID());
+  const rollbackRoot=path.join(stage,'rollback');
   const oldStamp=fs.readFileSync(path.join(root,'installer-build.json'));
   const completed=[],newFiles=new Map(),backups=new Map();
   let applying=false;
@@ -215,24 +228,37 @@ export async function installDesktopCodeUpdate(target_sha,{
     fs.mkdirSync(stage,{recursive:true,mode:0o700});
     for(const change of plan.changes){
       const current=ensureLocalFile(root,change.path,change.old_sha);
-      if(current)backups.set(change.path,fs.readFileSync(current));
+      if(current){
+        const bytes=fs.readFileSync(current);
+        backups.set(change.path,bytes);
+        const copy=destination(rollbackRoot,change.path);
+        fs.mkdirSync(path.dirname(copy),{recursive:true,mode:0o700});
+        fs.writeFileSync(copy,bytes,{flag:'wx',mode:0o600,flush:true});
+      }
       if(!change.new_sha)continue;
       const bytes=await downloadPinnedFile(target_sha,change.path,{fetchFile});
       if(bytes.length!==change.size||gitBlobSha(bytes)!==change.new_sha)
         throw new Error('Downloaded source failed the pinned Git blob integrity check');
       const copy=destination(stage,change.path);
       fs.mkdirSync(path.dirname(copy),{recursive:true,mode:0o700});
-      fs.writeFileSync(copy,bytes,{flag:'wx',mode:0o600});
+      fs.writeFileSync(copy,bytes,{flag:'wx',mode:0o600,flush:true});
       newFiles.set(change.path,copy);
     }
+    fs.mkdirSync(rollbackRoot,{recursive:true,mode:0o700});
+    fs.writeFileSync(path.join(rollbackRoot,'installer-build.json'),oldStamp,{flag:'wx',mode:0o600,flush:true});
+    fs.writeFileSync(path.join(stage,'plan.json'),JSON.stringify({from:installed.sha,to:target_sha,changes:plan.changes})+'\n',{flag:'wx',mode:0o600,flush:true});
     journal(workRoot,'staged',target_sha);
+    // Exclusive, durable marker BEFORE any program file is replaced. A
+    // crashed/power-interrupted helper leaves a guarded recovery bundle.
+    fs.writeFileSync(marker,JSON.stringify({from:installed.sha,to:target_sha,stage:path.basename(stage)})+'\n',
+      {flag:'wx',mode:0o600,flush:true});
     applying=true;
     for(const change of plan.changes){
       const file=destination(root,change.path);
       fs.mkdirSync(path.dirname(file),{recursive:true});
       const temp=file+'.fortledger-updating-'+randomUUID();
       if(change.new_sha){
-        fs.copyFileSync(newFiles.get(change.path),temp,fs.constants.COPYFILE_EXCL);
+        fs.writeFileSync(temp,fs.readFileSync(newFiles.get(change.path)),{flag:'wx',flush:true});
         fs.renameSync(temp,file);
       }else fs.unlinkSync(file);
       completed.push(change.path);
@@ -240,9 +266,13 @@ export async function installDesktopCodeUpdate(target_sha,{
     const stamp={sha:target_sha.toLowerCase(),build_number:installed.build_number,
       version:'code-update',update_method:'verified_source_only'};
     const stampTemp=path.join(root,'installer-build.json.tmp-'+randomUUID());
-    fs.writeFileSync(stampTemp,JSON.stringify(stamp)+'\n',{flag:'wx'});
+    fs.writeFileSync(stampTemp,JSON.stringify(stamp)+'\n',{flag:'wx',flush:true});
     fs.renameSync(stampTemp,path.join(root,'installer-build.json'));
+    for(const change of plan.changes)ensureLocalFile(root,change.path,change.new_sha);
+    if(!fs.readFileSync(path.join(root,'installer-build.json')).equals(Buffer.from(JSON.stringify(stamp)+'\n')))
+      throw new Error('Installed source build identity could not be verified');
     journal(workRoot,'source_applied',target_sha);
+    fs.unlinkSync(marker);
     return {updated:true,changed:completed.length,target_sha};
   }catch(error){
     if(applying){
@@ -250,23 +280,28 @@ export async function installDesktopCodeUpdate(target_sha,{
       for(const name of completed.reverse()){
         try{
           const file=destination(root,name),old=backups.get(name);
-          if(old)fs.writeFileSync(file,old);
+          if(old)fs.writeFileSync(file,old,{flush:true});
           else if(fs.existsSync(file))fs.unlinkSync(file);
         }catch(e){rollbackError=e;}
       }
-      try{fs.writeFileSync(path.join(root,'installer-build.json'),oldStamp);}
-      catch(e){rollbackError=e;}
+      try{
+        fs.writeFileSync(path.join(root,'installer-build.json'),oldStamp,{flush:true});
+        for(const change of plan.changes)ensureLocalFile(root,change.path,change.old_sha);
+        if(!fs.readFileSync(path.join(root,'installer-build.json')).equals(oldStamp))throw new Error('Original build identity differs');
+        if(!rollbackError){journal(workRoot,'rolled_back',target_sha);fs.unlinkSync(marker);}
+      }catch(e){rollbackError=e;}
       if(rollbackError){
-        journal(workRoot,'rollback_unconfirmed',target_sha);
-        const critical=new Error('Application source rollback could not be verified. Keep FortLedger stopped and recover from reviewed program files; never reset hotel data.');
-        critical.code='CODE_UNCERTAIN';
-        throw critical;
+        try{journal(workRoot,'rollback_unconfirmed',target_sha);}catch{}
+        throw uncertainUpdate('Application source rollback could not be verified. Keep FortLedger stopped and recover from reviewed program files; never reset hotel data.');
       }
-      journal(workRoot,'rolled_back',target_sha);
     }
+    if(markerExists(marker))throw uncertainUpdate('Source update interruption marker remains; preserve recovery bundle and keep FortLedger stopped.');
     throw error;
   }finally{
-    fs.rmSync(stage,{recursive:true,force:true});
+    // Never remove the recovery bundle while an interruption marker remains.
+    if(!markerExists(marker)){
+      try{fs.rmSync(stage,{recursive:true,force:true});}catch{} // harmless staging cleanup
+    }
   }
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
